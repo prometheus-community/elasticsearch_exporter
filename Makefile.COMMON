@@ -41,8 +41,8 @@ VERSION ?= $(error VERSION not set in including Makefile)
 TARGET  ?= $(error TARGET not set in including Makefile)
 
 SRC    ?= $(shell find . -type f -name "*.go" ! -path "./.build/*")
-GOOS   := $(shell uname | tr A-Z a-z)
-GOARCH := $(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
+GOOS   ?= $(shell uname | tr A-Z a-z)
+GOARCH ?= $(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
 
 ifeq ($(GOOS),darwin)
 	RELEASE_SUFFIX ?= -osx$(shell sw_vers -productVersion)
