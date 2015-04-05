@@ -109,12 +109,18 @@ type NodeStatsIndicesResponse struct {
 	Search      NodeStatsIndicesSearchResponse
 	FieldData   NodeStatsIndicesFieldDataResponse
 	FilterCache NodeStatsIndicesFieldDataResponse
-    Flush       NodeStatsIndicesFlushResponse
+	Flush       NodeStatsIndicesFlushResponse
+	Segments    NodeStatsIndicesSegmentsResponse
 }
 
 type NodeStatsIndicesDocsResponse struct {
 	Count   int64 `json:"count"`
 	Deleted int64 `json:"deleted"`
+}
+
+type NodeStatsIndicesSegmentsResponse struct {
+	Count  int64 `json:"count"`
+	Memory int64 `json:"memory_in_bytes"`
 }
 
 type NodeStatsIndicesStoreResponse struct {
@@ -152,8 +158,8 @@ type NodeStatsIndicesSearchResponse struct {
 }
 
 type NodeStatsIndicesFlushResponse struct {
-    Total       int64 `json:"total"`
-    Time        int64 `json:"total_time_in_millis"`
+	Total int64 `json:"total"`
+	Time  int64 `json:"total_time_in_millis"`
 }
 
 type NodeStatsIndicesFieldDataResponse struct {
@@ -248,14 +254,16 @@ var (
 		"indices_docs_count":                        "Count of documents on this node",
 		"indices_docs_deleted":                      "Count of deleted documents on this node",
 		"indices_store_size_in_bytes":               "Size of stored index data in bytes",
+		"indices_segments_memory_in_bytes":          "Memory size of segments in bytes",
 	}
 	counterMetrics = map[string]string{
-		"indices_flush_total":          "Total flushes",
-		"indices_flush_time_in_millis": "Cumulative flush time",
-		"transport_rx_count":           "Count of packets received",
-		"transport_rx_size_in_bytes":   "Bytes received",
-		"transport_tx_count":           "Count of packets sent",
-		"transport_tx_size_in_bytes":   "Bytes sent",
+		"indices_flush_total":                   "Total flushes",
+		"indices_flush_time_in_millis":          "Cumulative flush time",
+		"transport_rx_count":                    "Count of packets received",
+		"transport_rx_size_in_bytes":            "Bytes received",
+		"transport_tx_count":                    "Count of packets sent",
+		"transport_tx_size_in_bytes":            "Bytes sent",
+		"indices_store_throttle_time_in_millis": "Throttle time for index store",
 	}
 	counterVecMetrics = map[string]*VecInfo{
 		"jvm_gc_collection_count": &VecInfo{
@@ -444,11 +452,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["indices_docs_count"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Docs.Count))
 		e.gauges["indices_docs_deleted"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Docs.Deleted))
 
+		e.gauges["indices_segments_memory_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Segments.Memory))
+
 		e.gauges["indices_store_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Store.Size))
+		e.counters["indices_store_throttle_time_in_millis"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Store.ThrottleTime))
 
 		e.counters["indices_flush_total"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Flush.Total))
 		e.counters["indices_flush_time_in_millis"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Flush.Time))
-
 
 		// Transport Stats
 		e.counters["transport_rx_count"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Transport.RxCount))
