@@ -50,6 +50,7 @@ type NodeStatsBreakersResponse struct {
 type NodeStatsJVMResponse struct {
 	BufferPools map[string]NodeStatsJVMBufferPoolResponse `json:"buffer_pools"`
 	GC          NodeStatsJVMGCResponse                    `json:"gc"`
+	Mem         NodeStatsJVMMemResponse                   `json:"mem"`
 }
 
 type NodeStatsJVMGCResponse struct {
@@ -65,6 +66,14 @@ type NodeStatsJVMBufferPoolResponse struct {
 	Count         int64 `json:"count"`
 	TotalCapacity int64 `json:"total_capacity_in_bytes"`
 	Used          int64 `json:"used_in_bytes"`
+}
+
+type NodeStatsJVMMemResponse struct {
+	HeapCommitted    int64 `json:"heap_committed_in_bytes"`
+	HeapUsed         int64 `json:"heap_used_in_bytes"`
+	HeapMax          int64 `json:"heap_max_in_bytes"`
+	NonHeapCommitted int64 `json:"non_heap_committed_in_bytes"`
+	NonHeapUsed      int64 `json:"non_heap_used_in_bytes"`
 }
 
 type NodeStatsNetworkResponse struct {
@@ -255,6 +264,11 @@ var (
 		"indices_docs_deleted":                      "Count of deleted documents on this node",
 		"indices_store_size_in_bytes":               "Size of stored index data in bytes",
 		"indices_segments_memory_in_bytes":          "Memory size of segments in bytes",
+		"jvm_mem_heap_committed_in_bytes":           "JVM heap memory committed",
+		"jvm_mem_heap_used_in_bytes":                "JVM heap memory used",
+		"jvm_mem_heap_max_in_bytes":                 "JVM heap memory max",
+		"jvm_mem_non_heap_committed_in_bytes":       "JVM non-heap memory committed",
+		"jvm_mem_non_heap_used_in_bytes":            "JVM non-heap memory used",
 	}
 	counterMetrics = map[string]string{
 		"indices_flush_total":                   "Total flushes",
@@ -442,6 +456,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.gauges["breakers_estimated_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name, breaker).Set(float64(bstats.EstimatedSize))
 			e.gauges["breakers_limit_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name, breaker).Set(float64(bstats.LimitSize))
 		}
+
+		// JVM Memory Stats
+		e.gauges["jvm_mem_heap_committed_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.JVM.Mem.HeapCommitted))
+		e.gauges["jvm_mem_heap_used_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.JVM.Mem.HeapUsed))
+		e.gauges["jvm_mem_heap_max_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.JVM.Mem.HeapMax))
+		e.gauges["jvm_mem_non_heap_committed_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.JVM.Mem.NonHeapCommitted))
+		e.gauges["jvm_mem_non_heap_used_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
 		e.gauges["indices_fielddata_evictions"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.FieldData.Evictions))
