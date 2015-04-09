@@ -111,15 +111,15 @@ type NodeStatsTCPResponse struct {
 }
 
 type NodeStatsIndicesResponse struct {
-	Docs        NodeStatsIndicesDocsResponse
-	Store       NodeStatsIndicesStoreResponse
-	Indexing    NodeStatsIndicesIndexingResponse
-	Get         NodeStatsIndicesGetResponse
-	Search      NodeStatsIndicesSearchResponse
-	FieldData   NodeStatsIndicesFieldDataResponse
-	FilterCache NodeStatsIndicesFieldDataResponse
-	Flush       NodeStatsIndicesFlushResponse
-	Segments    NodeStatsIndicesSegmentsResponse
+	Docs        NodeStatsIndicesDocsResponse      `json:"docs"`
+	Store       NodeStatsIndicesStoreResponse     `json:"store"`
+	Indexing    NodeStatsIndicesIndexingResponse  `json:"indexing"`
+	Get         NodeStatsIndicesGetResponse       `json:"get"`
+	Search      NodeStatsIndicesSearchResponse    `json:"search"`
+	FieldData   NodeStatsIndicesFieldDataResponse `json:"fielddata"`
+	FilterCache NodeStatsIndicesFieldDataResponse `json:"filter_cache"`
+	Flush       NodeStatsIndicesFlushResponse     `json:"flush"`
+	Segments    NodeStatsIndicesSegmentsResponse  `json:"segments"`
 }
 
 type NodeStatsIndicesDocsResponse struct {
