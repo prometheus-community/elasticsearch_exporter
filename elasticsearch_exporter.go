@@ -506,10 +506,15 @@ func main() {
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		esUri         = flag.String("es.uri", "http://localhost:9200", "HTTP API address of a Elasticsearch node.")
 		esTimeout     = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
+		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
 	)
 	flag.Parse()
 
-	*esUri = *esUri + "/_nodes/_local/stats"
+	if *esAllNodes {
+		*esUri = *esUri + "/_nodes/stats"
+	} else {
+		*esUri = *esUri + "/_nodes/_local/stats"
+	}
 
 	exporter := NewExporter(*esUri, *esTimeout)
 	prometheus.MustRegister(exporter)
