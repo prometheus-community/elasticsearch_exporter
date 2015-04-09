@@ -269,6 +269,15 @@ var (
 		"jvm_mem_heap_max_in_bytes":                 "JVM heap memory max",
 		"jvm_mem_non_heap_committed_in_bytes":       "JVM non-heap memory committed",
 		"jvm_mem_non_heap_used_in_bytes":            "JVM non-heap memory used",
+		"os_timestamp":                              "OS Timestamp",
+		"os_uptime":                                 "OS Uptime",
+		"os_loadavg_1":                              "OS CPU load Average - last 1 min",
+		"os_loadavg_5":                              "OS CPU load Average - last 5 min",
+		"os_loadavg_15":                             "OS CPU load Average - last 15 min",
+		"os_cpu_sys":                                "OS CPU System load",
+		"os_cpu_user":                               "OS CPU User load",
+		"os_cpu_idle":                               "OS CPU Idle load",
+		"os_cpu_steal":                              "OS CPU Steal load",
 	}
 	counterMetrics = map[string]string{
 		"indices_flush_total":                   "Total flushes",
@@ -278,6 +287,13 @@ var (
 		"transport_tx_count":                    "Count of packets sent",
 		"transport_tx_size_in_bytes":            "Bytes sent",
 		"indices_store_throttle_time_in_millis": "Throttle time for index store",
+		"fs_disk_total":                         "Total disk space in bytes",
+		"fs_disk_free":                          "Total disk space free in bytes",
+		"fs_disk_available":                     "Total disk space available in bytes",
+		"fs_disk_reads":                         "Total disk reads",
+		"fs_disk_writes":                        "Total disk writes",
+		"fs_disk_reads_size":                    "Total disk reads in bytes",
+		"fs_disk_writes_size":                   "Total disk writes in bytes",
 	}
 	counterVecMetrics = map[string]*VecInfo{
 		"jvm_gc_collection_count": &VecInfo{
@@ -486,6 +502,30 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counters["transport_rx_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Transport.RxSize))
 		e.counters["transport_tx_count"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Transport.TxCount))
 		e.counters["transport_tx_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Transport.TxSize))
+
+		// OS CPU Stats
+		e.gauges["os_timestamp"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.Timestamp))
+		e.gauges["os_uptime"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.Uptime))
+		e.gauges["os_loadavg_1"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.LoadAvg[0]))
+		e.gauges["os_loadavg_5"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.LoadAvg[1]))
+		e.gauges["os_loadavg_15"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.LoadAvg[2]))
+
+		// OS CPU Stats
+		e.gauges["os_cpu_sys"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.CPU.Sys) / 100)
+		e.gauges["os_cpu_user"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.CPU.User) / 100)
+		e.gauges["os_cpu_idle"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.CPU.Idle) / 100)
+		e.gauges["os_cpu_steal"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.OS.CPU.Steal) / 100)
+
+		// OS Disk Stats
+		if len(stats.FS.Data) > 0 { //non-data nodes will not have a FS.Data field
+			e.counters["fs_disk_total"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].Total))
+			e.counters["fs_disk_free"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].Free))
+			e.counters["fs_disk_available"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].Available))
+			e.counters["fs_disk_reads"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].DiskReads))
+			e.counters["fs_disk_writes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].DiskWrites))
+			e.counters["fs_disk_reads_size"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].DiskReadSize))
+			e.counters["fs_disk_writes_size"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.FS.Data[0].DiskWriteSize))
+		}
 	}
 
 	// Report metrics.
