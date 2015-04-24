@@ -114,6 +114,7 @@ type NodeStatsIndicesResponse struct {
 	Docs        NodeStatsIndicesDocsResponse
 	Store       NodeStatsIndicesStoreResponse
 	Indexing    NodeStatsIndicesIndexingResponse
+	Merges      NodeStatsIndicesMergesResponse
 	Get         NodeStatsIndicesGetResponse
 	Search      NodeStatsIndicesSearchResponse
 	FieldData   NodeStatsIndicesFieldDataResponse
@@ -144,6 +145,16 @@ type NodeStatsIndicesIndexingResponse struct {
 	DeleteTotal   int64 `json:"delete_total"`
 	DeleteTime    int64 `json:"delete_time_in_millis"`
 	DeleteCurrent int64 `json:"delete_current"`
+}
+
+type NodeStatsIndicesMergesResponse struct {
+	Current     int64 `json:"current"`
+	CurrentDocs int64 `json:"current_docs"`
+	CurrentSize int64 `json:"current_size_in_bytes"`
+	Total       int64 `json:"total"`
+	TotalDocs   int64 `json:"total_docs"`
+	TotalSize   int64 `json:"total_size_in_bytes"`
+	TotalTime   int64 `json:"total_time_in_millis"`
 }
 
 type NodeStatsIndicesGetResponse struct {
@@ -278,6 +289,12 @@ var (
 		"transport_tx_count":                    "Count of packets sent",
 		"transport_tx_size_in_bytes":            "Bytes sent",
 		"indices_store_throttle_time_in_millis": "Throttle time for index store",
+		"indices_indexing_index_total":          "Total index calls",
+		"indices_indexing_index_time_in_millis": "Cumulative index time",
+		"indices_merges_total":                  "Total merges",
+		"indices_merges_total_docs":             "Cumulative docs merged",
+		"indices_merges_total_size_in_bytes":    "Total merge size in bytes",
+		"indices_merges_total_time_in_millis":   "Total time spent merging",
 	}
 	counterVecMetrics = map[string]*VecInfo{
 		"jvm_gc_collection_count": &VecInfo{
@@ -481,6 +498,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counters["indices_flush_total"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Flush.Total))
 		e.counters["indices_flush_time_in_millis"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Flush.Time))
 
+		e.counters["indices_indexing_index_time_in_millis"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Indexing.IndexTime))
+		e.counters["indices_indexing_index_total"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Indexing.IndexTotal))
+
+		e.counters["indices_merges_total_time_in_millis"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Merges.TotalTime))
+		e.counters["indices_merges_total_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Merges.TotalSize))
+		e.counters["indices_merges_total"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Indices.Merges.Total))
+
 		// Transport Stats
 		e.counters["transport_rx_count"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Transport.RxCount))
 		e.counters["transport_rx_size_in_bytes"].WithLabelValues(all_stats.ClusterName, stats.Name).Set(float64(stats.Transport.RxSize))
@@ -520,7 +544,7 @@ func main() {
 		w.Write([]byte(`<html>
              <head><title>Elasticsearch Exporter</title></head>
              <body>
-             <h1>Consul Exporter</h1>
+             <h1>Elasticsearch Exporter</h1>
              <p><a href='` + *metricsPath + `'>Metrics</a></p>
              </body>
              </html>`))
