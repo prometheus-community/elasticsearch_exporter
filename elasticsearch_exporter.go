@@ -159,8 +159,8 @@ func NewExporter(uri string, timeout time.Duration) *Exporter {
 	}
 }
 
-// Describe describes all the metrics ever exported by the Consul exporter. It
-// implements prometheus.Collector.
+// Describe describes all the metrics ever exported by the elasticsearch
+// exporter. It implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.up.Desc()
 
@@ -173,8 +173,8 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-// Collect fetches the stats from configured Consul location and delivers them
-// as Prometheus metrics. It implements prometheus.Collector.
+// Collect fetches the stats from configured elasticsearch location and
+// delivers them as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.mutex.Lock() // To protect metrics from concurrent collects.
 	defer e.mutex.Unlock()
