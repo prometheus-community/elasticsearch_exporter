@@ -32,11 +32,6 @@ var (
 		"indices_docs_deleted":                   "Count of deleted documents on this node",
 		"indices_store_size_bytes":               "Current size of stored index data in bytes",
 		"indices_segments_memory_bytes":          "Current memory size of segments in bytes",
-		"jvm_mem_heap_committed_bytes":           "JVM heap memory currently committed",
-		"jvm_mem_heap_used_bytes":                "JVM heap memory currently used",
-		"jvm_mem_heap_max_bytes":                 "JVM heap memory max",
-		"jvm_mem_non_heap_committed_bytes":       "JVM non-heap memory currently committed",
-		"jvm_mem_non_heap_used_bytes":            "JVM non-heap memory currently used",
 	}
 	counterMetrics = map[string]string{
 		"indices_fielddata_evictions":           "Evictions from field data",
@@ -56,13 +51,13 @@ var (
 		"indices_merges_total_time_ms_total":    "Total time spent merging in milliseconds",
 	}
 	counterVecMetrics = map[string]*VecInfo{
-		"jvm_gc_collections": &VecInfo{
+		"jvm_gc_collection_seconds_count": &VecInfo{
 			help:   "Count of JVM GC runs",
-			labels: []string{"collector"},
+			labels: []string{"gc"},
 		},
-		"jvm_gc_collections_time_ms": &VecInfo{
-			help:   "GC run time in milliseconds",
-			labels: []string{"collector"},
+		"jvm_gc_collection_seconds_sum": &VecInfo{
+			help:   "GC run time in seconds",
+			labels: []string{"gc"},
 		},
 	}
 
@@ -74,6 +69,18 @@ var (
 		"breakers_limit_size_bytes": &VecInfo{
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
+		},
+		"jvm_memory_committed_bytes": &VecInfo{
+			help:   "JVM memory currently committed by area",
+			labels: []string{"area"},
+		},
+		"jvm_memory_used_bytes": &VecInfo{
+			help:   "JVM memory currently used by area",
+			labels: []string{"area"},
+		},
+		"jvm_memory_max_bytes": &VecInfo{
+			help:   "JVM memory max",
+			labels: []string{"area"},
 		},
 	}
 )
@@ -220,8 +227,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, stats := range allStats.Nodes {
 		// GC Stats
 		for collector, gcstats := range stats.JVM.GC.Collectors {
-			e.counters["jvm_gc_collections"].WithLabelValues(allStats.ClusterName, collector).Set(float64(gcstats.CollectionCount))
-			e.counters["jvm_gc_collections_time_ms"].WithLabelValues(allStats.ClusterName, collector).Set(float64(gcstats.CollectionTime))
+			e.counters["jvm_gc_collection_seconds_count"].WithLabelValues(allStats.ClusterName, collector).Set(float64(gcstats.CollectionCount))
+			e.counters["jvm_gc_collection_seconds_sum"].WithLabelValues(allStats.ClusterName, collector).Set(float64(gcstats.CollectionTime / 1000))
 		}
 
 		// Breaker stats
@@ -231,11 +238,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		}
 
 		// JVM Memory Stats
-		e.gauges["jvm_mem_heap_committed_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.JVM.Mem.HeapCommitted))
-		e.gauges["jvm_mem_heap_used_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.JVM.Mem.HeapUsed))
-		e.gauges["jvm_mem_heap_max_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.JVM.Mem.HeapMax))
-		e.gauges["jvm_mem_non_heap_committed_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.JVM.Mem.NonHeapCommitted))
-		e.gauges["jvm_mem_non_heap_used_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.JVM.Mem.NonHeapUsed))
+		e.gauges["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, "heap").Set(float64(stats.JVM.Mem.HeapCommitted))
+		e.gauges["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, "heap").Set(float64(stats.JVM.Mem.HeapUsed))
+		e.gauges["jvm_memory_max_bytes"].WithLabelValues(allStats.ClusterName, "heap").Set(float64(stats.JVM.Mem.HeapMax))
+		e.gauges["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, "non-heap").Set(float64(stats.JVM.Mem.NonHeapCommitted))
+		e.gauges["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FieldData.MemorySize))
