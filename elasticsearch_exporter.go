@@ -26,9 +26,7 @@ type VecInfo struct {
 
 var (
 	gaugeMetrics = map[string]string{
-		"indices_fielddata_evictions":            "Evictions from field data",
 		"indices_fielddata_memory_size_bytes":    "Field data cache memory usage in bytes",
-		"indices_filter_cache_evictions":         "Evictions from field data",
 		"indices_filter_cache_memory_size_bytes": "Field data cache memory usage in bytes",
 		"indices_docs":                           "Count of documents on this node",
 		"indices_docs_deleted":                   "Count of deleted documents on this node",
@@ -41,6 +39,8 @@ var (
 		"jvm_mem_non_heap_used_bytes":            "JVM non-heap memory currently used",
 	}
 	counterMetrics = map[string]string{
+		"indices_fielddata_evictions":           "Evictions from field data",
+		"indices_filter_cache_evictions":        "Evictions from field data",
 		"indices_flush_total":                   "Total flushes",
 		"indices_flush_time_ms_total":           "Cumulative flush time in milliseconds",
 		"transport_rx_packets_total":            "Count of packets received",
@@ -238,10 +238,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["jvm_mem_non_heap_used_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
-		e.gauges["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FieldData.Evictions))
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FieldData.MemorySize))
-		e.gauges["indices_filter_cache_evictions"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FilterCache.Evictions))
 		e.gauges["indices_filter_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FilterCache.MemorySize))
+		e.counters["indices_filter_cache_evictions"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FilterCache.Evictions))
+		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.FieldData.Evictions))
 
 		e.gauges["indices_docs"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.Docs.Count))
 		e.gauges["indices_docs_deleted"].WithLabelValues(allStats.ClusterName).Set(float64(stats.Indices.Docs.Deleted))
