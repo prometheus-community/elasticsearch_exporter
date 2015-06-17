@@ -20,6 +20,7 @@ type NodeStatsNodeResponse struct {
 	JVM              NodeStatsJVMResponse                       `json:"jvm"`
 	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
+	Process          NodeStatsProcessResponse                   `json:"process"`
 }
 
 type NodeStatsBreakersResponse struct {
@@ -100,14 +101,20 @@ type NodeStatsIndicesResponse struct {
 	Get         NodeStatsIndicesGetResponse
 	Search      NodeStatsIndicesSearchResponse
 	FieldData   NodeStatsIndicesFieldDataResponse
-	FilterCache NodeStatsIndicesFieldDataResponse
+	FilterCache NodeStatsIndicesFieldDataResponse `json:"filter_cache"`
 	Flush       NodeStatsIndicesFlushResponse
 	Segments    NodeStatsIndicesSegmentsResponse
+	Refresh     NodeStatsIndicesRefreshResponse
 }
 
 type NodeStatsIndicesDocsResponse struct {
 	Count   int64 `json:"count"`
 	Deleted int64 `json:"deleted"`
+}
+
+type NodeStatsIndicesRefreshResponse struct {
+	Total     int64 `json:"total"`
+	TotalTime int64 `json:"total_time_in_millis"`
 }
 
 type NodeStatsIndicesSegmentsResponse struct {
