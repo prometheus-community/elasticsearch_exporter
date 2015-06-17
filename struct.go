@@ -9,6 +9,7 @@ type NodeStatsResponse struct {
 
 type NodeStatsNodeResponse struct {
 	Name             string                                     `json:"name"`
+	Host             string                                     `json:"host"`
 	Timestamp        int64                                      `json:"timestamp"`
 	TransportAddress string                                     `json:"transport_address"`
 	Hostname         string                                     `json:"hostname"`
