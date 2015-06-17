@@ -110,11 +110,13 @@ type Exporter struct {
 	counters    map[string]*prometheus.CounterVec
 	counterVecs map[string]*prometheus.CounterVec
 
+  allNodes bool
+
 	client *http.Client
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, timeout time.Duration) *Exporter {
+func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -166,6 +168,8 @@ func NewExporter(uri string, timeout time.Duration) *Exporter {
 		counterVecs: counterVecs,
 		gauges:      gauges,
 		gaugeVecs:   gaugeVecs,
+
+    allNodes: allNodes,
 
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -237,9 +241,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// We only expose metrics for the local node, not the whole cluster.
-	if l := len(allStats.Nodes); l != 1 {
-		log.Println("Unexpected number of nodes returned:", l)
+	// If we aren't polling all nodes, make sure we only got one response.
+	if !e.allNodes && len(allStats.Nodes) != 1 {
+		log.Println("Unexpected number of nodes returned.")
 	}
 
 	for _, stats := range allStats.Nodes {
@@ -325,12 +329,18 @@ func main() {
 		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		esURI         = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
 		esTimeout     = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
+		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
 	)
 	flag.Parse()
 
-	*esURI = *esURI + "/_nodes/_local/stats"
 
-	exporter := NewExporter(*esURI, *esTimeout)
+	if *esAllNodes {
+		*esURI = *esURI + "/_nodes/stats"
+	} else {
+		*esURI = *esURI + "/_nodes/_local/stats"
+	}
+
+	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes)
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)
