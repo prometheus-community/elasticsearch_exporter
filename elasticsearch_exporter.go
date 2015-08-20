@@ -200,6 +200,15 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, vec := range e.gauges {
 		vec.Describe(ch)
 	}
+
+	for _, vec := range e.counterVecs {
+		vec.Describe(ch)
+	}
+
+	for _, vec := range e.gaugeVecs {
+		vec.Describe(ch)
+	}
+
 }
 
 // Collect fetches the stats from configured elasticsearch location and
@@ -214,6 +223,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for _, vec := range e.counterVecs {
+		vec.Reset()
+	}
+
+	for _, vec := range e.gauges {
+		vec.Reset()
+	}
+
+	for _, vec := range e.counters {
 		vec.Reset()
 	}
 
@@ -313,6 +330,14 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	// Report metrics.
 	ch <- e.up
+
+	for _, vec := range e.counterVecs {
+		vec.Collect(ch)
+	}
+
+	for _, vec := range e.gaugeVecs {
+		vec.Collect(ch)
+	}
 
 	for _, vec := range e.counters {
 		vec.Collect(ch)
