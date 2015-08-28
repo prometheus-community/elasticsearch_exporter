@@ -234,6 +234,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		vec.Reset()
 	}
 
+  defer func() { ch <- e.up }()
+
 	resp, err := e.client.Get(e.URI)
 	if err != nil {
 		e.up.Set(0)
@@ -329,7 +331,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Report metrics.
-	ch <- e.up
 
 	for _, vec := range e.counterVecs {
 		vec.Collect(ch)
