@@ -1,5 +1,7 @@
 package main
 
+import "encoding/json"
+
 // Elasticsearch Node Stats Structs
 
 type NodeStatsResponse struct {
@@ -95,17 +97,19 @@ type NodeStatsTCPResponse struct {
 }
 
 type NodeStatsIndicesResponse struct {
-	Docs        NodeStatsIndicesDocsResponse
-	Store       NodeStatsIndicesStoreResponse
-	Indexing    NodeStatsIndicesIndexingResponse
-	Merges      NodeStatsIndicesMergesResponse
-	Get         NodeStatsIndicesGetResponse
-	Search      NodeStatsIndicesSearchResponse
-	FieldData   NodeStatsIndicesFieldDataResponse
-	FilterCache NodeStatsIndicesFieldDataResponse `json:"filter_cache"`
-	Flush       NodeStatsIndicesFlushResponse
-	Segments    NodeStatsIndicesSegmentsResponse
-	Refresh     NodeStatsIndicesRefreshResponse
+	Docs         NodeStatsIndicesDocsResponse
+	Store        NodeStatsIndicesStoreResponse
+	Indexing     NodeStatsIndicesIndexingResponse
+	Merges       NodeStatsIndicesMergesResponse
+	Get          NodeStatsIndicesGetResponse
+	Search       NodeStatsIndicesSearchResponse
+	FieldData    NodeStatsIndicesCacheResponse `json:"fielddata"`
+	FilterCache  NodeStatsIndicesCacheResponse `json:"filter_cache"`
+	QueryCache   NodeStatsIndicesCacheResponse `json:"query_cache"`
+	RequestCache NodeStatsIndicesCacheResponse `json:"request_cache"`
+	Flush        NodeStatsIndicesFlushResponse
+	Segments     NodeStatsIndicesSegmentsResponse
+	Refresh      NodeStatsIndicesRefreshResponse
 }
 
 type NodeStatsIndicesDocsResponse struct {
@@ -172,18 +176,25 @@ type NodeStatsIndicesFlushResponse struct {
 	Time  int64 `json:"total_time_in_millis"`
 }
 
-type NodeStatsIndicesFieldDataResponse struct {
+type NodeStatsIndicesCacheResponse struct {
 	Evictions  int64 `json:"evictions"`
 	MemorySize int64 `json:"memory_size_in_bytes"`
+	CacheCount int64 `json:"cache_count"`
+	CacheSize  int64 `json:"cache_size"`
+	HitCount   int64 `json:"hit_count"`
+	MissCount  int64 `json:"miss_count"`
+	TotalCount int64 `json:"total_count"`
 }
 
 type NodeStatsOSResponse struct {
-	Timestamp int64                   `json:"timestamp"`
-	Uptime    int64                   `json:"uptime_in_millis"`
-	LoadAvg   []float64               `json:"load_average"`
-	CPU       NodeStatsOSCPUResponse  `json:"cpu"`
-	Mem       NodeStatsOSMemResponse  `json:"mem"`
-	Swap      NodeStatsOSSwapResponse `json:"swap"`
+	Timestamp int64 `json:"timestamp"`
+	Uptime    int64 `json:"uptime_in_millis"`
+	// LoadAvg was an array of per-cpu values pre-2.0, and is a string in 2.0
+	// Leaving this here in case we want to implement parsing logic later
+	LoadAvg json.RawMessage         `json:"load_average"`
+	CPU     NodeStatsOSCPUResponse  `json:"cpu"`
+	Mem     NodeStatsOSMemResponse  `json:"mem"`
+	Swap    NodeStatsOSSwapResponse `json:"swap"`
 }
 
 type NodeStatsOSMemResponse struct {
@@ -208,6 +219,7 @@ type NodeStatsOSCPUResponse struct {
 type NodeStatsProcessResponse struct {
 	Timestamp int64                       `json:"timestamp"`
 	OpenFD    int64                       `json:"open_file_descriptors"`
+	MaxFD     int64                       `json:"max_file_descriptors"`
 	CPU       NodeStatsProcessCPUResponse `json:"cpu"`
 	Memory    NodeStatsProcessMemResponse `json:"mem"`
 }

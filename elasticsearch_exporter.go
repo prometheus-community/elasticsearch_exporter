@@ -26,22 +26,27 @@ type VecInfo struct {
 
 var (
 	gaugeMetrics = map[string]string{
-		"indices_fielddata_memory_size_bytes":    "Field data cache memory usage in bytes",
-		"indices_filter_cache_memory_size_bytes": "Filter cache memory usage in bytes",
-		"indices_docs":                           "Count of documents on this node",
-		"indices_docs_deleted":                   "Count of deleted documents on this node",
-		"indices_store_size_bytes":               "Current size of stored index data in bytes",
-		"indices_segments_memory_bytes":          "Current memory size of segments in bytes",
-		"indices_segments_count":                 "Count of index segments on this node",
-		"process_cpu_percent":                    "Percent CPU used by process",
-		"process_mem_resident_size_bytes":        "Resident memory in use by process in bytes",
-		"process_mem_share_size_bytes":           "Shared memory in use by process in bytes",
-		"process_mem_virtual_size_bytes":         "Total virtual memory used in bytes",
-		"process_open_files_count":               "Open file descriptors",
+		"indices_fielddata_memory_size_bytes":     "Field data cache memory usage in bytes",
+		"indices_filter_cache_memory_size_bytes":  "Filter cache memory usage in bytes",
+		"indices_query_cache_memory_size_bytes":   "Query cache memory usage in bytes",
+		"indices_request_cache_memory_size_bytes": "Request cache memory usage in bytes",
+		"indices_docs":                            "Count of documents on this node",
+		"indices_docs_deleted":                    "Count of deleted documents on this node",
+		"indices_store_size_bytes":                "Current size of stored index data in bytes",
+		"indices_segments_memory_bytes":           "Current memory size of segments in bytes",
+		"indices_segments_count":                  "Count of index segments on this node",
+		"process_cpu_percent":                     "Percent CPU used by process",
+		"process_mem_resident_size_bytes":         "Resident memory in use by process in bytes",
+		"process_mem_share_size_bytes":            "Shared memory in use by process in bytes",
+		"process_mem_virtual_size_bytes":          "Total virtual memory used in bytes",
+		"process_open_files_count":                "Open file descriptors",
+		"process_max_files_count":                 "Max file descriptors for process",
 	}
 	counterMetrics = map[string]string{
 		"indices_fielddata_evictions":           "Evictions from field data",
 		"indices_filter_cache_evictions":        "Evictions from filter cache",
+		"indices_query_cache_evictions":         "Evictions from query cache",
+		"indices_request_cache_evictions":       "Evictions from request cache",
 		"indices_flush_total":                   "Total flushes",
 		"indices_flush_time_ms_total":           "Cumulative flush time in milliseconds",
 		"transport_rx_packets_total":            "Count of packets received",
@@ -71,6 +76,14 @@ var (
 			help:   "Process CPU time in seconds",
 			labels: []string{"type"},
 		},
+		"thread_pool_completed_count": &VecInfo{
+			help:   "Thread Pool operations completed",
+			labels: []string{"type"},
+		},
+		"thread_pool_rejected_count": &VecInfo{
+			help:   "Thread Pool operations rejected",
+			labels: []string{"type"},
+		},
 	}
 
 	gaugeVecMetrics = map[string]*VecInfo{
@@ -94,6 +107,22 @@ var (
 			help:   "JVM memory max",
 			labels: []string{"area"},
 		},
+		"thread_pool_active_count": &VecInfo{
+			help:   "Thread Pool threads active",
+			labels: []string{"type"},
+		},
+		"thread_pool_largest_count": &VecInfo{
+			help:   "Thread Pool largest threads count",
+			labels: []string{"type"},
+		},
+		"thread_pool_queue_count": &VecInfo{
+			help:   "Thread Pool operations queued",
+			labels: []string{"type"},
+		},
+		"thread_pool_threads_count": &VecInfo{
+			help:   "Thread Pool current threads count",
+			labels: []string{"type"},
+		},
 	}
 )
 
@@ -110,7 +139,7 @@ type Exporter struct {
 	counters    map[string]*prometheus.CounterVec
 	counterVecs map[string]*prometheus.CounterVec
 
-  allNodes bool
+	allNodes bool
 
 	client *http.Client
 }
@@ -169,7 +198,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 		gauges:      gauges,
 		gaugeVecs:   gaugeVecs,
 
-    allNodes: allNodes,
+		allNodes: allNodes,
 
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -234,7 +263,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		vec.Reset()
 	}
 
-  defer func() { ch <- e.up }()
+	defer func() { ch <- e.up }()
 
 	resp, err := e.client.Get(e.URI)
 	if err != nil {
@@ -278,6 +307,17 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.gaugeVecs["breakers_limit_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.LimitSize))
 		}
 
+		// Thread Pool stats
+		for pool, pstats := range stats.ThreadPool {
+			e.counterVecs["thread_pool_completed_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Completed))
+			e.counterVecs["thread_pool_rejected_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Rejected))
+
+			e.gaugeVecs["thread_pool_active_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+		}
+
 		// JVM Memory Stats
 		e.gaugeVecs["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "heap").Set(float64(stats.JVM.Mem.HeapCommitted))
 		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "heap").Set(float64(stats.JVM.Mem.HeapUsed))
@@ -287,9 +327,16 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		// Indices Stats
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.MemorySize))
+		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.Evictions))
+
 		e.gauges["indices_filter_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FilterCache.MemorySize))
 		e.counters["indices_filter_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FilterCache.Evictions))
-		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.Evictions))
+
+		e.gauges["indices_query_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.MemorySize))
+		e.counters["indices_query_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.Evictions))
+
+		e.gauges["indices_request_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.MemorySize))
+		e.counters["indices_request_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.Evictions))
 
 		e.gauges["indices_docs"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Docs.Count))
 		e.gauges["indices_docs_deleted"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Docs.Deleted))
@@ -326,6 +373,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["process_mem_virtual_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.Memory.TotalVirtual))
 		e.gauges["process_open_files_count"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.OpenFD))
 
+		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "total").Set(float64(stats.Process.CPU.Total / 1000))
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "sys").Set(float64(stats.Process.CPU.Sys / 1000))
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "user").Set(float64(stats.Process.CPU.User / 1000))
 	}
@@ -358,7 +406,6 @@ func main() {
 		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
 	)
 	flag.Parse()
-
 
 	if *esAllNodes {
 		*esURI = *esURI + "/_nodes/stats"
