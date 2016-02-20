@@ -4,10 +4,14 @@ import "encoding/json"
 
 // Elasticsearch Cluster Health Structs
 type ClusterHealthResponse struct {
-	ClusterName         string `json:"cluster_name"`
+	ClusterName       string `json:"cluster_name"`
+	NumberOfNodes     int64  `json:"number_of_nodes"`
+	NumberOfDataNodes int64  `json:"number_of_data_nodes"`
+	Indices           map[string]ClusterHealthIndexResponse
+}
+
+type ClusterHealthIndexResponse struct {
 	Status              string `json:"status"`
-	NumberOfNodes       int64  `json:"number_of_nodes"`
-	NumberOfDataNodes   int64  `json:"number_of_data_nodes"`
 	ActivePrimaryShards int64  `json:"active_primary_shards"`
 	ActiveShards        int64  `json:"active_shards"`
 	RelocatingShards    int64  `json:"relocating_shards"`

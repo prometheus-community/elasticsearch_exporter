@@ -221,10 +221,6 @@ var (
 			help:   "Thread Pool current threads count",
 			labels: []string{"cluster", "node", "type"},
 		},
-		"cluster_status": &VecInfo{
-			help:   "Cluster status (0=green, 1=yellow, 2=red)",
-			labels: []string{"cluster"},
-		},
 		"cluster_nodes_total": &VecInfo{
 			help:   "Total number of nodes",
 			labels: []string{"cluster"},
@@ -233,25 +229,29 @@ var (
 			help:   "Number of data nodes",
 			labels: []string{"cluster"},
 		},
-		"cluster_shards_active_primary": &VecInfo{
+		"index_status": &VecInfo{
+			help:   "Index status (0=green, 1=yellow, 2=red)",
+			labels: []string{"cluster", "index"},
+		},
+		"index_shards_active_primary": &VecInfo{
 			help:   "Number of active primary shards",
-			labels: []string{"cluster"},
+			labels: []string{"cluster", "index"},
 		},
-		"cluster_shards_active": &VecInfo{
+		"index_shards_active": &VecInfo{
 			help:   "Number of active shards",
-			labels: []string{"cluster"},
+			labels: []string{"cluster", "index"},
 		},
-		"cluster_shards_relocating": &VecInfo{
+		"index_shards_relocating": &VecInfo{
 			help:   "Number of relocating shards",
-			labels: []string{"cluster"},
+			labels: []string{"cluster", "index"},
 		},
-		"cluster_shards_initializing": &VecInfo{
+		"index_shards_initializing": &VecInfo{
 			help:   "Number of initializing shards",
-			labels: []string{"cluster"},
+			labels: []string{"cluster", "index"},
 		},
-		"cluster_shards_unassigned": &VecInfo{
+		"index_shards_unassigned": &VecInfo{
 			help:   "Number of unassigned shards",
-			labels: []string{"cluster"},
+			labels: []string{"cluster", "index"},
 		},
 	}
 )
@@ -462,9 +462,9 @@ func (e *Exporter) CollectNodesStats() {
 func (e *Exporter) CollectClusterHealth() {
 	var uri string
 	if e.allNodes {
-		uri = e.URI + "/_cluster/health"
+		uri = e.URI + "/_cluster/health?level=indices"
 	} else {
-		uri = e.URI + "/_cluster/health?local=true"
+		uri = e.URI + "/_cluster/health?level=indices&local=true"
 	}
 
 	resp, err := e.client.Get(uri)
@@ -489,15 +489,18 @@ func (e *Exporter) CollectClusterHealth() {
 		return
 	}
 
-	var clusterStatusMap = map[string]float64{"green": 0, "yellow": 1, "red": 2}
-	e.gauges["cluster_status"].WithLabelValues(stats.ClusterName).Set(clusterStatusMap[stats.Status])
 	e.gauges["cluster_nodes_total"].WithLabelValues(stats.ClusterName).Set(float64(stats.NumberOfNodes))
 	e.gauges["cluster_nodes_data"].WithLabelValues(stats.ClusterName).Set(float64(stats.NumberOfDataNodes))
-	e.gauges["cluster_shards_active_primary"].WithLabelValues(stats.ClusterName).Set(float64(stats.ActivePrimaryShards))
-	e.gauges["cluster_shards_active"].WithLabelValues(stats.ClusterName).Set(float64(stats.ActiveShards))
-	e.gauges["cluster_shards_relocating"].WithLabelValues(stats.ClusterName).Set(float64(stats.RelocatingShards))
-	e.gauges["cluster_shards_initializing"].WithLabelValues(stats.ClusterName).Set(float64(stats.InitializingShards))
-	e.gauges["cluster_shards_unassigned"].WithLabelValues(stats.ClusterName).Set(float64(stats.UnassignedShards))
+
+	var statusMap = map[string]float64{"green": 0, "yellow": 1, "red": 2}
+	for indexName, indexStats := range stats.Indices {
+		e.gauges["index_status"].WithLabelValues(stats.ClusterName, indexName).Set(statusMap[indexStats.Status])
+		e.gauges["index_shards_active_primary"].WithLabelValues(stats.ClusterName, indexName).Set(float64(indexStats.ActivePrimaryShards))
+		e.gauges["index_shards_active"].WithLabelValues(stats.ClusterName, indexName).Set(float64(indexStats.ActiveShards))
+		e.gauges["index_shards_relocating"].WithLabelValues(stats.ClusterName, indexName).Set(float64(indexStats.RelocatingShards))
+		e.gauges["index_shards_initializing"].WithLabelValues(stats.ClusterName, indexName).Set(float64(indexStats.InitializingShards))
+		e.gauges["index_shards_unassigned"].WithLabelValues(stats.ClusterName, indexName).Set(float64(indexStats.UnassignedShards))
+	}
 }
 
 // Collect fetches the stats from configured elasticsearch location and
