@@ -46,6 +46,7 @@ var (
 		"os_load_average":												 "System load average for the last minute, or -1 if not supported",
 	}
 	counterMetrics = map[string]string{
+		"indices_search_query_total":            "Number of query operations",
 		"indices_fielddata_evictions":           "Evictions from field data",
 		"indices_filter_cache_evictions":        "Evictions from filter cache",
 		"indices_query_cache_evictions":         "Evictions from query cache",
@@ -330,6 +331,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
+		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Search.QueryTotal))
+
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.MemorySize))
 		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.Evictions))
 
