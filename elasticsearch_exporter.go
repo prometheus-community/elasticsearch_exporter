@@ -349,8 +349,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["indices_query_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.MemorySize))
 		e.counters["indices_query_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.Evictions))
 
-		e.gauges["indices_request_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.MemorySize))
-		e.counters["indices_request_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.Evictions))
+		e.gauges["indices_request_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.RequestCache.MemorySize))
+		e.counters["indices_request_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.RequestCache.Evictions))
 
 		e.counters["indices_translog_operations"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Translog.Operations))
 		e.counters["indices_translog_size_in_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Translog.Size))
