@@ -35,6 +35,9 @@ var (
 		"indices_store_size_bytes":                "Current size of stored index data in bytes",
 		"indices_segments_memory_bytes":           "Current memory size of segments in bytes",
 		"indices_segments_count":                  "Count of index segments on this node",
+		"indices_search_fetch_current":            "Number of query fetches currently running",
+		"indices_search_open_contexts":            "Number of active searches",
+		"indices_search_query_current":            "Number of currently active queries",
 		"process_cpu_percent":                     "Percent CPU used by process",
 		"process_mem_resident_size_bytes":         "Resident memory in use by process in bytes",
 		"process_mem_share_size_bytes":            "Shared memory in use by process in bytes",
@@ -49,6 +52,10 @@ var (
 		"indices_request_cache_evictions":       "Evictions from request cache",
 		"indices_flush_total":                   "Total flushes",
 		"indices_flush_time_ms_total":           "Cumulative flush time in milliseconds",
+		"indices_search_fetch_time":             "Total time spent on query fetches in milliseconds",
+		"indices_search_fetch_total":            "Total number of query fetches",
+		"indices_search_query_time":             "Total time spent on queries in milliseconds",
+		"indices_search_query_total":            "Total number of queries",
 		"transport_rx_packets_total":            "Count of packets received",
 		"transport_rx_size_bytes_total":         "Total number of bytes received",
 		"transport_tx_packets_total":            "Count of packets sent",
@@ -326,6 +333,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
+		e.gauges["indices_search_query_current"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryCurrent))
+		e.gauges["indices_search_open_contexts"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.OpenContext))
+		e.gauges["indices_search_fetch_current"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchCurrent))
+
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.MemorySize))
 		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.Evictions))
 
@@ -345,6 +356,12 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["indices_segments_count"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Segments.Count))
 
 		e.gauges["indices_store_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.Size))
+
+		e.counters["indices_search_fetch_time"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTime))
+		e.counters["indices_search_fetch_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTotal))
+		e.counters["indices_search_query_time"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTime))
+		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTotal))
+
 		e.counters["indices_store_throttle_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.ThrottleTime))
 
 		e.counters["indices_flush_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Flush.Total))
