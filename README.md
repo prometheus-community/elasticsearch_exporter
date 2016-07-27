@@ -21,6 +21,9 @@ make
 * __`es.all`:__ If true, query stats for all nodes in the cluster,
     rather than just the node we connect to.
 * __`es.timeout`:__ Timeout for trying to get stats from Elasticsearch. (ex: 20s)
+* __`es.ca`:__ Path to PEM file that conains trusted CAs for the Elasticsearch connection.
+* __`es.client-private-key`:__ Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.
+* __`es.client-cert`:__ Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.
 * __`web.listen-address`:__ Address to listen on for web interface and telemetry.
 * __`web.telemetry-path`:__ Path under which to expose metrics.
 
