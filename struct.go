@@ -24,6 +24,7 @@ type NodeStatsNodeResponse struct {
 	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
+	Http             NodeStatsHttpResponse                      `json:"http"`
 }
 
 type NodeStatsBreakersResponse struct {
@@ -55,11 +56,19 @@ type NodeStatsJVMBufferPoolResponse struct {
 }
 
 type NodeStatsJVMMemResponse struct {
-	HeapCommitted    int64 `json:"heap_committed_in_bytes"`
-	HeapUsed         int64 `json:"heap_used_in_bytes"`
-	HeapMax          int64 `json:"heap_max_in_bytes"`
-	NonHeapCommitted int64 `json:"non_heap_committed_in_bytes"`
-	NonHeapUsed      int64 `json:"non_heap_used_in_bytes"`
+	HeapCommitted    int64                                  `json:"heap_committed_in_bytes"`
+	HeapUsed         int64                                  `json:"heap_used_in_bytes"`
+	HeapMax          int64                                  `json:"heap_max_in_bytes"`
+	NonHeapCommitted int64                                  `json:"non_heap_committed_in_bytes"`
+	NonHeapUsed      int64                                  `json:"non_heap_used_in_bytes"`
+	Pools            map[string]NodeStatsJVMMemPoolResponse `json:"pools"`
+}
+
+type NodeStatsJVMMemPoolResponse struct {
+	Used     int64 `json:"used_in_bytes"`
+	Max      int64 `json:"max_in_bytes"`
+	PeakUsed int64 `json:"peak_used_in_bytes"`
+	PeakMax  int64 `json:"peak_max_in_bytes"`
 }
 
 type NodeStatsNetworkResponse struct {
@@ -222,6 +231,10 @@ type NodeStatsProcessResponse struct {
 	MaxFD     int64                       `json:"max_file_descriptors"`
 	CPU       NodeStatsProcessCPUResponse `json:"cpu"`
 	Memory    NodeStatsProcessMemResponse `json:"mem"`
+}
+
+type NodeStatsHttpResponse struct {
+	TotalOpened int64 `json:"total_opened"`
 }
 
 type NodeStatsProcessMemResponse struct {
