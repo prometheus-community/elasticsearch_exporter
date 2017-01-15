@@ -129,10 +129,11 @@ var (
 // Exporter collects Elasticsearch stats from the given server and exports
 // them using the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
+	URI         string
+	ClusterName string
+	mutex       sync.RWMutex
 
-	up prometheus.Gauge
+	up *prometheus.GaugeVec
 
 	gauges      map[string]*prometheus.GaugeVec
 	gaugeVecs   map[string]*prometheus.GaugeVec
@@ -187,11 +188,11 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 	return &Exporter{
 		URI: uri,
 
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
+		up: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "up",
 			Help:      "Was the Elasticsearch instance query successful?",
-		}),
+		}, []string{"cluster"}),
 
 		counters:    counters,
 		counterVecs: counterVecs,
@@ -220,7 +221,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 // Describe describes all the metrics ever exported by the elasticsearch
 // exporter. It implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
-	ch <- e.up.Desc()
+	e.up.Describe(ch)
 
 	for _, vec := range e.counters {
 		vec.Describe(ch)
@@ -263,11 +264,11 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		vec.Reset()
 	}
 
-	defer func() { ch <- e.up }()
+	defer func() { e.up.Collect(ch) }()
 
 	resp, err := e.client.Get(e.URI)
 	if err != nil {
-		e.up.Set(0)
+		e.up.WithLabelValues(e.ClusterName).Set(0)
 		log.Println("Error while querying Elasticsearch:", err)
 		return
 	}
@@ -275,19 +276,26 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		e.up.WithLabelValues(e.ClusterName).Set(0)
 		log.Println("Failed to read ES response body:", err)
-		e.up.Set(0)
 		return
 	}
-
-	e.up.Set(1)
 
 	var allStats NodeStatsResponse
 	err = json.Unmarshal(body, &allStats)
 	if err != nil {
+		e.up.WithLabelValues(e.ClusterName).Set(0)
 		log.Println("Failed to unmarshal JSON into struct:", err)
 		return
 	}
+
+	// Reset cluster label on up gauge when name changes
+	if allStats.ClusterName != e.ClusterName {
+		e.ClusterName = allStats.ClusterName
+		e.up.Reset()
+	}
+
+	e.up.WithLabelValues(allStats.ClusterName).Set(1)
 
 	// If we aren't polling all nodes, make sure we only got one response.
 	if !e.allNodes && len(allStats.Nodes) != 1 {
