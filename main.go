@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -10,13 +12,23 @@ import (
 	"sync"
 	"time"
 
-	"encoding/json"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
 	namespace = "elasticsearch"
+	indexHTML = `
+	<html>
+		<head>
+			<title>Elasticsearch Exporter</title>
+		</head>
+		<body>
+			<h1>Elasticsearch Exporter</h1>
+			<p>
+			<a href='%s'>Metrics</a>
+			</p>
+		</body>
+	</html>`
 )
 
 type VecInfo struct {
@@ -419,13 +431,7 @@ func main() {
 	log.Println("Starting Server:", *listenAddress)
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-             <head><title>Elasticsearch Exporter</title></head>
-             <body>
-             <h1>Elasticsearch Exporter</h1>
-             <p><a href='` + *metricsPath + `'>Metrics</a></p>
-             </body>
-             </html>`))
+		w.Write([]byte(fmt.Sprintf(indexHTML, *metricsPath)))
 	})
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
