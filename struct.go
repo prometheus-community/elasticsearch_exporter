@@ -110,6 +110,7 @@ type NodeStatsIndicesResponse struct {
 	Flush        NodeStatsIndicesFlushResponse
 	Segments     NodeStatsIndicesSegmentsResponse
 	Refresh      NodeStatsIndicesRefreshResponse
+	Translog     NodeStatsIndicesTranslogResponse
 }
 
 type NodeStatsIndicesDocsResponse struct {
@@ -120,6 +121,11 @@ type NodeStatsIndicesDocsResponse struct {
 type NodeStatsIndicesRefreshResponse struct {
 	Total     int64 `json:"total"`
 	TotalTime int64 `json:"total_time_in_millis"`
+}
+
+type NodeStatsIndicesTranslogResponse struct {
+	Operations int64 `json:"operations"`
+	Size       int64 `json:"size_in_bytes"`
 }
 
 type NodeStatsIndicesSegmentsResponse struct {
