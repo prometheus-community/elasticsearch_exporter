@@ -57,62 +57,62 @@ var (
 		"indices_refresh_total_time_ms_total":   "Total time spent refreshing",
 	}
 	counterVecMetrics = map[string]*VecInfo{
-		"jvm_gc_collection_seconds_count": &VecInfo{
+		"jvm_gc_collection_seconds_count": {
 			help:   "Count of JVM GC runs",
 			labels: []string{"gc"},
 		},
-		"jvm_gc_collection_seconds_sum": &VecInfo{
+		"jvm_gc_collection_seconds_sum": {
 			help:   "GC run time in seconds",
 			labels: []string{"gc"},
 		},
-		"process_cpu_time_seconds_sum": &VecInfo{
+		"process_cpu_time_seconds_sum": {
 			help:   "Process CPU time in seconds",
 			labels: []string{"type"},
 		},
-		"thread_pool_completed_count": &VecInfo{
+		"thread_pool_completed_count": {
 			help:   "Thread Pool operations completed",
 			labels: []string{"type"},
 		},
-		"thread_pool_rejected_count": &VecInfo{
+		"thread_pool_rejected_count": {
 			help:   "Thread Pool operations rejected",
 			labels: []string{"type"},
 		},
 	}
 
 	gaugeVecMetrics = map[string]*VecInfo{
-		"breakers_estimated_size_bytes": &VecInfo{
+		"breakers_estimated_size_bytes": {
 			help:   "Estimated size in bytes of breaker",
 			labels: []string{"breaker"},
 		},
-		"breakers_limit_size_bytes": &VecInfo{
+		"breakers_limit_size_bytes": {
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
 		},
-		"jvm_memory_committed_bytes": &VecInfo{
+		"jvm_memory_committed_bytes": {
 			help:   "JVM memory currently committed by area",
 			labels: []string{"area"},
 		},
-		"jvm_memory_used_bytes": &VecInfo{
+		"jvm_memory_used_bytes": {
 			help:   "JVM memory currently used by area",
 			labels: []string{"area"},
 		},
-		"jvm_memory_max_bytes": &VecInfo{
+		"jvm_memory_max_bytes": {
 			help:   "JVM memory max",
 			labels: []string{"area"},
 		},
-		"thread_pool_active_count": &VecInfo{
+		"thread_pool_active_count": {
 			help:   "Thread Pool threads active",
 			labels: []string{"type"},
 		},
-		"thread_pool_largest_count": &VecInfo{
+		"thread_pool_largest_count": {
 			help:   "Thread Pool largest threads count",
 			labels: []string{"type"},
 		},
-		"thread_pool_queue_count": &VecInfo{
+		"thread_pool_queue_count": {
 			help:   "Thread Pool operations queued",
 			labels: []string{"type"},
 		},
-		"thread_pool_threads_count": &VecInfo{
+		"thread_pool_threads_count": {
 			help:   "Thread Pool current threads count",
 			labels: []string{"type"},
 		},
