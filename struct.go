@@ -2,6 +2,23 @@ package main
 
 import "encoding/json"
 
+// Elasticsearch Cluster Health Structs
+type ClusterHealthResponse struct {
+	ClusterName       string `json:"cluster_name"`
+	NumberOfNodes     int64  `json:"number_of_nodes"`
+	NumberOfDataNodes int64  `json:"number_of_data_nodes"`
+	Indices           map[string]ClusterHealthIndexResponse
+}
+
+type ClusterHealthIndexResponse struct {
+	Status              string `json:"status"`
+	ActivePrimaryShards int64  `json:"active_primary_shards"`
+	ActiveShards        int64  `json:"active_shards"`
+	RelocatingShards    int64  `json:"relocating_shards"`
+	InitializingShards  int64  `json:"initializing_shards"`
+	UnassignedShards    int64  `json:"unassigned_shards"`
+}
+
 // Elasticsearch Node Stats Structs
 
 type NodeStatsResponse struct {
