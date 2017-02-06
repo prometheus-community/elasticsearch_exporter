@@ -88,6 +88,18 @@ var (
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
 		},
+		"filesystem_data_available_bytes": {
+			help:   "Available space on block device in bytes",
+			labels: []string{"mount", "path"},
+		},
+		"filesystem_data_free_bytes": {
+			help:   "Free space on block device in bytes",
+			labels: []string{"mount", "path"},
+		},
+		"filesystem_data_size_bytes": {
+			help:   "Size of block device in bytes",
+			labels: []string{"mount", "path"},
+		},
 		"jvm_memory_committed_bytes": {
 			help:   "JVM memory currently committed by area",
 			labels: []string{"area"},
@@ -369,6 +381,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "total").Set(float64(stats.Process.CPU.Total / 1000))
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "sys").Set(float64(stats.Process.CPU.Sys / 1000))
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "user").Set(float64(stats.Process.CPU.User / 1000))
+
+		// File System Stats
+		for _, fsStats := range stats.FS.Data {
+			e.gaugeVecs["filesystem_data_available_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Available))
+			e.gaugeVecs["filesystem_data_free_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Free))
+			e.gaugeVecs["filesystem_data_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Total))
+		}
 	}
 
 	// Report metrics.
