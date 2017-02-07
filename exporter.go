@@ -129,13 +129,63 @@ var (
 			labels: []string{"type"},
 		},
 	}
+
+	clusterHealthActivePrimaryShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "active_primary_shards"),
+		"Tthe number of primary shards in your cluster. This is an aggregate total across all indices.",
+		[]string{"cluster"}, nil)
+	clusterHealthActiveShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "active_shards"),
+		"Aggregate total of all shards across all indices, which includes replica shards.",
+		[]string{"cluster"}, nil)
+	clusterHealthDelayedUnassignedShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "delayed_unassigned_shards"),
+		"XXX WHAT DOES THIS MEAN?",
+		[]string{"cluster"}, nil)
+	clusterHealthInitializingShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "initializing_shards"),
+		"Count of shards that are being freshly created.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfDataNodesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_data_nodes"),
+		"Number of data nodes in the cluster.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfInFlightFetchDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_in_flight_fetch"),
+		"The number of ongoing shard info requests.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfNodesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_nodes"),
+		"Number of nodes in the cluster.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfPendingTasksDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_pending_tasks"),
+		"XXX WHAT DOES THIS MEAN?",
+		[]string{"cluster"}, nil)
+	clusterHealthRelocatingShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "relocating_shards"),
+		"The number of shards that are currently moving from one node to another node.",
+		[]string{"cluster"}, nil)
+	clusterHealthStatusIsGreenDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "status_is_green"),
+		"Whether all primary and replica shards are allocated.",
+		[]string{"cluster"}, nil)
+	clusterHealthTimedOutDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "timed_out"),
+		"XXX WHAT DOES THIS MEAN?",
+		[]string{"cluster"}, nil)
+	clusterHealthUnassignedShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "unassigned_shards"),
+		"The number of shards that exist in the cluster state, but cannot be found in the cluster itself.",
+		[]string{"cluster"}, nil)
 )
 
 // Exporter collects Elasticsearch stats from the given server and exports
 // them using the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
+	NodesStatsURI    string
+	ClusterHealthURI string
+	mutex            sync.RWMutex
 
 	up prometheus.Gauge
 
@@ -150,7 +200,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
+func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Duration, allNodes bool) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -190,7 +240,8 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 
 	// Init our exporter.
 	return &Exporter{
-		URI: uri,
+		NodesStatsURI:    nodesStatsUri,
+		ClusterHealthURI: clusterHealthUri,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -268,29 +319,26 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		vec.Reset()
 	}
 
+	e.up.Set(0)
 	defer func() { ch <- e.up }()
 
-	resp, err := e.client.Get(e.URI)
+	resp, err := e.client.Get(e.NodesStatsURI)
 	if err != nil {
-		e.up.Set(0)
-		log.Println("Error while querying Elasticsearch:", err)
+		log.Println("Error while querying Elasticsearch for nodes stats:", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Failed to read ES response body:", err)
-		e.up.Set(0)
+		log.Println("Failed to read nodes stats response body:", err)
 		return
 	}
-
-	e.up.Set(1)
 
 	var allStats NodeStatsResponse
 	err = json.Unmarshal(body, &allStats)
 	if err != nil {
-		log.Println("Failed to unmarshal JSON into struct:", err)
+		log.Println("Failed to unmarshal nodes stats JSON into struct:", err)
 		return
 	}
 
@@ -407,4 +455,51 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, vec := range e.gauges {
 		vec.Collect(ch)
 	}
+
+	// Obtain cluster health metrics.
+	resp, err = e.client.Get(e.ClusterHealthURI)
+	if err != nil {
+		log.Println("Error while querying Elasticsearch for cluster health:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Failed to read cluster health response body:", err)
+		return
+	}
+
+	var clusterHealth ClusterHealthResponse
+	err = json.Unmarshal(body, &clusterHealth)
+	if err != nil {
+		log.Println("Failed to unmarshal cluster health JSON into struct:", err)
+		return
+	}
+
+	ch <- prometheus.MustNewConstMetric(clusterHealthActivePrimaryShardsDesc, prometheus.GaugeValue, float64(clusterHealth.ActivePrimaryShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthActiveShardsDesc, prometheus.GaugeValue, float64(clusterHealth.ActiveShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthDelayedUnassignedShardsDesc, prometheus.GaugeValue, float64(clusterHealth.DelayedUnassignedShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthInitializingShardsDesc, prometheus.GaugeValue, float64(clusterHealth.InitializingShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfDataNodesDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfDataNodes), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfInFlightFetchDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfInFlightFetch), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfNodesDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfNodes), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfPendingTasksDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfPendingTasks), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthRelocatingShardsDesc, prometheus.GaugeValue, float64(clusterHealth.RelocatingShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthUnassignedShardsDesc, prometheus.GaugeValue, float64(clusterHealth.UnassignedShards), clusterHealth.ClusterName)
+
+	statusIsGreen := 0.0
+	if clusterHealth.Status == "green" {
+		statusIsGreen = 1.0
+	}
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsGreenDesc, prometheus.GaugeValue, statusIsGreen, clusterHealth.ClusterName)
+
+	timedOut := 0.0
+	if clusterHealth.TimedOut {
+		timedOut = 1.0
+	}
+	ch <- prometheus.MustNewConstMetric(clusterHealthTimedOutDesc, prometheus.GaugeValue, timedOut, clusterHealth.ClusterName)
+
+	// Successfully processed stats.
+	e.up.Set(1)
 }
