@@ -6,6 +6,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,8 +36,11 @@ var (
 		"process_mem_virtual_size_bytes":          "Total virtual memory used in bytes",
 		"process_open_files_count":                "Open file descriptors",
 		"process_max_files_count":                 "Max file descriptors for process",
+		"os_mem_used_percent":                     "Percentage of used memory",
+		"os_load_average":                         "System load average for the last minute, or -1 if not supported",
 	}
 	counterMetrics = map[string]string{
+		"indices_search_query_total":            "Number of query operations",
 		"indices_fielddata_evictions":           "Evictions from field data",
 		"indices_filter_cache_evictions":        "Evictions from filter cache",
 		"indices_query_cache_evictions":         "Evictions from query cache",
@@ -133,12 +138,13 @@ type Exporter struct {
 	counterVecs map[string]*prometheus.CounterVec
 
 	allNodes bool
+	version  string
 
 	client *http.Client
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
+func NewExporter(uri string, timeout time.Duration, allNodes bool, version string) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -149,7 +155,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 			Namespace: namespace,
 			Name:      name,
 			Help:      info.help,
-		}, append([]string{"cluster", "node"}, info.labels...))
+		}, append([]string{"cluster", "host", "name"}, info.labels...))
 	}
 
 	for name, info := range gaugeVecMetrics {
@@ -157,7 +163,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 			Namespace: namespace,
 			Name:      name,
 			Help:      info.help,
-		}, append([]string{"cluster", "node"}, info.labels...))
+		}, append([]string{"cluster", "host", "name"}, info.labels...))
 	}
 
 	for name, help := range counterMetrics {
@@ -165,7 +171,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 			Namespace: namespace,
 			Name:      name,
 			Help:      help,
-		}, []string{"cluster", "node"})
+		}, []string{"cluster", "host", "name"})
 	}
 
 	for name, help := range gaugeMetrics {
@@ -173,7 +179,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 			Namespace: namespace,
 			Name:      name,
 			Help:      help,
-		}, []string{"cluster", "node"})
+		}, []string{"cluster", "host", "name"})
 	}
 
 	// Init our exporter.
@@ -192,6 +198,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool) *Exporter {
 		gaugeVecs:   gaugeVecs,
 
 		allNodes: allNodes,
+		version:  version,
 
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -230,7 +237,6 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	for _, vec := range e.gaugeVecs {
 		vec.Describe(ch)
 	}
-
 }
 
 // Collect fetches the stats from configured elasticsearch location and
@@ -290,85 +296,100 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, stats := range allStats.Nodes {
 		// GC Stats
 		for collector, gcstats := range stats.JVM.GC.Collectors {
-			e.counterVecs["jvm_gc_collection_seconds_count"].WithLabelValues(allStats.ClusterName, stats.Host, collector).Set(float64(gcstats.CollectionCount))
-			e.counterVecs["jvm_gc_collection_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, collector).Set(float64(gcstats.CollectionTime / 1000))
+			e.counterVecs["jvm_gc_collection_seconds_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, collector).Set(float64(gcstats.CollectionCount))
+			e.counterVecs["jvm_gc_collection_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, collector).Set(float64(gcstats.CollectionTime / 1000))
 		}
 
 		// Breaker stats
 		for breaker, bstats := range stats.Breakers {
-			e.gaugeVecs["breakers_estimated_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.EstimatedSize))
-			e.gaugeVecs["breakers_limit_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.LimitSize))
+			e.gaugeVecs["breakers_estimated_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, breaker).Set(float64(bstats.EstimatedSize))
+			e.gaugeVecs["breakers_limit_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, breaker).Set(float64(bstats.LimitSize))
 		}
 
 		// Thread Pool stats
 		for pool, pstats := range stats.ThreadPool {
-			e.counterVecs["thread_pool_completed_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Completed))
-			e.counterVecs["thread_pool_rejected_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Rejected))
+			e.counterVecs["thread_pool_completed_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, pool).Set(float64(pstats.Completed))
+			e.counterVecs["thread_pool_rejected_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, pool).Set(float64(pstats.Rejected))
 
-			e.gaugeVecs["thread_pool_active_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_active_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, pool).Set(float64(pstats.Threads))
+			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, pool).Set(float64(pstats.Largest))
+			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, pool).Set(float64(pstats.Queue))
 		}
 
 		// JVM Memory Stats
-		e.gaugeVecs["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "heap").Set(float64(stats.JVM.Mem.HeapCommitted))
-		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "heap").Set(float64(stats.JVM.Mem.HeapUsed))
-		e.gaugeVecs["jvm_memory_max_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "heap").Set(float64(stats.JVM.Mem.HeapMax))
-		e.gaugeVecs["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "non-heap").Set(float64(stats.JVM.Mem.NonHeapCommitted))
-		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
+		e.gaugeVecs["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "heap").Set(float64(stats.JVM.Mem.HeapCommitted))
+		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "heap").Set(float64(stats.JVM.Mem.HeapUsed))
+		e.gaugeVecs["jvm_memory_max_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "heap").Set(float64(stats.JVM.Mem.HeapMax))
+		e.gaugeVecs["jvm_memory_committed_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "non-heap").Set(float64(stats.JVM.Mem.NonHeapCommitted))
+		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
-		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.MemorySize))
-		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FieldData.Evictions))
+		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Search.QueryTotal))
 
-		e.gauges["indices_filter_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FilterCache.MemorySize))
-		e.counters["indices_filter_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.FilterCache.Evictions))
+		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.MemorySize))
+		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.Evictions))
 
-		e.gauges["indices_query_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.MemorySize))
-		e.counters["indices_query_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.Evictions))
+		e.gauges["indices_filter_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FilterCache.MemorySize))
+		e.counters["indices_filter_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FilterCache.Evictions))
 
-		e.gauges["indices_request_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.MemorySize))
-		e.counters["indices_request_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.QueryCache.Evictions))
+		e.gauges["indices_query_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.QueryCache.MemorySize))
+		e.counters["indices_query_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.QueryCache.Evictions))
 
-		e.gauges["indices_docs"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Docs.Count))
-		e.gauges["indices_docs_deleted"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Docs.Deleted))
+		e.gauges["indices_request_cache_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.QueryCache.MemorySize))
+		e.counters["indices_request_cache_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.QueryCache.Evictions))
 
-		e.gauges["indices_segments_memory_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Segments.Memory))
-		e.gauges["indices_segments_count"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Segments.Count))
+		e.gauges["indices_docs"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Docs.Count))
+		e.gauges["indices_docs_deleted"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Docs.Deleted))
 
-		e.gauges["indices_store_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.Size))
-		e.counters["indices_store_throttle_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.ThrottleTime))
+		e.gauges["indices_segments_memory_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Segments.Memory))
+		e.gauges["indices_segments_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Segments.Count))
 
-		e.counters["indices_flush_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Flush.Total))
-		e.counters["indices_flush_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Flush.Time))
+		e.gauges["indices_store_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Store.Size))
+		e.counters["indices_store_throttle_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Store.ThrottleTime))
 
-		e.counters["indices_indexing_index_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.IndexTime))
-		e.counters["indices_indexing_index_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.IndexTotal))
+		e.counters["indices_flush_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Flush.Total))
+		e.counters["indices_flush_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Flush.Time))
 
-		e.counters["indices_merges_total_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.TotalTime))
-		e.counters["indices_merges_total_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.TotalSize))
-		e.counters["indices_merges_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.Total))
+		e.counters["indices_indexing_index_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Indexing.IndexTime))
+		e.counters["indices_indexing_index_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Indexing.IndexTotal))
 
-		e.counters["indices_refresh_total_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Refresh.TotalTime))
-		e.counters["indices_refresh_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Refresh.Total))
+		e.counters["indices_merges_total_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Merges.TotalTime))
+		e.counters["indices_merges_total_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Merges.TotalSize))
+		e.counters["indices_merges_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Merges.Total))
+
+		e.counters["indices_refresh_total_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Refresh.TotalTime))
+		e.counters["indices_refresh_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Refresh.Total))
 
 		// Transport Stats
-		e.counters["transport_rx_packets_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Transport.RxCount))
-		e.counters["transport_rx_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Transport.RxSize))
-		e.counters["transport_tx_packets_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Transport.TxCount))
-		e.counters["transport_tx_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Transport.TxSize))
+		e.counters["transport_rx_packets_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Transport.RxCount))
+		e.counters["transport_rx_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Transport.RxSize))
+		e.counters["transport_tx_packets_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Transport.TxCount))
+		e.counters["transport_tx_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Transport.TxSize))
 
 		// Process Stats
-		e.gauges["process_cpu_percent"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.CPU.Percent))
-		e.gauges["process_mem_resident_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.Memory.Resident))
-		e.gauges["process_mem_share_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.Memory.Share))
-		e.gauges["process_mem_virtual_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.Memory.TotalVirtual))
-		e.gauges["process_open_files_count"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Process.OpenFD))
+		e.gauges["process_cpu_percent"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Process.CPU.Percent))
+		e.gauges["process_mem_resident_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Process.Memory.Resident))
+		e.gauges["process_mem_share_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Process.Memory.Share))
+		e.gauges["process_mem_virtual_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Process.Memory.TotalVirtual))
+		e.gauges["process_open_files_count"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Process.OpenFD))
 
-		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "total").Set(float64(stats.Process.CPU.Total / 1000))
-		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "sys").Set(float64(stats.Process.CPU.Sys / 1000))
-		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "user").Set(float64(stats.Process.CPU.User / 1000))
+		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "total").Set(float64(stats.Process.CPU.Total / 1000))
+		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "sys").Set(float64(stats.Process.CPU.Sys / 1000))
+		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "user").Set(float64(stats.Process.CPU.User / 1000))
+
+		// OS Stats
+		e.gauges["os_mem_used_percent"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.OS.Mem.UsedPercent))
+
+		var load float64
+		if strings.HasPrefix(e.version, "2") {
+			json.Unmarshal(stats.OS.LoadAvg, &load)
+		} else {
+			var loads [3]float64
+			json.Unmarshal(stats.OS.LoadAvg, &loads)
+			load = loads[0]
+		}
+		e.gauges["os_load_average"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(load)
 	}
 
 	// Report metrics.

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -27,6 +29,20 @@ const (
 	</html>`
 )
 
+func getESVersion(esURI *string) string {
+	resp, _ := http.Get(*esURI)
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	var clusterInfo struct {
+		Version struct {
+			Number string
+		}
+	}
+	json.Unmarshal(body, &clusterInfo)
+	return clusterInfo.Version.Number
+}
+
 func main() {
 	var (
 		listenAddress = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
@@ -37,13 +53,15 @@ func main() {
 	)
 	flag.Parse()
 
+	esVersion := getESVersion(esURI)
+
 	if *esAllNodes {
 		*esURI = *esURI + "/_nodes/stats"
 	} else {
 		*esURI = *esURI + "/_nodes/_local/stats"
 	}
 
-	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes)
+	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes, esVersion)
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)
