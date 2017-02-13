@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net"
@@ -11,13 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"encoding/json"
-
 	"github.com/prometheus/client_golang/prometheus"
-)
-
-const (
-	namespace = "elasticsearch"
 )
 
 type VecInfo struct {
@@ -43,7 +37,7 @@ var (
 		"process_open_files_count":                "Open file descriptors",
 		"process_max_files_count":                 "Max file descriptors for process",
 		"os_mem_used_percent":                     "Percentage of used memory",
-		"os_load_average":												 "System load average for the last minute, or -1 if not supported",
+		"os_load_average":                         "System load average for the last minute, or -1 if not supported",
 	}
 	counterMetrics = map[string]string{
 		"indices_search_query_total":            "Number of query operations",
@@ -68,62 +62,62 @@ var (
 		"indices_refresh_total_time_ms_total":   "Total time spent refreshing",
 	}
 	counterVecMetrics = map[string]*VecInfo{
-		"jvm_gc_collection_seconds_count": &VecInfo{
+		"jvm_gc_collection_seconds_count": {
 			help:   "Count of JVM GC runs",
 			labels: []string{"gc"},
 		},
-		"jvm_gc_collection_seconds_sum": &VecInfo{
+		"jvm_gc_collection_seconds_sum": {
 			help:   "GC run time in seconds",
 			labels: []string{"gc"},
 		},
-		"process_cpu_time_seconds_sum": &VecInfo{
+		"process_cpu_time_seconds_sum": {
 			help:   "Process CPU time in seconds",
 			labels: []string{"type"},
 		},
-		"thread_pool_completed_count": &VecInfo{
+		"thread_pool_completed_count": {
 			help:   "Thread Pool operations completed",
 			labels: []string{"type"},
 		},
-		"thread_pool_rejected_count": &VecInfo{
+		"thread_pool_rejected_count": {
 			help:   "Thread Pool operations rejected",
 			labels: []string{"type"},
 		},
 	}
 
 	gaugeVecMetrics = map[string]*VecInfo{
-		"breakers_estimated_size_bytes": &VecInfo{
+		"breakers_estimated_size_bytes": {
 			help:   "Estimated size in bytes of breaker",
 			labels: []string{"breaker"},
 		},
-		"breakers_limit_size_bytes": &VecInfo{
+		"breakers_limit_size_bytes": {
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
 		},
-		"jvm_memory_committed_bytes": &VecInfo{
+		"jvm_memory_committed_bytes": {
 			help:   "JVM memory currently committed by area",
 			labels: []string{"area"},
 		},
-		"jvm_memory_used_bytes": &VecInfo{
+		"jvm_memory_used_bytes": {
 			help:   "JVM memory currently used by area",
 			labels: []string{"area"},
 		},
-		"jvm_memory_max_bytes": &VecInfo{
+		"jvm_memory_max_bytes": {
 			help:   "JVM memory max",
 			labels: []string{"area"},
 		},
-		"thread_pool_active_count": &VecInfo{
+		"thread_pool_active_count": {
 			help:   "Thread Pool threads active",
 			labels: []string{"type"},
 		},
-		"thread_pool_largest_count": &VecInfo{
+		"thread_pool_largest_count": {
 			help:   "Thread Pool largest threads count",
 			labels: []string{"type"},
 		},
-		"thread_pool_queue_count": &VecInfo{
+		"thread_pool_queue_count": {
 			help:   "Thread Pool operations queued",
 			labels: []string{"type"},
 		},
-		"thread_pool_threads_count": &VecInfo{
+		"thread_pool_threads_count": {
 			help:   "Thread Pool current threads count",
 			labels: []string{"type"},
 		},
@@ -144,7 +138,7 @@ type Exporter struct {
 	counterVecs map[string]*prometheus.CounterVec
 
 	allNodes bool
-	version string
+	version  string
 
 	client *http.Client
 }
@@ -204,7 +198,7 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool, version strin
 		gaugeVecs:   gaugeVecs,
 
 		allNodes: allNodes,
-		version: version,
+		version:  version,
 
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -389,7 +383,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 
 		var load float64
 		if strings.HasPrefix(e.version, "2") {
-	    json.Unmarshal(stats.OS.LoadAvg, &load)
+			json.Unmarshal(stats.OS.LoadAvg, &load)
 		} else {
 			var loads [3]float64
 			json.Unmarshal(stats.OS.LoadAvg, &loads)
@@ -415,53 +409,4 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, vec := range e.gauges {
 		vec.Collect(ch)
 	}
-}
-
-func getESVersion(esURI *string) string {
-	resp, _ := http.Get(*esURI)
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	var clusterInfo struct {
-		Version struct {
-			Number string
-		}
-	}
-	json.Unmarshal(body, &clusterInfo)
-	return clusterInfo.Version.Number
-}
-
-func main() {
-	var (
-		listenAddress = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		esURI         = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
-		esTimeout     = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
-		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
-	)
-	flag.Parse()
-
-	esVersion := getESVersion(esURI)
-
-	if *esAllNodes {
-		*esURI = *esURI + "/_nodes/stats"
-	} else {
-		*esURI = *esURI + "/_nodes/_local/stats"
-	}
-
-	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes, esVersion)
-	prometheus.MustRegister(exporter)
-
-	log.Println("Starting Server:", *listenAddress)
-	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-             <head><title>Elasticsearch Exporter</title></head>
-             <body>
-             <h1>Elasticsearch Exporter</h1>
-             <p><a href='` + *metricsPath + `'>Metrics</a></p>
-             </body>
-             </html>`))
-	})
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
