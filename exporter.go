@@ -382,7 +382,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["os_mem_used_percent"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.OS.Mem.UsedPercent))
 
 		var load float64
-		if strings.HasPrefix(e.version, "2") {
+		if strings.HasPrefix(e.version, "5") {
+			load = stats.OS.CPU.LoadAvg["1m"]
+		} else if strings.HasPrefix(e.version, "2") {
 			json.Unmarshal(stats.OS.LoadAvg, &load)
 		} else {
 			var loads [3]float64
