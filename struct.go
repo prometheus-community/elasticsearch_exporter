@@ -259,3 +259,21 @@ type NodeStatsFSDataResponse struct {
 	DiskReadSize  int64  `json:"disk_read_size_in_bytes"`
 	DiskWriteSize int64  `json:"disk_write_size_in_bytes"`
 }
+
+// Elasticsearch Cluster Health Struct
+
+type ClusterHealthResponse struct {
+	ActivePrimaryShards     int64  `json:"active_primary_shards"`
+	ActiveShards            int64  `json:"active_shards"`
+	ClusterName             string `json:"cluster_name"`
+	DelayedUnassignedShards int64  `json:"delayed_unassigned_shards"`
+	InitializingShards      int64  `json:"initializing_shards"`
+	NumberOfDataNodes       int64  `json:"number_of_data_nodes"`
+	NumberOfInFlightFetch   int64  `json:"number_of_in_flight_fetch"`
+	NumberOfNodes           int64  `json:"number_of_nodes"`
+	NumberOfPendingTasks    int64  `json:"number_of_pending_tasks"`
+	RelocatingShards        int64  `json:"relocating_shards"`
+	Status                  string `json:"status"`
+	TimedOut                bool   `json:"timed_out"`
+	UnassignedShards        int64  `json:"unassigned_shards"`
+}
