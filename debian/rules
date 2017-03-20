@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+DISTRIBUTION = $(shell lsb_release -sr)
+VERSION = $(shell cat VERSION)
+PACKAGEVERSION = $(VERSION)-0~$(DISTRIBUTION)0
+
+%:
+	dh $@ --with systemd
+
+override_dh_auto_build:
+	dh_auto_build
+	mv elasticsearch_exporter prometheus-elasticsearch-exporter
+override_dh_auto_install:
+override_dh_installinit:
+	dh_installinit --name=prometheus-elasticsearch-exporter --no-start
+override_dh_gencontrol:
+	dh_gencontrol -- -v$(PACKAGEVERSION)

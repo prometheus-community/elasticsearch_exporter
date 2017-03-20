@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+    install|upgrade)
+	if ! getent group 'prometheus' > /dev/null 2>&1 ; then
+	    addgroup --system prometheus --quiet
+	fi
+	if ! getent passwd 'prometheus' > /dev/null 2>&1 ; then
+	    adduser --system --ingroup prometheus --disabled-password --shell /bin/false \
+		prometheus
+	fi
+        ;;
+
+    abort-upgrade)
+        ;;
+
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+
+
+exit 0

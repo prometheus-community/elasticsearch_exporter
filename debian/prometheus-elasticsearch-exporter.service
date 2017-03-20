@@ -1,0 +1,12 @@
+[Unit]
+Description=prometheus-elasticsearch-exporter
+
+[Service]
+User=prometheus
+Group=prometheus
+PIDFile=/var/run/prometheus-elasticsearch-exporter.pid
+EnvironmentFile=/etc/default/prometheus-elasticsearch-exporter
+ExecStart=/usr/bin/prometheus-elasticsearch-exporter $DAEMON_ARGS
+
+[Install]
+WantedBy=multi-user.target

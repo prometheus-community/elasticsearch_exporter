@@ -1,0 +1,2 @@
+# prometheus-elasticsearch-exporter arguments
+DAEMON_ARGS="-es.uri http://localhost:9200"

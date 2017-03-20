@@ -1,0 +1,5 @@
+prometheus-elasticsearch-exporter (0-0) UNRELEASED; urgency=medium
+
+  * New upstream version 0.3.0
+
+ -- Guillaume Herail <debian@xiu.io>  Fri, 17 Mar 2017 11:28:00 +0100
