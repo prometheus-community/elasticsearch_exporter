@@ -175,6 +175,14 @@ var (
 		prometheus.BuildFQName(namespace, "cluster_health", "status_is_green"),
 		"Whether all primary and replica shards are allocated.",
 		[]string{"cluster"}, nil)
+	clusterHealthStatusIsYellowDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "status_is_yellow"),
+		"Some of replica shards is missing.",
+		[]string{"cluster"}, nil)
+	clusterHealthStatusIsRedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "status_is_red"),
+		"Some of primary shards is missing.",
+		[]string{"cluster"}, nil)
 	clusterHealthTimedOutDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "cluster_health", "timed_out"),
 		"XXX WHAT DOES THIS MEAN?",
@@ -512,10 +520,18 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(clusterHealthUnassignedShardsDesc, prometheus.GaugeValue, float64(clusterHealth.UnassignedShards), clusterHealth.ClusterName)
 
 	statusIsGreen := 0.0
+	statusIsYellow := 0.0
+	statusIsRed := 0.0
 	if clusterHealth.Status == "green" {
 		statusIsGreen = 1.0
+	} else if clusterHealth.Status == "yellow" {
+		statusIsYellow = 1.0
+	} else {
+		statusIsRed = 1.0
 	}
 	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsGreenDesc, prometheus.GaugeValue, statusIsGreen, clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsYellowDesc, prometheus.GaugeValue, statusIsYellow, clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsRedDesc, prometheus.GaugeValue, statusIsRed, clusterHealth.ClusterName)
 
 	timedOut := 0.0
 	if clusterHealth.TimedOut {
