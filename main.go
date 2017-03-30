@@ -55,13 +55,13 @@ func main() {
 
 	esVersion := getESVersion(esURI)
 
+	nodesStatsURI := *esURI + "/_nodes/_local/stats"
 	if *esAllNodes {
-		*esURI = *esURI + "/_nodes/stats"
-	} else {
-		*esURI = *esURI + "/_nodes/_local/stats"
+		nodesStatsURI = *esURI + "/_nodes/stats"
 	}
+	clusterHealthURI := *esURI + "/_cluster/health"
 
-	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes, esVersion)
+	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, esVersion)
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)
