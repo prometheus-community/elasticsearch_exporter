@@ -88,6 +88,10 @@ var (
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
 		},
+		"breakers_tripped": {
+			help:   "tripped for breaker",
+			labels: []string{"breaker"},
+		},
 		"filesystem_data_available_bytes": {
 			help:   "Available space on block device in bytes",
 			labels: []string{"mount", "path"},
@@ -358,6 +362,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		for breaker, bstats := range stats.Breakers {
 			e.gaugeVecs["breakers_estimated_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.EstimatedSize))
 			e.gaugeVecs["breakers_limit_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.LimitSize))
+			e.gaugeVecs["breakers_tripped"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.Tripped))
 		}
 
 		// Thread Pool stats
@@ -366,9 +371,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.counterVecs["thread_pool_rejected_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Rejected))
 
 			e.gaugeVecs["thread_pool_active_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Threads))
+			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Largest))
+			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Queue))
 		}
 
 		// JVM Memory Stats
