@@ -1,28 +1,29 @@
-# Elasticsearch Exporter
+# Elasticsearch Exporter [![Build Status](https://travis-ci.org/justwatchcom/elasticsearch_exporter.svg?branch=master)](https://travis-ci.org/justwatchcom/elasticsearch_exporter)
 
-Export Elasticsearch service health to Prometheus.
+[![Docker Pulls](https://img.shields.io/docker/pulls/justwatchcom/elasticsearch_exporter.svg?maxAge=604800)](https://hub.docker.com/r/justwatchcom/elasticsearch_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/justwatchcom/elasticsearch_exporter)](https://goreportcard.com/report/github.com/justwatchcom/elasticsearch_exporter)
 
-To run it:
+Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
-```bash
-make
-./elasticsearch_exporter [flags]
-```
-
-### Flags
+### Installation
 
 ```bash
-./elasticsearch_exporter --help
+go get -u github.com/justwatchcom/elasticsearch_exporter
 ```
 
-* __`es.uri`:__ Address (host and port) of the Elasticsearch node we should
-    connect to. This could be a local node (`localhost:8500`, for instance), or
-    the address of a remote Elasticsearch server.
-* __`es.all`:__ If true, query stats for all nodes in the cluster,
-    rather than just the node we connect to.
-* __`es.timeout`:__ Timeout for trying to get stats from Elasticsearch. (ex: 20s)
-* __`web.listen-address`:__ Address to listen on for web interface and telemetry.
-* __`web.telemetry-path`:__ Path under which to expose metrics.
+### Configuration
+
+```bash
+elasticsearch_exporter --help
+```
+
+| Argument            | Description |
+| --------            | ----------- |
+| es.uri              | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:8500`, for instance), or the address of a remote Elasticsearch server.
+| es.all              | If true, query stats for all nodes in the cluster, rather than just the node we connect to.
+| es.timeout          | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
+| web.listen-address  | Address to listen on for web interface and telemetry. |
+| web.telemetry-path  | Path under which to expose metrics. |
 
 __NOTE:__ We support pulling stats for all nodes at once, but in production
 this is unlikely to be the way you actually want to run the system. It is much
@@ -38,4 +39,8 @@ we'll attempt to report important values for both.
 * `indices.query_cache` becomes `indices.request_cache`
 * `process.cpu` lost `user` and `sys` time, so we're now reporting `total`
 * Added `process.cpu.max_file_descriptors`
-* 
+
+### Original author
+
+This package was originally created and mainted by [Eric Richardson](https://github.com/ewr),
+who transferred this repository to us in Jan 2017.
