@@ -1,0 +1,15 @@
+language: go
+
+go:
+  - 1.8
+  - tip
+
+script:
+  - make style
+  - make vet
+  - make test
+  - make build
+
+matrix:
+  allow_failures:
+    - go: tip
