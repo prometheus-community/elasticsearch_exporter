@@ -8,9 +8,9 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 )
 
@@ -37,7 +37,7 @@ func main() {
 		esURI              = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
 		esTimeout          = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes         = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
-		esCA 	           = flag.String("es.ca", "", "Path to PEM file that conains trusted CAs for the Elasticsearch connection.")
+		esCA               = flag.String("es.ca", "", "Path to PEM file that conains trusted CAs for the Elasticsearch connection.")
 		esClientPrivateKey = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
 		esClientCert       = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
 	)
@@ -49,7 +49,7 @@ func main() {
 	}
 	clusterHealthURI := *esURI + "/_cluster/health"
 
-	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, createElasticSearchTlsConfig(*esCA, *esClientCert, *esClientPrivateKey));
+	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, createElasticSearchTlsConfig(*esCA, *esClientCert, *esClientPrivateKey))
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)
@@ -60,19 +60,21 @@ func main() {
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
 
-func createElasticSearchTlsConfig(pemFile, pemCertFile, pemPrivateKeyFile string) (*tls.Config) {
-	if (len(pemFile) <= 0) { return nil }
+func createElasticSearchTlsConfig(pemFile, pemCertFile, pemPrivateKeyFile string) *tls.Config {
+	if len(pemFile) <= 0 {
+		return nil
+	}
 	rootCerts, err := loadCertificatesFrom(pemFile)
 	if err != nil {
 		log.Fatalf("Couldn't load root certificate from %s. Got %s.", pemFile, err)
 	}
-	if (len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0) {
+	if len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0 {
 		clientPrivateKey, err := loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile)
 		if err != nil {
 			log.Fatalf("Couldn't setup client authentication. Got %s.", err)
 		}
 		return &tls.Config{
-			RootCAs: rootCerts,
+			RootCAs:      rootCerts,
 			Certificates: []tls.Certificate{*clientPrivateKey},
 		}
 	} else {
@@ -92,10 +94,9 @@ func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
 	return certificates, nil
 }
 
-
 func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate, error) {
 	privateKey, err := tls.LoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 	return &privateKey, nil

@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"crypto/tls"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type VecInfo struct {
