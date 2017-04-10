@@ -1,24 +1,17 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"sync"
 	"time"
-
-	"encoding/json"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"crypto/tls"
 	"crypto/x509"
-)
-
-const (
-	namespace = "elasticsearch"
 )
 
 type VecInfo struct {
@@ -66,73 +59,139 @@ var (
 		"indices_refresh_total_time_ms_total":   "Total time spent refreshing",
 	}
 	counterVecMetrics = map[string]*VecInfo{
-		"jvm_gc_collection_seconds_count": &VecInfo{
+		"jvm_gc_collection_seconds_count": {
 			help:   "Count of JVM GC runs",
 			labels: []string{"gc"},
 		},
-		"jvm_gc_collection_seconds_sum": &VecInfo{
+		"jvm_gc_collection_seconds_sum": {
 			help:   "GC run time in seconds",
 			labels: []string{"gc"},
 		},
-		"process_cpu_time_seconds_sum": &VecInfo{
+		"process_cpu_time_seconds_sum": {
 			help:   "Process CPU time in seconds",
 			labels: []string{"type"},
 		},
-		"thread_pool_completed_count": &VecInfo{
+		"thread_pool_completed_count": {
 			help:   "Thread Pool operations completed",
 			labels: []string{"type"},
 		},
-		"thread_pool_rejected_count": &VecInfo{
+		"thread_pool_rejected_count": {
 			help:   "Thread Pool operations rejected",
 			labels: []string{"type"},
 		},
 	}
 
 	gaugeVecMetrics = map[string]*VecInfo{
-		"breakers_estimated_size_bytes": &VecInfo{
+		"breakers_estimated_size_bytes": {
 			help:   "Estimated size in bytes of breaker",
 			labels: []string{"breaker"},
 		},
-		"breakers_limit_size_bytes": &VecInfo{
+		"breakers_limit_size_bytes": {
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
 		},
-		"jvm_memory_committed_bytes": &VecInfo{
+		"breakers_tripped": {
+			help:   "tripped for breaker",
+			labels: []string{"breaker"},
+		},
+		"filesystem_data_available_bytes": {
+			help:   "Available space on block device in bytes",
+			labels: []string{"mount", "path"},
+		},
+		"filesystem_data_free_bytes": {
+			help:   "Free space on block device in bytes",
+			labels: []string{"mount", "path"},
+		},
+		"filesystem_data_size_bytes": {
+			help:   "Size of block device in bytes",
+			labels: []string{"mount", "path"},
+		},
+		"jvm_memory_committed_bytes": {
 			help:   "JVM memory currently committed by area",
 			labels: []string{"area"},
 		},
-		"jvm_memory_used_bytes": &VecInfo{
+		"jvm_memory_used_bytes": {
 			help:   "JVM memory currently used by area",
 			labels: []string{"area"},
 		},
-		"jvm_memory_max_bytes": &VecInfo{
+		"jvm_memory_max_bytes": {
 			help:   "JVM memory max",
 			labels: []string{"area"},
 		},
-		"thread_pool_active_count": &VecInfo{
+		"thread_pool_active_count": {
 			help:   "Thread Pool threads active",
 			labels: []string{"type"},
 		},
-		"thread_pool_largest_count": &VecInfo{
+		"thread_pool_largest_count": {
 			help:   "Thread Pool largest threads count",
 			labels: []string{"type"},
 		},
-		"thread_pool_queue_count": &VecInfo{
+		"thread_pool_queue_count": {
 			help:   "Thread Pool operations queued",
 			labels: []string{"type"},
 		},
-		"thread_pool_threads_count": &VecInfo{
+		"thread_pool_threads_count": {
 			help:   "Thread Pool current threads count",
 			labels: []string{"type"},
 		},
 	}
+
+	clusterHealthActivePrimaryShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "active_primary_shards"),
+		"Tthe number of primary shards in your cluster. This is an aggregate total across all indices.",
+		[]string{"cluster"}, nil)
+	clusterHealthActiveShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "active_shards"),
+		"Aggregate total of all shards across all indices, which includes replica shards.",
+		[]string{"cluster"}, nil)
+	clusterHealthDelayedUnassignedShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "delayed_unassigned_shards"),
+		"XXX WHAT DOES THIS MEAN?",
+		[]string{"cluster"}, nil)
+	clusterHealthInitializingShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "initializing_shards"),
+		"Count of shards that are being freshly created.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfDataNodesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_data_nodes"),
+		"Number of data nodes in the cluster.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfInFlightFetchDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_in_flight_fetch"),
+		"The number of ongoing shard info requests.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfNodesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_nodes"),
+		"Number of nodes in the cluster.",
+		[]string{"cluster"}, nil)
+	clusterHealthNumberOfPendingTasksDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "number_of_pending_tasks"),
+		"XXX WHAT DOES THIS MEAN?",
+		[]string{"cluster"}, nil)
+	clusterHealthRelocatingShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "relocating_shards"),
+		"The number of shards that are currently moving from one node to another node.",
+		[]string{"cluster"}, nil)
+	clusterHealthStatusIsGreenDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "status_is_green"),
+		"Whether all primary and replica shards are allocated.",
+		[]string{"cluster"}, nil)
+	clusterHealthTimedOutDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "timed_out"),
+		"XXX WHAT DOES THIS MEAN?",
+		[]string{"cluster"}, nil)
+	clusterHealthUnassignedShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_health", "unassigned_shards"),
+		"The number of shards that exist in the cluster state, but cannot be found in the cluster itself.",
+		[]string{"cluster"}, nil)
 )
 
 // Exporter collects Elasticsearch stats from the given server and exports
 // them using the prometheus metrics package.
 type Exporter struct {
-	URI   string
-	mutex sync.RWMutex
+	NodesStatsURI    string
+	ClusterHealthURI string
+	mutex            sync.RWMutex
 
 	up prometheus.Gauge
 
@@ -147,7 +206,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(uri string, timeout time.Duration, allNodes bool, tlsClientConfig *tls.Config) *Exporter {
+func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Duration, allNodes bool, tlsClientConfig *tls.Config) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -187,7 +246,8 @@ func NewExporter(uri string, timeout time.Duration, allNodes bool, tlsClientConf
 
 	// Init our exporter.
 	return &Exporter{
-		URI: uri,
+		NodesStatsURI:    nodesStatsUri,
+		ClusterHealthURI: clusterHealthUri,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -266,29 +326,26 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		vec.Reset()
 	}
 
+	e.up.Set(0)
 	defer func() { ch <- e.up }()
 
-	resp, err := e.client.Get(e.URI)
+	resp, err := e.client.Get(e.NodesStatsURI)
 	if err != nil {
-		e.up.Set(0)
-		log.Println("Error while querying Elasticsearch:", err)
+		log.Println("Error while querying Elasticsearch for nodes stats:", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("Failed to read ES response body:", err)
-		e.up.Set(0)
+		log.Println("Failed to read nodes stats response body:", err)
 		return
 	}
-
-	e.up.Set(1)
 
 	var allStats NodeStatsResponse
 	err = json.Unmarshal(body, &allStats)
 	if err != nil {
-		log.Println("Failed to unmarshal JSON into struct:", err)
+		log.Println("Failed to unmarshal nodes stats JSON into struct:", err)
 		return
 	}
 
@@ -308,6 +365,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		for breaker, bstats := range stats.Breakers {
 			e.gaugeVecs["breakers_estimated_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.EstimatedSize))
 			e.gaugeVecs["breakers_limit_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.LimitSize))
+			e.gaugeVecs["breakers_tripped"].WithLabelValues(allStats.ClusterName, stats.Host, breaker).Set(float64(bstats.Tripped))
 		}
 
 		// Thread Pool stats
@@ -316,9 +374,9 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.counterVecs["thread_pool_rejected_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Rejected))
 
 			e.gaugeVecs["thread_pool_active_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
-			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Active))
+			e.gaugeVecs["thread_pool_threads_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Threads))
+			e.gaugeVecs["thread_pool_largest_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Largest))
+			e.gaugeVecs["thread_pool_queue_count"].WithLabelValues(allStats.ClusterName, stats.Host, pool).Set(float64(pstats.Queue))
 		}
 
 		// JVM Memory Stats
@@ -379,6 +437,13 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "total").Set(float64(stats.Process.CPU.Total / 1000))
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "sys").Set(float64(stats.Process.CPU.Sys / 1000))
 		e.counterVecs["process_cpu_time_seconds_sum"].WithLabelValues(allStats.ClusterName, stats.Host, "user").Set(float64(stats.Process.CPU.User / 1000))
+
+		// File System Stats
+		for _, fsStats := range stats.FS.Data {
+			e.gaugeVecs["filesystem_data_available_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Available))
+			e.gaugeVecs["filesystem_data_free_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Free))
+			e.gaugeVecs["filesystem_data_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Total))
+		}
 	}
 
 	// Report metrics.
@@ -398,84 +463,51 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	for _, vec := range e.gauges {
 		vec.Collect(ch)
 	}
-}
 
-func main() {
-	var (
-		listenAddress = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		esURI         = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
-		esTimeout     = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
-		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
-		esCA = flag.String("es.ca", "", "Path to PEM file that conains trusted CAs for the Elasticsearch connection.")
-		esClientPrivateKey = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
-		esClientCert = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
-	)
-	flag.Parse()
-
-	if *esAllNodes {
-		*esURI = *esURI + "/_nodes/stats"
-	} else {
-		*esURI = *esURI + "/_nodes/_local/stats"
-	}
-
-	exporter := NewExporter(*esURI, *esTimeout, *esAllNodes, createElasticSearchTlsConfig(*esCA, *esClientCert, *esClientPrivateKey))
-	prometheus.MustRegister(exporter)
-
-	log.Println("Starting Server:", *listenAddress)
-	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-             <head><title>Elasticsearch Exporter</title></head>
-             <body>
-             <h1>Elasticsearch Exporter</h1>
-             <p><a href='` + *metricsPath + `'>Metrics</a></p>
-             </body>
-             </html>`))
-	})
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
-}
-
-func createElasticSearchTlsConfig(pemFile, pemCertFile, pemPrivateKeyFile string) (*tls.Config) {
-	if (len(pemFile) > 0) {
-		rootCerts, err := loadCertificatesFrom(pemFile)
-		if err != nil {
-			log.Fatalf("Couldn't load root certificate from %s. Got %s.", pemFile, err)
-		}
-		if (len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0) {
-			clientPrivateKey, err := loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile)
-			if err != nil {
-				log.Fatalf("Couldn't setup client authentication. Got %s.", err)
-			}
-			return &tls.Config{
-				RootCAs: rootCerts,
-				Certificates: []tls.Certificate{*clientPrivateKey},
-			}
-		} else {
-			return &tls.Config{
-				RootCAs: rootCerts,
-			}
-		}
-	} else {
-		return nil;
-	}
-}
-
-func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
-	caCert, err := ioutil.ReadFile(pemFile)
+	// Obtain cluster health metrics.
+	resp, err = e.client.Get(e.ClusterHealthURI)
 	if err != nil {
-		return nil, err
+		log.Println("Error while querying Elasticsearch for cluster health:", err)
+		return
 	}
-	certificates := x509.NewCertPool()
-	certificates.AppendCertsFromPEM(caCert)
-	return certificates, nil
-}
+	defer resp.Body.Close()
 
-
-func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate, error) {
-	privateKey, err := tls.LoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
+	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		log.Println("Failed to read cluster health response body:", err)
+		return
 	}
-	return &privateKey, nil
+
+	var clusterHealth ClusterHealthResponse
+	err = json.Unmarshal(body, &clusterHealth)
+	if err != nil {
+		log.Println("Failed to unmarshal cluster health JSON into struct:", err)
+		return
+	}
+
+	ch <- prometheus.MustNewConstMetric(clusterHealthActivePrimaryShardsDesc, prometheus.GaugeValue, float64(clusterHealth.ActivePrimaryShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthActiveShardsDesc, prometheus.GaugeValue, float64(clusterHealth.ActiveShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthDelayedUnassignedShardsDesc, prometheus.GaugeValue, float64(clusterHealth.DelayedUnassignedShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthInitializingShardsDesc, prometheus.GaugeValue, float64(clusterHealth.InitializingShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfDataNodesDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfDataNodes), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfInFlightFetchDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfInFlightFetch), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfNodesDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfNodes), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthNumberOfPendingTasksDesc, prometheus.GaugeValue, float64(clusterHealth.NumberOfPendingTasks), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthRelocatingShardsDesc, prometheus.GaugeValue, float64(clusterHealth.RelocatingShards), clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthUnassignedShardsDesc, prometheus.GaugeValue, float64(clusterHealth.UnassignedShards), clusterHealth.ClusterName)
+
+	statusIsGreen := 0.0
+	if clusterHealth.Status == "green" {
+		statusIsGreen = 1.0
+	}
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsGreenDesc, prometheus.GaugeValue, statusIsGreen, clusterHealth.ClusterName)
+
+	timedOut := 0.0
+	if clusterHealth.TimedOut {
+		timedOut = 1.0
+	}
+	ch <- prometheus.MustNewConstMetric(clusterHealthTimedOutDesc, prometheus.GaugeValue, timedOut, clusterHealth.ClusterName)
+
+	// Successfully processed stats.
+	e.up.Set(1)
 }
