@@ -95,7 +95,7 @@ func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
 
 func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate, error) {
 	privateKey, err := tls.LoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 	return &privateKey, nil
