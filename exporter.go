@@ -11,7 +11,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"crypto/tls"
-	"crypto/x509"
 )
 
 type VecInfo struct {
