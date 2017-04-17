@@ -30,7 +30,10 @@ const (
 )
 
 func getESVersion(esURI *string) string {
-	resp, _ := http.Get(*esURI)
+	resp, err := http.Get(*esURI)
+	if err != nil {
+		log.Fatalln("Failed to read cluster information:", err)
+	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
