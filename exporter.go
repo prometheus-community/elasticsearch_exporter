@@ -93,6 +93,10 @@ var (
 			help:   "Limit size in bytes for breaker",
 			labels: []string{"breaker"},
 		},
+		"breakers_tripped": {
+			help:   "tripped for breaker",
+			labels: []string{"breaker"},
+		},
 		"filesystem_data_available_bytes": {
 			help:   "Available space on block device in bytes",
 			labels: []string{"mount", "path"},
@@ -372,6 +376,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		for breaker, bstats := range stats.Breakers {
 			e.gaugeVecs["breakers_estimated_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, breaker).Set(float64(bstats.EstimatedSize))
 			e.gaugeVecs["breakers_limit_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, breaker).Set(float64(bstats.LimitSize))
+			e.gaugeVecs["breakers_tripped"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, breaker).Set(float64(bstats.Tripped))
 		}
 
 		// Thread Pool stats
@@ -393,8 +398,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
-		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Search.QueryTotal))
-
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.MemorySize))
 		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.Evictions))
 
