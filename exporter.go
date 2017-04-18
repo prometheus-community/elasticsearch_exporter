@@ -398,6 +398,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gaugeVecs["jvm_memory_used_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name, "non-heap").Set(float64(stats.JVM.Mem.NonHeapUsed))
 
 		// Indices Stats
+		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.Search.QueryTotal))
+
 		e.gauges["indices_fielddata_memory_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.MemorySize))
 		e.counters["indices_fielddata_evictions"].WithLabelValues(allStats.ClusterName, stats.Host, stats.Name).Set(float64(stats.Indices.FieldData.Evictions))
 
