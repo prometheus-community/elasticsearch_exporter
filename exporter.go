@@ -189,6 +189,8 @@ var (
 type Exporter struct {
 	NodesStatsURI    string
 	ClusterHealthURI string
+	EsUser           string
+	EsPassword       string
 	mutex            sync.RWMutex
 
 	up prometheus.Gauge
@@ -204,7 +206,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Duration, allNodes bool) *Exporter {
+func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Duration, allNodes bool, user string, password string) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -246,6 +248,8 @@ func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Dur
 	return &Exporter{
 		NodesStatsURI:    nodesStatsUri,
 		ClusterHealthURI: clusterHealthUri,
+		EsUser:           user,
+		EsPassword:       password,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -326,7 +330,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.up.Set(0)
 	defer func() { ch <- e.up }()
 
-	resp, err := e.client.Get(e.NodesStatsURI)
+	req, err := http.NewRequest("GET", e.NodesStatsURI, nil)
+	if err != nil {
+		log.Println("Error when building Get request:", err)
+		return
+	}
+
+	// Check if basicAuth is enabled
+	if e.EsUser != "" && e.EsPassword != "" {
+		req.SetBasicAuth(e.EsUser, e.EsPassword)
+	}
+
+	// Obtain cluster nodes metrics.
+	resp, err := e.client.Do(req)
 	if err != nil {
 		log.Println("Error while querying Elasticsearch for nodes stats:", err)
 		return
@@ -461,8 +477,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		vec.Collect(ch)
 	}
 
+	req, err = http.NewRequest("GET", e.ClusterHealthURI, nil)
+	if err != nil {
+		log.Println("Error when building Get request:", err)
+		return
+	}
+
+	// Check is basicAuth is enabled.
+	if e.EsUser != "" && e.EsPassword != "" {
+		req.SetBasicAuth(e.EsUser, e.EsPassword)
+	}
+
 	// Obtain cluster health metrics.
-	resp, err = e.client.Get(e.ClusterHealthURI)
+	resp, err = e.client.Do(req)
 	if err != nil {
 		log.Println("Error while querying Elasticsearch for cluster health:", err)
 		return
