@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"crypto/tls"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -204,7 +205,7 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Duration, allNodes bool) *Exporter {
+func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Duration, allNodes bool, tlsClientConfig *tls.Config) *Exporter {
 	counters := make(map[string]*prometheus.CounterVec, len(counterMetrics))
 	counterVecs := make(map[string]*prometheus.CounterVec, len(counterVecMetrics))
 	gauges := make(map[string]*prometheus.GaugeVec, len(gaugeMetrics))
@@ -262,6 +263,7 @@ func NewExporter(nodesStatsUri string, clusterHealthUri string, timeout time.Dur
 
 		client: &http.Client{
 			Transport: &http.Transport{
+				TLSClientConfig: tlsClientConfig,
 				Dial: func(netw, addr string) (net.Conn, error) {
 					c, err := net.DialTimeout(netw, addr, timeout)
 					if err != nil {

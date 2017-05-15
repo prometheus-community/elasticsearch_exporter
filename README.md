@@ -17,13 +17,16 @@ go get -u github.com/justwatchcom/elasticsearch_exporter
 elasticsearch_exporter --help
 ```
 
-| Argument            | Description |
-| --------            | ----------- |
-| es.uri              | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:8500`, for instance), or the address of a remote Elasticsearch server.
-| es.all              | If true, query stats for all nodes in the cluster, rather than just the node we connect to.
-| es.timeout          | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
-| web.listen-address  | Address to listen on for web interface and telemetry. |
-| web.telemetry-path  | Path under which to expose metrics. |
+| Argument              | Description |
+| --------              | ----------- |
+| es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:8500`, for instance), or the address of a remote Elasticsearch server.
+| es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.
+| es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
+| es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection.
+| es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.
+| es.client-cert        | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.
+| web.listen-address    | Address to listen on for web interface and telemetry. |
+| web.telemetry-path    | Path under which to expose metrics. |
 
 __NOTE:__ We support pulling stats for all nodes at once, but in production
 this is unlikely to be the way you actually want to run the system. It is much
