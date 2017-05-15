@@ -198,10 +198,11 @@ type NodeStatsOSResponse struct {
 }
 
 type NodeStatsOSMemResponse struct {
-	Free       int64 `json:"free_in_bytes"`
-	Used       int64 `json:"used_in_bytes"`
-	ActualFree int64 `json:"actual_free_in_bytes"`
-	ActualUsed int64 `json:"actual_used_in_bytes"`
+	Free        int64 `json:"free_in_bytes"`
+	Used        int64 `json:"used_in_bytes"`
+	ActualFree  int64 `json:"actual_free_in_bytes"`
+	ActualUsed  int64 `json:"actual_used_in_bytes"`
+	UsedPercent int64 `json:"used_percent"`
 }
 
 type NodeStatsOSSwapResponse struct {
@@ -210,10 +211,11 @@ type NodeStatsOSSwapResponse struct {
 }
 
 type NodeStatsOSCPUResponse struct {
-	Sys   int64 `json:"sys"`
-	User  int64 `json:"user"`
-	Idle  int64 `json:"idle"`
-	Steal int64 `json:"stolen"`
+	Sys     int64              `json:"sys"`
+	User    int64              `json:"user"`
+	Idle    int64              `json:"idle"`
+	Steal   int64              `json:"stolen"`
+	LoadAvg map[string]float64 `json:"load_average"`
 }
 
 type NodeStatsProcessResponse struct {
