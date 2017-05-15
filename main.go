@@ -34,6 +34,8 @@ func main() {
 		esURI         = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
 		esTimeout     = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes    = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
+		esUser        = flag.String("es.user", "", "ElasticSearch user")
+		esPassword    = flag.String("es.password", "", "Elasticsearch password")
 	)
 	flag.Parse()
 
@@ -43,7 +45,7 @@ func main() {
 	}
 	clusterHealthURI := *esURI + "/_cluster/health"
 
-	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes)
+	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, *esUser, *esPassword)
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)

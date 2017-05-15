@@ -24,6 +24,8 @@ elasticsearch_exporter --help
 | es.timeout          | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
 | web.listen-address  | Address to listen on for web interface and telemetry. |
 | web.telemetry-path  | Path under which to expose metrics. |
+| es.user             | User to use if elasticsearch basicAuth is enabled
+| es.password         | Password to use if elasticsearch basicAuth is enabled
 
 __NOTE:__ We support pulling stats for all nodes at once, but in production
 this is unlikely to be the way you actually want to run the system. It is much
