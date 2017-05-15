@@ -1,6 +1,6 @@
 # Elasticsearch Exporter [![Build Status](https://travis-ci.org/justwatchcom/elasticsearch_exporter.svg?branch=master)](https://travis-ci.org/justwatchcom/elasticsearch_exporter)
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/justwatchcom/elasticsearch_exporter.svg?maxAge=604800)](https://hub.docker.com/r/justwatchcom/elasticsearch_exporter)
+[![Docker Pulls](https://img.shields.io/docker/pulls/justwatch/elasticsearch_exporter.svg?maxAge=604800)](https://hub.docker.com/r/justwatch/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/justwatchcom/elasticsearch_exporter)](https://goreportcard.com/report/github.com/justwatchcom/elasticsearch_exporter)
 
 Prometheus exporter for various metrics about ElasticSearch, written in Go.
