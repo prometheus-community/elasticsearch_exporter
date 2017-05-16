@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"crypto/tls"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -56,10 +57,10 @@ var (
 		"indices_merges_total_time_ms_total":    "Total time spent merging in milliseconds",
 		"indices_refresh_total":                 "Total refreshes",
 		"indices_refresh_total_time_ms_total":   "Total time spent refreshing",
-		"indices_search_query_total":		 "Total number of queries",
-		"indices_search_query_time_ms_total":	 "Total query time in milliseconds",
-		"indices_search_fetch_total":		 "Total number of fetches",
-		"indices_search_fetch_time_ms_total":	 "Total fetch time in milliseconds",
+		"indices_search_query_total":            "Total number of queries",
+		"indices_search_query_time_ms_total":    "Total query time in milliseconds",
+		"indices_search_fetch_total":            "Total number of fetches",
+		"indices_search_fetch_time_ms_total":    "Total fetch time in milliseconds",
 	}
 	counterVecMetrics = map[string]*VecInfo{
 		"jvm_gc_collection_seconds_count": {
