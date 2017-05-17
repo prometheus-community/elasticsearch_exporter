@@ -2,3 +2,4 @@
 elasticsearch_exporter
 *.tar.gz
 *-stamp
+.idea
