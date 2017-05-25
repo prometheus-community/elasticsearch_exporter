@@ -122,6 +122,14 @@ var (
 			help:   "Size of block device in bytes",
 			labels: []string{"mount", "path"},
 		},
+		"filesystem_data_used_percent": {
+			help:   "Percent used space on block device",
+			labels: []string{"mount", "path"},
+		},
+		"filesystem_data_free_percent": {
+			help:   "Percent free space on block device",
+			labels: []string{"mount", "path"},
+		},
 		"jvm_memory_committed_bytes": {
 			help:   "JVM memory currently committed by area",
 			labels: []string{"area"},
@@ -487,6 +495,10 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			e.gaugeVecs["filesystem_data_available_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Available))
 			e.gaugeVecs["filesystem_data_free_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Free))
 			e.gaugeVecs["filesystem_data_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(fsStats.Total))
+			used_percent := uint64(100 * ((float64(fsStats.Total) - float64(fsStats.Free)) / float64(fsStats.Total)))
+			free_percent := 100 - used_percent
+			e.gaugeVecs["filesystem_data_used_percent"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(used_percent))
+			e.gaugeVecs["filesystem_data_free_percent"].WithLabelValues(allStats.ClusterName, stats.Host, fsStats.Mount, fsStats.Path).Set(float64(free_percent))
 		}
 	}
 
