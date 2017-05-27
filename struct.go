@@ -2,8 +2,7 @@ package main
 
 import "encoding/json"
 
-// Elasticsearch Node Stats Structs
-
+// NodeStatsResponse is a representation of a Elasticsearch Node Stats
 type NodeStatsResponse struct {
 	ClusterName string `json:"cluster_name"`
 	Nodes       map[string]NodeStatsNodeResponse
@@ -26,6 +25,7 @@ type NodeStatsNodeResponse struct {
 	Process          NodeStatsProcessResponse                   `json:"process"`
 }
 
+// NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
 type NodeStatsBreakersResponse struct {
 	EstimatedSize int64   `json:"estimated_size_in_bytes"`
 	LimitSize     int64   `json:"limit_size_in_bytes"`
@@ -33,6 +33,7 @@ type NodeStatsBreakersResponse struct {
 	Tripped       int64   `json:"tripped"`
 }
 
+// NodeStatsJVMResponse is a representation of a JVM stats, memory pool information, garbage collection, buffer pools, number of loaded/unloaded classes
 type NodeStatsJVMResponse struct {
 	BufferPools map[string]NodeStatsJVMBufferPoolResponse `json:"buffer_pools"`
 	GC          NodeStatsJVMGCResponse                    `json:"gc"`
@@ -66,6 +67,7 @@ type NodeStatsNetworkResponse struct {
 	TCP NodeStatsTCPResponse `json:"tcp"`
 }
 
+// NodeStatsTransportResponse is a representation of a transport statistics about sent and received bytes in cluster communication
 type NodeStatsTransportResponse struct {
 	ServerOpen int64 `json:"server_open"`
 	RxCount    int64 `json:"rx_count"`
@@ -74,6 +76,7 @@ type NodeStatsTransportResponse struct {
 	TxSize     int64 `json:"tx_size_in_bytes"`
 }
 
+// NodeStatsThreadPoolPoolResponse is a representation of a statistics about each thread pool, including current size, queue and rejected tasks
 type NodeStatsThreadPoolPoolResponse struct {
 	Threads   int64 `json:"threads"`
 	Queue     int64 `json:"queue"`
@@ -96,6 +99,7 @@ type NodeStatsTCPResponse struct {
 	OutRsts      int64 `json:"out_rsts"`
 }
 
+// NodeStatsIndicesResponse is a representation of a indices stats (size, document count, indexing and deletion times, search times, field cache size, merges and flushes)
 type NodeStatsIndicesResponse struct {
 	Docs         NodeStatsIndicesDocsResponse
 	Store        NodeStatsIndicesStoreResponse
@@ -192,6 +196,7 @@ type NodeStatsIndicesCacheResponse struct {
 	TotalCount int64 `json:"total_count"`
 }
 
+// NodeStatsOSResponse is a representation of a  operating system stats, load average, mem, swap
 type NodeStatsOSResponse struct {
 	Timestamp int64 `json:"timestamp"`
 	Uptime    int64 `json:"uptime_in_millis"`
@@ -222,6 +227,7 @@ type NodeStatsOSCPUResponse struct {
 	Steal int64 `json:"stolen"`
 }
 
+// NodeStatsProcessResponse is a representation of a process statistics, memory consumption, cpu usage, open file descriptors
 type NodeStatsProcessResponse struct {
 	Timestamp int64                       `json:"timestamp"`
 	OpenFD    int64                       `json:"open_file_descriptors"`
@@ -248,6 +254,7 @@ type NodeStatsHTTPResponse struct {
 	TotalOpen   int64 `json:"total_open"`
 }
 
+// NodeStatsFSResponse is a representation of a file system information, data path, free disk space, read/write stats
 type NodeStatsFSResponse struct {
 	Timestamp int64                     `json:"timestamp"`
 	Data      []NodeStatsFSDataResponse `json:"data"`
@@ -266,8 +273,7 @@ type NodeStatsFSDataResponse struct {
 	DiskWriteSize int64  `json:"disk_write_size_in_bytes"`
 }
 
-// Elasticsearch Cluster Health Struct
-
+// ClusterHealthResponse is a representation of a Elasticsearch Cluster Health
 type ClusterHealthResponse struct {
 	ActivePrimaryShards     int64  `json:"active_primary_shards"`
 	ActiveShards            int64  `json:"active_shards"`
