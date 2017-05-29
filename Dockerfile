@@ -1,7 +1,14 @@
-FROM        quay.io/prometheus/busybox:latest
-MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
+FROM golang:alpine
 
-COPY elasticsearch_exporter  /bin/elasticsearch_exporter
+RUN apk update && apk add --update alpine-sdk
+
+ADD .  $GOPATH/src/elasticsearch_exporter
+
+RUN \
+    cd $GOPATH/src/elasticsearch_exporter && \
+    go build && \
+    go install
+
 
 EXPOSE      9108
-ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
+ENTRYPOINT  [ "elasticsearch_exporter" ]
