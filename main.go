@@ -78,10 +78,9 @@ func createElasticSearchTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string
 			RootCAs:      rootCerts,
 			Certificates: []tls.Certificate{*clientPrivateKey},
 		}
-	} else {
-		return &tls.Config{
-			RootCAs: rootCerts,
-		}
+	}
+	return &tls.Config{
+		RootCAs: rootCerts,
 	}
 }
 
