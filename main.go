@@ -10,8 +10,9 @@ import (
 
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -49,7 +50,7 @@ func main() {
 	}
 	clusterHealthURI := *esURI + "/_cluster/health"
 
-	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, createElasticSearchTlsConfig(*esCA, *esClientCert, *esClientPrivateKey))
+	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, createElasticSearchTLSConfig(*esCA, *esClientCert, *esClientPrivateKey))
 	prometheus.MustRegister(exporter)
 
 	log.Println("Starting Server:", *listenAddress)
@@ -60,7 +61,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
 }
 
-func createElasticSearchTlsConfig(pemFile, pemCertFile, pemPrivateKeyFile string) *tls.Config {
+func createElasticSearchTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string) *tls.Config {
 	if len(pemFile) <= 0 {
 		return nil
 	}
@@ -77,10 +78,9 @@ func createElasticSearchTlsConfig(pemFile, pemCertFile, pemPrivateKeyFile string
 			RootCAs:      rootCerts,
 			Certificates: []tls.Certificate{*clientPrivateKey},
 		}
-	} else {
-		return &tls.Config{
-			RootCAs: rootCerts,
-		}
+	}
+	return &tls.Config{
+		RootCAs: rootCerts,
 	}
 }
 
