@@ -38,41 +38,41 @@ var (
 		"process_max_files_count":                 "Max file descriptors for process",
 	}
 	counterMetrics = map[string]string{
-		"indices_fielddata_evictions":           "Evictions from field data",
-		"indices_filter_cache_evictions":        "Evictions from filter cache",
-		"indices_query_cache_evictions":         "Evictions from query cache",
-		"indices_request_cache_evictions":       "Evictions from request cache",
-		"indices_flush_total":                   "Total flushes",
-		"indices_flush_time_ms_total":           "Cumulative flush time in milliseconds",
-		"transport_rx_packets_total":            "Count of packets received",
-		"transport_rx_size_bytes_total":         "Total number of bytes received",
-		"transport_tx_packets_total":            "Count of packets sent",
-		"transport_tx_size_bytes_total":         "Total number of bytes sent",
-		"indices_store_throttle_time_ms_total":  "Throttle time for index store in milliseconds",
-		"indices_indexing_index_total":          "Total index calls",
-		"indices_indexing_index_time_ms_total":  "Cumulative index time in milliseconds",
-		"indices_indexing_delete_time_ms_total": "Total time indexing delete in milliseconds",
-		"indices_indexing_delete_total":         "Total indexing deletes",
-		"indices_merges_total":                  "Total merges",
-		"indices_merges_docs_total":             "Cumulative docs merged",
-		"indices_merges_total_size_bytes_total": "Total merge size in bytes",
-		"indices_merges_total_time_ms_total":    "Total time spent merging in milliseconds",
-		"indices_refresh_total":                 "Total refreshes",
-		"indices_refresh_time_ms_total":         "Total time spent refreshing",
-		"indices_get_time_ms":                   "Total get time in milliseconds",
-		"indices_get_total":                     "Total get",
-		"indices_get_missing_time_ms":           "Total time of get missing in milliseconds",
-		"indices_get_missing_total":             "Total get missing",
-		"indices_get_exists_time_ms":            "Total time get exists in milliseconds",
-		"indices_get_exists_total":              "Total get exists operations",
-		"indices_translog_size_in_bytes":        "Total translog size in bytes",
-		"indices_translog_operations":           "Total translog operations",
-		"indices_search_query_total":            "Total number of queries",
-		"indices_search_query_time_ms_total":    "Total query time in milliseconds",
-		"indices_search_query_time_ms":          "Total search query time in milliseconds",
-		"indices_search_fetch_time_ms":          "Total search fetch time in milliseconds",
-		"indices_search_fetch_total":            "Total number of fetches",
-		"indices_search_fetch_time_ms_total":    "Total fetch time in milliseconds",
+		"indices_fielddata_evictions":                 "Evictions from field data",
+		"indices_filter_cache_evictions":              "Evictions from filter cache",
+		"indices_query_cache_evictions":               "Evictions from query cache",
+		"indices_request_cache_evictions":             "Evictions from request cache",
+		"indices_flush_total":                         "Total flushes",
+		"indices_flush_time_seconds_total":            "Cumulative flush time in seconds",
+		"transport_rx_packets_total":                  "Count of packets received",
+		"transport_rx_size_bytes_total":               "Total number of bytes received",
+		"transport_tx_packets_total":                  "Count of packets sent",
+		"transport_tx_size_bytes_total":               "Total number of bytes sent",
+		"indices_store_throttle_time_seconds_total":   "Throttle time for index store in secondss",
+		"indices_indexing_index_total":                "Total index calls",
+		"indices_indexing_index_time_seconds_total":   "Cumulative index time in seconds",
+		"indices_indexing_delete_time_secondss_total": "Total time indexing delete in seconds",
+		"indices_indexing_delete_total":               "Total indexing deletes",
+		"indices_merges_total":                        "Total merges",
+		"indices_merges_docs_total":                   "Cumulative docs merged",
+		"indices_merges_total_size_bytes_total":       "Total merge size in bytes",
+		"indices_merges_total_time_seconds_total":     "Total time spent merging in seconds",
+		"indices_refresh_total":                       "Total refreshes",
+		"indices_refresh_time_seconds_total":          "Total time spent refreshing in seconds",
+		"indices_get_time_seconds":                    "Total get time in seconds",
+		"indices_get_total":                           "Total get",
+		"indices_get_missing_time_seconds":            "Total time of get missing in seconds",
+		"indices_get_missing_total":                   "Total get missing",
+		"indices_get_exists_time_seconds":             "Total time get exists in seconds",
+		"indices_get_exists_total":                    "Total get exists operations",
+		"indices_translog_size_in_bytes":              "Total translog size in bytes",
+		"indices_translog_operations":                 "Total translog operations",
+		"indices_search_query_total":                  "Total number of queries",
+		"indices_search_query_time_seconds_total":     "Total query time in seconds",
+		"indices_search_query_time_seconds":           "Total search query time in seconds",
+		"indices_search_fetch_time_seconds":           "Total search fetch time in seconds",
+		"indices_search_fetch_total":                  "Total number of fetches",
+		"indices_search_fetch_time_seconds_total":     "Total fetch time in seconds",
 	}
 	counterVecMetrics = map[string]*VecInfo{
 		"jvm_gc_collection_seconds_count": {
@@ -426,19 +426,19 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.counters["indices_translog_operations"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Translog.Operations))
 		e.counters["indices_translog_size_in_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Translog.Size))
 
-		e.counters["indices_get_time_ms"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.Time))
+		e.counters["indices_get_time_seconds"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.Time / 1000))
 		e.counters["indices_get_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.Total))
 
-		e.counters["indices_get_missing_time_ms"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.MissingTime))
+		e.counters["indices_get_missing_time_seconds"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.MissingTime / 1000))
 		e.counters["indices_get_missing_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.MissingTotal))
 
-		e.counters["indices_get_exists_time_ms"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.ExistsTime))
+		e.counters["indices_get_exists_time_seconds"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.ExistsTime / 1000))
 		e.counters["indices_get_exists_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Get.ExistsTotal))
 
-		e.counters["indices_search_query_time_ms"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTime))
+		e.counters["indices_search_query_time_seconds"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTime / 1000))
 		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTotal))
 
-		e.counters["indices_search_fetch_time_ms"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTime))
+		e.counters["indices_search_fetch_time_seconds"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTime / 1000))
 		e.counters["indices_search_fetch_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTotal))
 
 		e.gauges["indices_docs"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Docs.Count))
@@ -448,30 +448,30 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		e.gauges["indices_segments_count"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Segments.Count))
 
 		e.gauges["indices_store_size_bytes"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.Size))
-		e.counters["indices_store_throttle_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.ThrottleTime))
+		e.counters["indices_store_throttle_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Store.ThrottleTime / 1000))
 
 		e.counters["indices_flush_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Flush.Total))
-		e.counters["indices_flush_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Flush.Time))
+		e.counters["indices_flush_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Flush.Time / 1000))
 
-		e.counters["indices_indexing_index_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.IndexTime))
+		e.counters["indices_indexing_index_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.IndexTime / 1000))
 		e.counters["indices_indexing_index_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.IndexTotal))
 
-		e.counters["indices_indexing_delete_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.DeleteTime))
+		e.counters["indices_indexing_delete_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.DeleteTime / 1000))
 		e.counters["indices_indexing_delete_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Indexing.DeleteTotal))
 
-		e.counters["indices_merges_total_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.TotalTime))
+		e.counters["indices_merges_total_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.TotalTime / 1000))
 		e.counters["indices_merges_total_size_bytes_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.TotalSize))
 		e.counters["indices_merges_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.Total))
 		e.counters["indices_merges_docs_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Merges.TotalDocs))
 
-		e.counters["indices_refresh_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Refresh.TotalTime))
+		e.counters["indices_refresh_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Refresh.TotalTime / 1000))
 		e.counters["indices_refresh_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Refresh.Total))
 
 		e.counters["indices_search_query_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTotal))
-		e.counters["indices_search_query_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTime))
+		e.counters["indices_search_query_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.QueryTime / 1000))
 
 		e.counters["indices_search_fetch_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTotal))
-		e.counters["indices_search_fetch_time_ms_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTime))
+		e.counters["indices_search_fetch_time_seconds_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Indices.Search.FetchTime / 1000))
 
 		// Transport Stats
 		e.counters["transport_rx_packets_total"].WithLabelValues(allStats.ClusterName, stats.Host).Set(float64(stats.Transport.RxCount))
