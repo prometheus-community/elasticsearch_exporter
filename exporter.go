@@ -173,7 +173,7 @@ var (
 	clusterHealthStatusDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "cluster_health", "status"),
 		"Whether all primary and replica shards are allocated.",
-		[]string{"cluster","color"}, nil)
+		[]string{"cluster", "color"}, nil)
 	clusterHealthStatusIsYellowDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "cluster_health", "status_is_yellow"),
 		"Whether all primary and replica shards are allocated.",
@@ -500,28 +500,22 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(clusterHealthRelocatingShardsDesc, prometheus.GaugeValue, float64(clusterHealth.RelocatingShards), clusterHealth.ClusterName)
 	ch <- prometheus.MustNewConstMetric(clusterHealthUnassignedShardsDesc, prometheus.GaugeValue, float64(clusterHealth.UnassignedShards), clusterHealth.ClusterName)
 
-	healthStatus := 0.0
-	statusIsGreen := 0.0
-	if clusterHealth.Status == "green" {
+	var statusIsGreen, statusIsYellow, statusIsRed, healthStatus float64
+	switch clusterHealth.Status {
+	case "green":
 		statusIsGreen = 1.0
 		healthStatus = 0.0
-	}
-	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsGreenDesc, prometheus.GaugeValue, statusIsGreen, clusterHealth.ClusterName)
-
-	statusIsYellow := 0.0
-	if clusterHealth.Status == "yellow" {
+	case "yellow":
 		statusIsYellow = 1.0
 		healthStatus = 1.0
-	}
-	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsYellowDesc, prometheus.GaugeValue, statusIsYellow, clusterHealth.ClusterName)
-
-	statusIsRed := 0.0
-	if clusterHealth.Status == "red" {
+	case "red":
 		statusIsRed = 1.0
 		healthStatus = 2.0
 	}
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsGreenDesc, prometheus.GaugeValue, statusIsGreen, clusterHealth.ClusterName)
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsYellowDesc, prometheus.GaugeValue, statusIsYellow, clusterHealth.ClusterName)
 	ch <- prometheus.MustNewConstMetric(clusterHealthStatusIsRedDesc, prometheus.GaugeValue, statusIsRed, clusterHealth.ClusterName)
-        ch <- prometheus.MustNewConstMetric(clusterHealthStatusDesc,prometheus.GaugeValue,healthStatus,clusterHealth.ClusterName,clusterHealth.Status)
+	ch <- prometheus.MustNewConstMetric(clusterHealthStatusDesc, prometheus.GaugeValue, healthStatus, clusterHealth.ClusterName, clusterHealth.Status)
 
 	timedOut := 0.0
 	if clusterHealth.TimedOut {
