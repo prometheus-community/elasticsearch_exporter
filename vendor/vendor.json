@@ -45,10 +45,10 @@
 			"revisionTime": "2016-05-17T13:00:36Z"
 		},
 		{
-			"checksumSHA1": "IwxsYOL9A/K9rvHvGxfyY37dusk=",
+			"checksumSHA1": "0LL9u9tfv1KPBjNEiMDP6q7lpog=",
 			"path": "github.com/prometheus/common/model",
-			"revision": "ba1c9185b796b0ca48e40c09edf7951b1a18f349",
-			"revisionTime": "2016-05-17T13:00:36Z"
+			"revision": "3233b24a36715a2fe36d162260457857a56d672d",
+			"revisionTime": "2017-06-15T07:20:16Z"
 		},
 		{
 			"checksumSHA1": "W218eJZPXJG783fUr/z6IaAZyes=",
@@ -57,5 +57,5 @@
 			"revisionTime": "2016-04-11T19:08:41Z"
 		}
 	],
-	"rootPath": "github.com/ewr/elasticsearch_exporter"
+	"rootPath": "github.com/justwatchcom/elasticsearch_exporter"
 }
