@@ -1,3 +1,5 @@
+go:
+    cgo: false
 repository:
     path: github.com/justwatchcom/elasticsearch_exporter
 build:
