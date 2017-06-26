@@ -149,6 +149,76 @@ func NewNodes(logger log.Logger, client *http.Client, url url.URL, all bool) *No
 				},
 				Labels: defaultNodeLabelsValues,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_memory", "used_bytes"),
+					"JVM memory currently used by area",
+					append(defaultNodeLabels, "area"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Mem.HeapUsed)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelsValues(cluster, node), "heap")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_memory", "used_bytes"),
+					"JVM memory currently used by area",
+					append(defaultNodeLabels, "area"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Mem.NonHeapUsed)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelsValues(cluster, node), "non-heap")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_memory", "max_bytes"),
+					"JVM memory max",
+					append(defaultNodeLabels, "area"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Mem.HeapMax)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelsValues(cluster, node), "heap")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_memory", "committed_bytes"),
+					"JVM memory currently committed by area",
+					append(defaultNodeLabels, "area"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Mem.HeapCommitted)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelsValues(cluster, node), "heap")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_memory", "committed_bytes"),
+					"JVM memory currently committed by area",
+					append(defaultNodeLabels, "area"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Mem.NonHeapCommitted)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelsValues(cluster, node), "non-heap")
+				},
+			},
 		},
 	}
 }
