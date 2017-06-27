@@ -477,6 +477,156 @@ func NewNodes(logger log.Logger, client *http.Client, url url.URL, all bool) *No
 					return append(defaultNodeLabelValues(cluster, node), "non-heap")
 				},
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
+					"Percent CPU used by process",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.CPU.Percent)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "mem_resident_size_bytes"),
+					"Resident memory in use by process in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.Memory.Resident)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "mem_share_size_bytes"),
+					"Shared memory in use by process in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.Memory.Share)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "mem_virtual_size_bytes"),
+					"Total virtual memory used in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.Memory.TotalVirtual)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "open_files_count"),
+					"Open file descriptors",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.OpenFD)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
+					"Process CPU time in seconds",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.CPU.Total / 1000)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "total")
+				},
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
+					"Process CPU time in seconds",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.CPU.Sys / 1000)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "sys")
+				},
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
+					"Process CPU time in seconds",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Process.CPU.User / 1000)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "user")
+				},
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "rx_packets_total"),
+					"Count of packets received",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.RxCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "rx_size_bytes_total"),
+					"Total number of bytes received",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.RxSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "tx_packets_total"),
+					"Count of packets sent",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.TxCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "tx_size_bytes_total"),
+					"Total number of bytes sent",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.TxSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
 		},
 		gcCollectionMetrics: []*gcCollectionMetric{
 			{
