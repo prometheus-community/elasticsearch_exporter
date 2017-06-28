@@ -15,6 +15,7 @@ const (
 )
 
 var (
+	colors                     = []string{"green", "yellow", "red"}
 	defaultClusterHealthLabels = []string{"cluster"}
 )
 
@@ -27,7 +28,7 @@ type clusterHealthMetric struct {
 type clusterHealthStatusMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
-	Value  func(clusterHealth clusterHealthResponse) float64
+	Value  func(clusterHealth clusterHealthResponse, color string) float64
 	Labels func(clusterName, color string) []string
 }
 
@@ -181,8 +182,8 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 				"Whether all primary and replica shards are allocated.",
 				[]string{"cluster", "color"}, nil,
 			),
-			Value: func(clusterHealth clusterHealthResponse) float64 {
-				if clusterHealth.Status == "green" {
+			Value: func(clusterHealth clusterHealthResponse, color string) float64 {
+				if clusterHealth.Status == color {
 					return 1
 				}
 				return 0
@@ -231,10 +232,12 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		)
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		c.statusMetric.Desc,
-		c.statusMetric.Type,
-		c.statusMetric.Value(clusterHealthResponse),
-		clusterHealthResponse.ClusterName, clusterHealthResponse.Status,
-	)
+	for _, color := range colors {
+		ch <- prometheus.MustNewConstMetric(
+			c.statusMetric.Desc,
+			c.statusMetric.Type,
+			c.statusMetric.Value(clusterHealthResponse, color),
+			clusterHealthResponse.ClusterName, color,
+		)
+	}
 }
