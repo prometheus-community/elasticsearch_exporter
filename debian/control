@@ -1,0 +1,8 @@
+Source: prometheus-elasticsearch-exporter
+Maintainer: justwatch <info@justwatch.com>
+Build-Depends: debhelper (>= 9), dh-systemd, dh-golang
+
+Package: prometheus-elasticsearch-exporter
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Export Elasticsearch service health to Prometheus.
