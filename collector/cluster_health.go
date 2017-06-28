@@ -14,26 +14,30 @@ const (
 	namespace = "elasticsearch"
 )
 
+var (
+	defaultClusterHealthLabels = []string{"cluster"}
+)
+
+type clusterHealthMetric struct {
+	Type  prometheus.ValueType
+	Desc  *prometheus.Desc
+	Value func(clusterHealth clusterHealthResponse) float64
+}
+
+type clusterHealthStatusMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(clusterHealth clusterHealthResponse) float64
+	Labels func(clusterName, color string) []string
+}
+
 type ClusterHealth struct {
 	logger log.Logger
 	client *http.Client
 	url    *url.URL
 
-	ActivePrimaryShards     *prometheus.Desc
-	ActiveShards            *prometheus.Desc
-	DelayedUnassignedShards *prometheus.Desc
-	InitializingShards      *prometheus.Desc
-	NumberOfDataNodes       *prometheus.Desc
-	NumberOfInFlightFetch   *prometheus.Desc
-	NumberOfNodes           *prometheus.Desc
-	NumberOfPendingTasks    *prometheus.Desc
-	RelocatingShards        *prometheus.Desc
-	StatusIsGreen           *prometheus.Desc
-	Status                  *prometheus.Desc
-	StatusIsYellow          *prometheus.Desc
-	StatusIsRed             *prometheus.Desc
-	TimedOut                *prometheus.Desc
-	UnassignedShards        *prometheus.Desc
+	metrics      []*clusterHealthMetric
+	statusMetric *clusterHealthStatusMetric
 }
 
 func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
@@ -44,86 +48,154 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 		client: client,
 		url:    url,
 
-		ActivePrimaryShards: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "active_primary_shards"),
-			"Tthe number of primary shards in your cluster. This is an aggregate total across all indices.",
-			[]string{"cluster"}, nil,
-		),
-		ActiveShards: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "active_shards"),
-			"Aggregate total of all shards across all indices, which includes replica shards.",
-			[]string{"cluster"}, nil,
-		),
-		DelayedUnassignedShards: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "delayed_unassigned_shards"),
-			"XXX WHAT DOES THIS MEAN?",
-			[]string{"cluster"}, nil,
-		),
-		InitializingShards: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "initializing_shards"),
-			"Count of shards that are being freshly created.",
-			[]string{"cluster"}, nil,
-		),
-		NumberOfDataNodes: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "number_of_data_nodes"),
-			"Number of data nodes in the cluster.",
-			[]string{"cluster"}, nil,
-		),
-		NumberOfInFlightFetch: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "number_of_in_flight_fetch"),
-			"The number of ongoing shard info requests.",
-			[]string{"cluster"}, nil,
-		),
-		NumberOfNodes: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "number_of_nodes"),
-			"Number of nodes in the cluster.",
-			[]string{"cluster"}, nil,
-		),
-		NumberOfPendingTasks: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "number_of_pending_tasks"),
-			"XXX WHAT DOES THIS MEAN?",
-			[]string{"cluster"}, nil,
-		),
-		RelocatingShards: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "relocating_shards"),
-			"The number of shards that are currently moving from one node to another node.",
-			[]string{"cluster"}, nil,
-		),
-		StatusIsGreen: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "status_is_green"),
-			"Whether all primary and replica shards are allocated.",
-			[]string{"cluster"}, nil,
-		),
-		Status: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "status"),
-			"Whether all primary and replica shards are allocated.",
-			[]string{"cluster", "color"}, nil,
-		),
-		StatusIsYellow: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "status_is_yellow"),
-			"Whether all primary and replica shards are allocated.",
-			[]string{"cluster"}, nil,
-		),
-		StatusIsRed: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "status_is_red"),
-			"Whether all primary and replica shards are allocated.",
-			[]string{"cluster"}, nil,
-		),
-		TimedOut: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "timed_out"),
-			"XXX WHAT DOES THIS MEAN?",
-			[]string{"cluster"}, nil,
-		),
-		UnassignedShards: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "unassigned_shards"),
-			"The number of shards that exist in the cluster state, but cannot be found in the cluster itself.",
-			[]string{"cluster"}, nil,
-		),
+		metrics: []*clusterHealthMetric{
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "active_primary_shards"),
+					"Tthe number of primary shards in your cluster. This is an aggregate total across all indices.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.ActivePrimaryShards)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "active_shards"),
+					"Aggregate total of all shards across all indices, which includes replica shards.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.ActiveShards)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "delayed_unassigned_shards"),
+					"XXX WHAT DOES THIS MEAN?",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.DelayedUnassignedShards)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "initializing_shards"),
+					"Count of shards that are being freshly created.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.InitializingShards)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "number_of_data_nodes"),
+					"Number of data nodes in the cluster.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.NumberOfDataNodes)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "number_of_in_flight_fetch"),
+					"The number of ongoing shard info requests.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.NumberOfInFlightFetch)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "number_of_nodes"),
+					"Number of nodes in the cluster.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.NumberOfNodes)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "number_of_pending_tasks"),
+					"XXX WHAT DOES THIS MEAN?",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.NumberOfPendingTasks)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "relocating_shards"),
+					"The number of shards that are currently moving from one node to another node.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.RelocatingShards)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "timed_out"),
+					"XXX WHAT DOES THIS MEAN?",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					if clusterHealth.TimedOut {
+						return 1
+					}
+					return 0
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "unassigned_shards"),
+					"The number of shards that exist in the cluster state, but cannot be found in the cluster itself.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.UnassignedShards)
+				},
+			},
+		},
+		statusMetric: &clusterHealthStatusMetric{
+			Type: prometheus.GaugeValue,
+			Desc: prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, subsystem, "status"),
+				"Whether all primary and replica shards are allocated.",
+				[]string{"cluster", "color"}, nil,
+			),
+			Value: func(clusterHealth clusterHealthResponse) float64 {
+				if clusterHealth.Status == "green" {
+					return 1
+				}
+				return 0
+			},
+		},
 	}
 }
 
 func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.Status
+	for _, metric := range c.metrics {
+		ch <- metric.Desc
+	}
+	ch <- c.statusMetric.Desc
 }
 
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
@@ -150,97 +222,19 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	cluster := clusterHealthResponse.ClusterName
-
-	ch <- prometheus.MustNewConstMetric(
-		c.ActivePrimaryShards,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.ActivePrimaryShards),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.ActiveShards,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.ActiveShards),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.DelayedUnassignedShards,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.DelayedUnassignedShards),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.InitializingShards,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.InitializingShards),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.NumberOfDataNodes,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.NumberOfDataNodes),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.NumberOfInFlightFetch,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.NumberOfInFlightFetch),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.NumberOfNodes,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.NumberOfNodes),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.NumberOfPendingTasks,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.NumberOfPendingTasks),
-		cluster,
-	)
-
-	ch <- prometheus.MustNewConstMetric(
-		c.RelocatingShards,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.RelocatingShards),
-		cluster,
-	)
-
-	var statusValue float64
-	if clusterHealthResponse.Status == "green" {
-		statusValue = 1.0
+	for _, metric := range c.metrics {
+		ch <- prometheus.MustNewConstMetric(
+			metric.Desc,
+			metric.Type,
+			metric.Value(clusterHealthResponse),
+			clusterHealthResponse.ClusterName,
+		)
 	}
-	ch <- prometheus.MustNewConstMetric(
-		c.Status,
-		prometheus.GaugeValue,
-		statusValue,
-		cluster, clusterHealthResponse.Status,
-	)
-
-	var timedOut float64
-	if clusterHealthResponse.TimedOut {
-		timedOut = 1.0
-	}
-	ch <- prometheus.MustNewConstMetric(
-		c.TimedOut,
-		prometheus.GaugeValue,
-		timedOut,
-		cluster,
-	)
 
 	ch <- prometheus.MustNewConstMetric(
-		c.UnassignedShards,
-		prometheus.GaugeValue,
-		float64(clusterHealthResponse.UnassignedShards),
-		cluster,
+		c.statusMetric.Desc,
+		c.statusMetric.Type,
+		c.statusMetric.Value(clusterHealthResponse),
+		clusterHealthResponse.ClusterName, clusterHealthResponse.Status,
 	)
 }
