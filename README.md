@@ -12,8 +12,20 @@ https://github.com/justwatchcom/elasticsearch_exporter/releases
 #### Docker
 
 ```bash
-docker pull justwatch/elasticsearch_exporter:0.3.2
-docker run --rm -p 9108:9108 justwatch/elasticsearch_exporter:0.3.2
+docker pull justwatch/elasticsearch_exporter:1.0.0-rc1
+docker run --rm -p 9108:9108 justwatch/elasticsearch_exporter:1.0.0-rc1
+```
+
+Example `docker-compose.yml`:
+
+```yaml
+elasticsearch_exporter:
+    image: justwatch/elasticsearch_exporter:1.0.0-rc1
+    environment:
+    - '-es.uri=http://elasticsearch:9200'
+    restart: always
+    ports:
+    - "127.0.0.1:9108:9108"
 ```
 
 ### Configuration
@@ -24,7 +36,7 @@ elasticsearch_exporter --help
 
 | Argument              | Description |
 | --------              | ----------- |
-| es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:8500`, for instance), or the address of a remote Elasticsearch server.
+| es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server.
 | es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
 | es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection.
@@ -32,11 +44,6 @@ elasticsearch_exporter --help
 | es.client-cert        | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.
 | web.listen-address    | Address to listen on for web interface and telemetry. |
 | web.telemetry-path    | Path under which to expose metrics. |
-
-__NOTE:__ We support pulling stats for all nodes at once, but in production
-this is unlikely to be the way you actually want to run the system. It is much
-better to run an exporter on each Elasticsearch node to remove a single point
-of failure and improve the connection between operation and reporting.
 
 ### Metrics
 
@@ -119,36 +126,30 @@ of failure and improve the connection between operation and reporting.
 | elasticsearch_transport_rx_size_bytes_total                | counter   | 1            | Total number of bytes received
 | elasticsearch_transport_tx_packets_total                   | counter   | 1            | Count of packets sent
 | elasticsearch_transport_tx_size_bytes_total                | counter   | 1            | Total number of bytes sent
+
 ### Alerts & Recording Rules
 
-As example alerts and recording rules I have copied my `.rules` file to this repository.  
-Please check [elasticsearch.rules](examples/prometheus/elasticsearch.rules) in the examples folder.
+We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
-### Development
+## Credit & License
 
-You obviously should get the code
-
-```bash
-go get -u github.com/justwatchcom/elasticsearch_exporter
-```
-
-Now during development I always run:
-
-```bash
-make build && ./elasticsearch_exporter
-```
-
-### Elasticsearch 2.0
-
-Parts of the node stats struct changed for Elasticsearch 2.0. For the moment
-we'll attempt to report important values for both.
-
-* `indices.filter_cache` becomes `indices.query_cache`
-* `indices.query_cache` becomes `indices.request_cache`
-* `process.cpu` lost `user` and `sys` time, so we're now reporting `total`
-* Added `process.cpu.max_file_descriptors`
-
-### Original author
+`elasticsearch_exporter` is maintained by the nice folks from [JustWatch](https://www.justwatch.com/)
+and licensed under the terms of the Apache license.
 
 This package was originally created and mainted by [Eric Richardson](https://github.com/ewr),
 who transferred this repository to us in January 2017.
+
+Maintainers of this repository:
+
+* Matthias Loibl <matthias.loibl@justwatch.com> @metalmatze
+* Dominik Schulz <dominik.schulz@justwatch.com> @dominikschulz
+
+Please refer to the Git commit log for a complete list of contributors.
+
+## Contributing
+
+We welcome any contributions. Please fork the project on GitHub and open
+Pull Requests for any proposed changes.
+
+Please note that we will not merge any changes that encourage insecure
+behaviour. If in doubt please open an Issue first to discuss your proposal.

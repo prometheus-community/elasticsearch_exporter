@@ -43,9 +43,17 @@ build: promu
 	@echo ">> building binaries"
 	@$(PROMU) build --prefix $(PREFIX)
 
+crossbuild: promu
+	@echo ">> cross-building binaries"
+	@$(PROMU) crossbuild
+
 tarball: promu
 	@echo ">> building release tarball"
 	@$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
+
+tarballs: promu
+	@echo ">> building release tarballs"
+	@$(PROMU) tarballs --prefix $(PREFIX) $(BIN_DIR)
 
 docker:
 	@echo ">> building docker image"
