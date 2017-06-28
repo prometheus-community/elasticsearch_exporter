@@ -3,32 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
-	_ "net/http/pprof"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 
-	"crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
-
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
-)
-
-const (
-	namespace = "elasticsearch"
-	indexHTML = `
-	<html>
-		<head>
-			<title>Elasticsearch Exporter</title>
-		</head>
-		<body>
-			<h1>Elasticsearch Exporter</h1>
-			<p>
-			<a href='%s'>Metrics</a>
-			</p>
-		</body>
-	</html>`
 )
 
 func main() {
@@ -44,60 +28,64 @@ func main() {
 	)
 	flag.Parse()
 
-	nodesStatsURI := *esURI + "/_nodes/_local/stats"
-	if *esAllNodes {
-		nodesStatsURI = *esURI + "/_nodes/stats"
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+
+	esURL, err := url.Parse(*esURI)
+	if err != nil {
+		level.Error(logger).Log(
+			"msg", "failed to parse es.uri",
+			"err", err,
+		)
+		os.Exit(1)
 	}
-	clusterHealthURI := *esURI + "/_cluster/health"
 
-	exporter := NewExporter(nodesStatsURI, clusterHealthURI, *esTimeout, *esAllNodes, createElasticSearchTLSConfig(*esCA, *esClientCert, *esClientPrivateKey))
-	prometheus.MustRegister(exporter)
+	// returns nil if not provided and falls back to simple TCP.
+	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey)
 
-	log.Println("Starting Server:", *listenAddress)
+	httpClient := &http.Client{
+		Timeout: *esTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
+
+	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+	prometheus.MustRegister(collector.NewNodes(logger, httpClient, *esURL, *esAllNodes))
+
 	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(fmt.Sprintf(indexHTML, *metricsPath)))
-	})
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
-}
+	http.HandleFunc("/", IndexHandler(*metricsPath))
 
-func createElasticSearchTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string) *tls.Config {
-	if len(pemFile) <= 0 {
-		return nil
-	}
-	rootCerts, err := loadCertificatesFrom(pemFile)
-	if err != nil {
-		log.Fatalf("Couldn't load root certificate from %s. Got %s.", pemFile, err)
-	}
-	if len(pemCertFile) > 0 && len(pemPrivateKeyFile) > 0 {
-		clientPrivateKey, err := loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile)
-		if err != nil {
-			log.Fatalf("Couldn't setup client authentication. Got %s.", err)
-		}
-		return &tls.Config{
-			RootCAs:      rootCerts,
-			Certificates: []tls.Certificate{*clientPrivateKey},
-		}
-	}
-	return &tls.Config{
-		RootCAs: rootCerts,
+	level.Info(logger).Log(
+		"msg", "starting elasticsearch_exporter",
+		"addr", *listenAddress,
+	)
+
+	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
+		level.Error(logger).Log(
+			"msg", "http server quit",
+			"err", err,
+		)
 	}
 }
 
-func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
-	caCert, err := ioutil.ReadFile(pemFile)
-	if err != nil {
-		return nil, err
-	}
-	certificates := x509.NewCertPool()
-	certificates.AppendCertsFromPEM(caCert)
-	return certificates, nil
-}
+// IndexHandler returns a http handler with the correct metricsPath
+func IndexHandler(metricsPath string) http.HandlerFunc {
+	indexHTML := `
+<html>
+	<head>
+		<title>Elasticsearch Exporter</title>
+	</head>
+	<body>
+		<h1>Elasticsearch Exporter</h1>
+		<p>
+			<a href='%s'>Metrics</a>
+		</p>
+	</body>
+</html>
+`
+	index := []byte(fmt.Sprintf(strings.TrimSpace(indexHTML), metricsPath))
 
-func loadPrivateKeyFrom(pemCertFile, pemPrivateKeyFile string) (*tls.Certificate, error) {
-	privateKey, err := tls.LoadX509KeyPair(pemCertFile, pemPrivateKeyFile)
-	if err != nil {
-		return nil, err
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Write(index)
 	}
-	return &privateKey, nil
 }
