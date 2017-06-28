@@ -1,14 +1,21 @@
 language: go
 
+sudo: required
+
+services:
+- docker
+
 go:
   - 1.8.x
-  - tip
 
 script:
   - make style
   - make vet
   - make test
   - make build
+  - make docker
+  - make push
+
 
 matrix:
   allow_failures:

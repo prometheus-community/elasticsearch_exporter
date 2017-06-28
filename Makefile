@@ -18,7 +18,7 @@ pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
 PREFIX                  ?= $(shell pwd)
 BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_NAME       ?= elasticsearch-exporter
-DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
+DOCKER_IMAGE_TAG        ?= $(TRAVIS_BRANCH)
 
 
 all: format build test
@@ -50,6 +50,11 @@ tarball: promu
 docker:
 	@echo ">> building docker image"
 	@docker build -t "$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)" .
+
+push:
+	@echo ">> pushing docker image"
+	@docker login -u="$(DOCKER_USERNAME)" -p="$(DOCKER_PASSWORD)" quay.io
+	@docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
 
 promu:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
