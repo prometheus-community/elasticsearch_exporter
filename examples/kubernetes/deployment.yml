@@ -11,9 +11,6 @@ spec:
     type: RollingUpdate
   template:
     metadata:
-      annotations:
-        prometheus.io/port: "9108"
-        prometheus.io/scrape: "true"
       labels:
         app: p8s-elastic-exporter
     spec:
@@ -25,7 +22,7 @@ spec:
         - /bin/elasticsearch_exporter
         - -es.uri=http://elasticsearch:9200
         - -es.all=true
-        image: juswatch/elasticsearch_exporter:0.3.3
+        image: justwatch/elasticsearch_exporter:1.0.0-rc1
         securityContext:
           capabilities:
             drop:

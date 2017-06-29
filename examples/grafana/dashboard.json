@@ -12,116 +12,6 @@
   "rows": [
     {
       "collapse": false,
-      "height": "50",
-      "panels": [
-        {
-          "cacheTimeout": null,
-          "colorBackground": true,
-          "colorValue": false,
-          "colors": [
-            "rgba(50, 172, 45, 0.97)",
-            "rgba(126, 110, 0, 0.89)",
-            "rgba(255, 0, 0, 0.88)"
-          ],
-          "datasource": "$server",
-          "decimals": null,
-          "editable": true,
-          "error": false,
-          "format": "none",
-          "gauge": {
-            "maxValue": 100,
-            "minValue": 0,
-            "show": false,
-            "thresholdLabels": false,
-            "thresholdMarkers": true
-          },
-          "height": "",
-          "hideTimeOverride": false,
-          "id": 41,
-          "interval": null,
-          "links": [],
-          "mappingType": 1,
-          "mappingTypes": [
-            {
-              "name": "value to text",
-              "value": 1
-            },
-            {
-              "name": "range to text",
-              "value": 2
-            }
-          ],
-          "maxDataPoints": 100,
-          "nullPointMode": "connected",
-          "nullText": null,
-          "postfix": "",
-          "postfixFontSize": "50%",
-          "prefix": "",
-          "prefixFontSize": "50%",
-          "rangeMaps": [
-            {
-              "from": "null",
-              "text": "N/A",
-              "to": "null"
-            }
-          ],
-          "span": 12,
-          "sparkline": {
-            "fillColor": "rgba(31, 118, 189, 0.18)",
-            "full": false,
-            "lineColor": "rgb(31, 120, 193)",
-            "show": false
-          },
-          "targets": [
-            {
-              "expr": "sum(elasticsearch_cluster_health_status{env=\"stage\",color=\"red\"}*3)+sum(elasticsearch_cluster_health_status{env=\"stage\",color=\"yellow\"}*2)+sum(elasticsearch_cluster_health_status{env=\"stage\",color=\"green\"}*1)",
-              "hide": false,
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "metric": "",
-              "refId": "A",
-              "step": 1800
-            }
-          ],
-          "thresholds": "2,3,4",
-          "title": "",
-          "transparent": false,
-          "type": "singlestat",
-          "valueFontSize": "80%",
-          "valueMaps": [
-            {
-              "op": "=",
-              "text": "N/A",
-              "value": "null"
-            },
-            {
-              "op": "=",
-              "text": "OK",
-              "value": "1"
-            },
-            {
-              "op": "=",
-              "text": "WARNING",
-              "value": "2"
-            },
-            {
-              "op": "=",
-              "text": "ALARM",
-              "value": "3"
-            }
-          ],
-          "valueName": "current"
-        }
-      ],
-      "repeat": null,
-      "repeatIteration": null,
-      "repeatRowId": null,
-      "showTitle": false,
-      "title": "Dashboard Row",
-      "titleSize": "h6"
-    },
-    {
-      "collapse": false,
       "height": "100px",
       "panels": [
         {
@@ -181,7 +71,7 @@
           },
           "targets": [
             {
-              "expr": "sum(elasticsearch_cluster_health_number_of_nodes{env=\"$env\"})",
+              "expr": "sum(elasticsearch_cluster_health_number_of_nodes{cluster=~\"$cluster\"})",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -263,7 +153,7 @@
           },
           "targets": [
             {
-              "expr": "sum(node_memory_MemTotal{env=\"$env\", cluster=\"cluster\"})",
+              "expr": "sum(node_memory_MemTotal{cluster=~\"$cluster\"})",
               "intervalFactor": 2,
               "legendFormat": "",
               "metric": "",
@@ -342,7 +232,7 @@
           },
           "targets": [
             {
-              "expr": "sum(node_memory_MemFree{env=\"$env\", cluster=\"cluster\"})",
+              "expr": "sum(node_memory_MemFree{cluster=~\"$cluster\"})",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "A",
@@ -420,7 +310,7 @@
           },
           "targets": [
             {
-              "expr": "sum(node_memory_MemAvailable{env=\"$env\", cluster=\"cluster\"})",
+              "expr": "sum(node_memory_MemAvailable{cluster=~\"$cluster\"})",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "A",
@@ -484,7 +374,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(elasticsearch_thread_pool_active_count{env=\"$env\", type!=\"management\"}) by (type)",
+              "expr": "sum(elasticsearch_thread_pool_active_count{cluster=~\"$cluster\", type!=\"management\"}) by (type)",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "Type: {{type}}",
@@ -565,7 +455,7 @@
                 }
               ],
               "dsType": "elasticsearch",
-              "expr": "avg(irate(node_cpu{cluster=\"cluster\"}[10s])) by(mode) *100",
+              "expr": "avg(irate(node_cpu{cluster=~\"$cluster\"}[10s])) by(mode) *100",
               "intervalFactor": 2,
               "legendFormat": "{{mode}}",
               "metric": "elasticsearch_breakers_tripped",
@@ -659,7 +549,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(elasticsearch_indices_docs{env=\"$env\"})",
+              "expr": "sum(elasticsearch_indices_docs{cluster=~\"$cluster\"})",
               "intervalFactor": 2,
               "legendFormat": "Documents",
               "refId": "A",
@@ -732,7 +622,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(elasticsearch_indices_store_size_bytes{env=\"$env\"})",
+              "expr": "sum(elasticsearch_indices_store_size_bytes{cluster=~\"$cluster\"})",
               "intervalFactor": 2,
               "legendFormat": "Index Size",
               "refId": "A",
@@ -817,14 +707,14 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(elasticsearch_transport_rx_packets_total{env=\"$env\"}[5m]))",
+              "expr": "sum(rate(elasticsearch_transport_rx_packets_total{cluster=~\"$cluster\"}[5m]))",
               "intervalFactor": 2,
               "legendFormat": "RX",
               "refId": "A",
               "step": 240
             },
             {
-              "expr": "sum(rate(elasticsearch_transport_tx_packets_total{env=\"$env\"}[5m])) * -1",
+              "expr": "sum(rate(elasticsearch_transport_tx_packets_total{cluster=~\"$cluster\"}[5m])) * -1",
               "intervalFactor": 2,
               "legendFormat": "TX",
               "refId": "B",
@@ -899,7 +789,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "avg_over_time(elasticsearch_jvm_memory_used_bytes{area=\"heap\",env=\"$env\"}[15m]) / elasticsearch_jvm_memory_max_bytes{area=\"heap\",env=\"$env\"}",
+              "expr": "avg_over_time(elasticsearch_jvm_memory_used_bytes{area=\"heap\",cluster=~\"$cluster\"}[15m]) / elasticsearch_jvm_memory_max_bytes{area=\"heap\",cluster=~\"$cluster\"}",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{ node }}",
@@ -958,78 +848,7 @@
         {
           "aliasColors": {},
           "bars": false,
-          "datasource": "Prometheus GCE",
-          "fill": 1,
-          "id": 62,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "rate(node_context_switches{cluster=\"cluster\"}[1m])",
-              "intervalFactor": 2,
-              "legendFormat": "cw {{ instance }}",
-              "refId": "A",
-              "step": 240
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Context Switches",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "Prometheus GCE",
+          "datasource": "$server",
           "editable": true,
           "error": false,
           "fill": 1,
@@ -1059,7 +878,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(elasticsearch_thread_pool_queue_count{env=\"$env\", type!=\"management\"}) by (type)",
+              "expr": "sum(elasticsearch_thread_pool_queue_count{cluster=~\"$cluster\", type!=\"management\"}) by (type)",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "Type: {{type}}",
@@ -1071,6 +890,80 @@
           "timeFrom": null,
           "timeShift": null,
           "title": "Queue Count",
+          "tooltip": {
+            "msResolution": true,
+            "shared": true,
+            "sort": 0,
+            "value_type": "cumulative"
+          },
+          "type": "graph",
+          "xaxis": {
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "datasource": "$server",
+          "editable": true,
+          "error": false,
+          "fill": 1,
+          "grid": {},
+          "id": 65,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "span": 6,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "irate(elasticsearch_jvm_gc_collection_seconds_sum{cluster=~\"$cluster\"}[1m])",
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "{{ node }} {{ gc }}",
+              "refId": "A",
+              "step": 240
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "GC seconds",
           "tooltip": {
             "msResolution": true,
             "shared": true,
@@ -1145,7 +1038,7 @@
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(elasticsearch_thread_pool_rejected_count{env=\"$env\", type!=\"management\"}[5m])",
+              "expr": "rate(elasticsearch_thread_pool_rejected_count{cluster=~\"$cluster\", type!=\"management\"}[5m])",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{ node }} {{type}}",
@@ -1157,80 +1050,6 @@
           "timeFrom": null,
           "timeShift": null,
           "title": "Thread pool rejections",
-          "tooltip": {
-            "msResolution": true,
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "short",
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ]
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "datasource": "$server",
-          "editable": true,
-          "error": false,
-          "fill": 1,
-          "grid": {},
-          "id": 65,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": true,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 2,
-          "links": [],
-          "nullPointMode": "connected",
-          "percentage": false,
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "span": 6,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "irate(elasticsearch_jvm_gc_collection_seconds_sum{env=\"$env\"}[1m])",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "{{ node }} {{ gc }}",
-              "refId": "A",
-              "step": 240
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "GC seconds",
           "tooltip": {
             "msResolution": true,
             "shared": true,
@@ -1280,62 +1099,9 @@
   "templating": {
     "list": [
       {
-        "allValue": null,
         "current": {
-          "selected": true,
-          "tags": [],
-          "text": "prod",
-          "value": "prod"
-        },
-        "datasource": null,
-        "hide": 0,
-        "includeAll": false,
-        "label": "Environment",
-        "multi": false,
-        "name": "env",
-        "options": [
-          {
-            "selected": true,
-            "text": "prod",
-            "value": "prod"
-          },
-          {
-            "selected": false,
-            "text": "stage",
-            "value": "stage"
-          }
-        ],
-        "query": "prod,stage",
-        "refresh": 0,
-        "type": "custom"
-      },
-      {
-        "allValue": null,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": "Prometheus",
-        "hide": 0,
-        "includeAll": true,
-        "label": null,
-        "multi": true,
-        "name": "node",
-        "options": [],
-        "query": "label_values(node_boot_time{env=\"$env\",role=\"elasticsearch\"},instance)",
-        "refresh": 1,
-        "regex": "/([^:]+)/",
-        "sort": 1,
-        "tagValuesQuery": null,
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "current": {
-          "text": "Prometheus",
-          "value": "Prometheus"
+          "text": "Prometheus GCE",
+          "value": "Prometheus GCE"
         },
         "hide": 0,
         "label": "Server",
@@ -1345,6 +1111,32 @@
         "refresh": 1,
         "regex": "",
         "type": "datasource"
+      },
+      {
+        "allValue": null,
+        "current": {
+          "tags": [],
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": "$server",
+        "hide": 0,
+        "includeAll": true,
+        "label": null,
+        "multi": true,
+        "name": "cluster",
+        "options": [],
+        "query": "label_values(elasticsearch_cluster_health_status,cluster)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       }
     ]
   },
@@ -1379,5 +1171,5 @@
   },
   "timezone": "utc",
   "title": "ElasticSearch Example",
-  "version": 7
+  "version": 9
 }

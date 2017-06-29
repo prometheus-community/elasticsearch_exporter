@@ -52,7 +52,7 @@ elasticsearch_exporter --help
 | elasticsearch_breakers_estimated_size_bytes                | gauge     | 4            | Estimated size in bytes of breaker
 | elasticsearch_breakers_limit_size_bytes                    | gauge     | 4            | Limit size in bytes for breaker
 | elasticsearch_breakers_tripped                             | gauge     | 4            | tripped for breaker
-| elasticsearch_cluster_health_active_primary_shards         | gauge     | 1            | Tthe number of primary shards in your cluster. This is an aggregate total across all indices.
+| elasticsearch_cluster_health_active_primary_shards         | gauge     | 1            | The number of primary shards in your cluster. This is an aggregate total across all indices.
 | elasticsearch_cluster_health_active_shards                 | gauge     | 1            | Aggregate total of all shards across all indices, which includes replica shards.
 | elasticsearch_cluster_health_delayed_unassigned_shards     | gauge     | 1            | XXX WHAT DOES THIS MEAN?
 | elasticsearch_cluster_health_initializing_shards           | gauge     | 1            | Count of shards that are being freshly created.
