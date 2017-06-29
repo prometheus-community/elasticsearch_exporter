@@ -14,18 +14,4 @@ ALERT ElasticsearchHeapTooHigh
   IF elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"} > 0.9
   FOR 15m
   LABELS {severity="critical"}
-  ANNOTATIONS {description="The heap in prod is over 90% for 15m", summary="ElasticSearch node {{$labels.node}} heap usage is high"}
-
-# warn if cluster is not green anymore
-ALERT ElasticsearchClusterNotGreen
-  IF elasticsearch_cluster_health_status{color="green"} < 1
-  FOR 15m
-  LABELS {severity="warning"}
-  ANNOTATIONS {description="For 15min the ElasticSearch cluster isn't GREEN", summary="ElasticSearch cluster in prod isn't GREEN anymore"}
-
-# alert if cluster is red
-ALERT ElasticsearchClusterRed
-  IF elasticsearch_cluster_health_status{color!="red"} < 1
-  FOR 15m
-  LABELS {severity="critical"}
-  ANNOTATIONS {description="For 15min the ElasticSearch cluster is RED", summary="ElasticSearch cluster in prod is RED"}
+  ANNOTATIONS {description="The heap usage is over 90% for 15m", summary="ElasticSearch node {{$labels.node}} heap usage is high"}
