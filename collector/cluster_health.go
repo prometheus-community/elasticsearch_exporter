@@ -76,7 +76,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "delayed_unassigned_shards"),
-					"XXX WHAT DOES THIS MEAN?",
+					"Shards delayed to reduce reallocation overhead",
 					defaultClusterHealthLabels, nil,
 				),
 				Value: func(clusterHealth clusterHealthResponse) float64 {
@@ -131,7 +131,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "number_of_pending_tasks"),
-					"XXX WHAT DOES THIS MEAN?",
+					"Cluster level changes which have not yet been executed",
 					defaultClusterHealthLabels, nil,
 				),
 				Value: func(clusterHealth clusterHealthResponse) float64 {
@@ -153,7 +153,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "timed_out"),
-					"XXX WHAT DOES THIS MEAN?",
+					"Number of cluster health checks timed out",
 					defaultClusterHealthLabels, nil,
 				),
 				Value: func(clusterHealth clusterHealthResponse) float64 {

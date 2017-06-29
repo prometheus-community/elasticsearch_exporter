@@ -54,15 +54,15 @@ elasticsearch_exporter --help
 | elasticsearch_breakers_tripped                             | gauge     | 4            | tripped for breaker
 | elasticsearch_cluster_health_active_primary_shards         | gauge     | 1            | The number of primary shards in your cluster. This is an aggregate total across all indices.
 | elasticsearch_cluster_health_active_shards                 | gauge     | 1            | Aggregate total of all shards across all indices, which includes replica shards.
-| elasticsearch_cluster_health_delayed_unassigned_shards     | gauge     | 1            | XXX WHAT DOES THIS MEAN?
+| elasticsearch_cluster_health_delayed_unassigned_shards     | gauge     | 1            | Shards delayed to reduce reallocation overhead
 | elasticsearch_cluster_health_initializing_shards           | gauge     | 1            | Count of shards that are being freshly created.
 | elasticsearch_cluster_health_number_of_data_nodes          | gauge     | 1            | Number of data nodes in the cluster.
 | elasticsearch_cluster_health_number_of_in_flight_fetch     | gauge     | 1            | The number of ongoing shard info requests.
 | elasticsearch_cluster_health_number_of_nodes               | gauge     | 1            | Number of nodes in the cluster.
-| elasticsearch_cluster_health_number_of_pending_tasks       | gauge     | 1            | XXX WHAT DOES THIS MEAN?
+| elasticsearch_cluster_health_number_of_pending_tasks       | gauge     | 1            | Cluster level changes which have not yet been executed
 | elasticsearch_cluster_health_relocating_shards             | gauge     | 1            | The number of shards that are currently moving from one node to another node.
 | elasticsearch_cluster_health_status                        | gauge     | 3            | Whether all primary and replica shards are allocated.
-| elasticsearch_cluster_health_timed_out                     | gauge     | 1            | XXX WHAT DOES THIS MEAN?
+| elasticsearch_cluster_health_timed_out                     | gauge     | 1            | Number of cluster health checks timed out
 | elasticsearch_cluster_health_unassigned_shards             | gauge     | 1            | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
 | elasticsearch_filesystem_data_available_bytes              | gauge     | 1            | Available space on block device in bytes
 | elasticsearch_filesystem_data_free_bytes                   | gauge     | 1            | Free space on block device in bytes
