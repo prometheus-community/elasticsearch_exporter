@@ -1100,8 +1100,8 @@
     "list": [
       {
         "current": {
-          "text": "Prometheus GCE",
-          "value": "Prometheus GCE"
+          "text": "Prometheus",
+          "value": "Prometheus"
         },
         "hide": 0,
         "label": "Server",
