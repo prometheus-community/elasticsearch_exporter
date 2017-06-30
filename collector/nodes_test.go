@@ -84,7 +84,7 @@ func (h *basicAuth) checkAuth(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	if h.User == pair[0] && h.Pass == pair[1] {
-		return false
+		return true
 	}
 	return false
 }
