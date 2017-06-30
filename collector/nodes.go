@@ -2,6 +2,7 @@ package collector
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -65,7 +66,7 @@ type filesystemMetric struct {
 type Nodes struct {
 	logger log.Logger
 	client *http.Client
-	url    url.URL
+	url    *url.URL
 	all    bool
 
 	nodeMetrics         []*nodeMetric
@@ -75,7 +76,7 @@ type Nodes struct {
 	filesystemMetrics   []*filesystemMetric
 }
 
-func NewNodes(logger log.Logger, client *http.Client, url url.URL, all bool) *Nodes {
+func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *Nodes {
 	return &Nodes{
 		logger: logger,
 		client: client,
@@ -964,30 +965,36 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
-	path := "/_nodes/_local/stats"
-	if c.all {
-		path = "/_nodes/stats"
-	}
-	c.url.Path = path
+func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
+	var nsr nodeStatsResponse
 
-	res, err := c.client.Get(c.url.String())
+	u := *c.url
+	u.Path = "/_nodes/_local/stats"
+	if c.all {
+		u.Path = "/_nodes/stats"
+	}
+
+	res, err := c.client.Get(u.String())
 	if err != nil {
-		level.Warn(c.logger).Log(
-			"msg", "failed to get nodes",
-			"url", c.url.String(),
-			"err", err,
-		)
-		return
+		return nsr, fmt.Errorf("failed to get node stats from %s: %s", u.String(), err)
 	}
 	defer res.Body.Close()
 
-	dec := json.NewDecoder(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return nsr, fmt.Errorf("HTTP Request %s failed with code %d", u.String(), res.StatusCode)
+	}
 
-	var nodeStatsResponse NodeStatsResponse
-	if err := dec.Decode(&nodeStatsResponse); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
+		return nsr, err
+	}
+	return nsr, nil
+}
+
+func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
+	nodeStatsResponse, err := c.fetchAndDecodeNodeStats()
+	if err != nil {
 		level.Warn(c.logger).Log(
-			"msg", "failed to decode nodes",
+			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
 		return

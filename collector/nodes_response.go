@@ -2,8 +2,8 @@ package collector
 
 import "encoding/json"
 
-// NodeStatsResponse is a representation of a Elasticsearch Node Stats
-type NodeStatsResponse struct {
+// nodeStatsResponse is a representation of a Elasticsearch Node Stats
+type nodeStatsResponse struct {
 	ClusterName string `json:"cluster_name"`
 	Nodes       map[string]NodeStatsNodeResponse
 }

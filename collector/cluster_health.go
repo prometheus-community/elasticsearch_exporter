@@ -2,6 +2,7 @@ package collector
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -199,25 +200,33 @@ func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.statusMetric.Desc
 }
 
-func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
-	c.url.Path = "/_cluster/health"
-	res, err := c.client.Get(c.url.String())
+func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, error) {
+	var chr clusterHealthResponse
+
+	u := *c.url
+	u.Path = "/_cluster/health"
+	res, err := c.client.Get(u.String())
 	if err != nil {
-		level.Warn(c.logger).Log(
-			"msg", "failed to get cluster health",
-			"url", c.url.String(),
-			"err", err,
-		)
-		return
+		return chr, fmt.Errorf("failed to get cluster health from %s: %s", u.String(), err)
 	}
 	defer res.Body.Close()
 
-	dec := json.NewDecoder(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return chr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
 
-	var clusterHealthResponse clusterHealthResponse
-	if err := dec.Decode(&clusterHealthResponse); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&chr); err != nil {
+		return chr, err
+	}
+
+	return chr, nil
+}
+
+func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
+	clusterHealthResponse, err := c.fetchAndDecodeClusterHealth()
+	if err != nil {
 		level.Warn(c.logger).Log(
-			"msg", "failed to decode cluster health",
+			"msg", "failed to fetch and decode cluster health",
 			"err", err,
 		)
 		return
