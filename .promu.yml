@@ -15,6 +15,7 @@ tarball:
     files:
         - LICENSE
         - README.md
+        - CHANGELOG.md
         - examples/grafana/dashboard.json
         - examples/kubernetes/deployment.yml
         - examples/prometheus/elasticsearch.rules
