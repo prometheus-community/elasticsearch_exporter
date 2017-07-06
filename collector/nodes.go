@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -74,6 +75,12 @@ type Nodes struct {
 	breakerMetrics      []*breakerMetric
 	threadPoolMetrics   []*threadPoolMetric
 	filesystemMetrics   []*filesystemMetric
+
+	totalScrapesMetric              prometheus.Counter
+	totalScrapeErrorsMetric         prometheus.Counter
+	lastScrapeErrorMetric           prometheus.Gauge
+	lastScrapeTimestampMetric       prometheus.Gauge
+	lastScrapeDurationSecondsMetric prometheus.Gauge
 }
 
 func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *Nodes {
@@ -947,6 +954,62 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				Labels: defaultFilesystemLabelValues,
 			},
 		},
+
+		totalScrapesMetric: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Subsystem: "nodes",
+				Name:      "scrapes_total",
+				Help:      "Total number of times ElasticSearch nodes was scraped for metrics.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		totalScrapeErrorsMetric: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Subsystem: "nodes",
+				Name:      "scrape_errors_total",
+				Help:      "Total number of times an error occured scraping ElasticSearch nodes.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		lastScrapeErrorMetric: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "nodes",
+				Name:      "last_scrape_error",
+				Help:      "Whether the last scrape of metrics from ElasticSearch nodes resulted in an error (1 for error, 0 for success).",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		lastScrapeTimestampMetric: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "nodes",
+				Name:      "last_scrape_timestamp",
+				Help:      "Number of seconds since 1970 since last scrape from ElasticSearch nodes.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		lastScrapeDurationSecondsMetric: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "nodes",
+				Name:      "last_scrape_duration_seconds",
+				Help:      "Duration of the last scrape from ElasticSearch nodes.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
 	}
 }
 
@@ -991,13 +1054,18 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 }
 
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
+	begun := time.Now()
+	scrapeError := 0
+	c.totalScrapesMetric.Inc()
+
 	nodeStatsResponse, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
 		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
-		return
+		scrapeError = 1
+		c.totalScrapeErrorsMetric.Inc()
 	}
 
 	for _, node := range nodeStatsResponse.Nodes {
@@ -1058,4 +1126,16 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+
+	c.totalScrapesMetric.Collect(ch)
+	c.totalScrapeErrorsMetric.Collect(ch)
+
+	c.lastScrapeErrorMetric.Set(float64(scrapeError))
+	c.lastScrapeErrorMetric.Collect(ch)
+
+	c.lastScrapeTimestampMetric.Set(float64(time.Now().Unix()))
+	c.lastScrapeTimestampMetric.Collect(ch)
+
+	c.lastScrapeDurationSecondsMetric.Set(time.Since(begun).Seconds())
+	c.lastScrapeDurationSecondsMetric.Collect(ch)
 }

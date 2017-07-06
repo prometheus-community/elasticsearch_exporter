@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -40,6 +41,12 @@ type ClusterHealth struct {
 
 	metrics      []*clusterHealthMetric
 	statusMetric *clusterHealthStatusMetric
+
+	totalScrapesMetric              prometheus.Counter
+	totalScrapeErrorsMetric         prometheus.Counter
+	lastScrapeErrorMetric           prometheus.Gauge
+	lastScrapeTimestampMetric       prometheus.Gauge
+	lastScrapeDurationSecondsMetric prometheus.Gauge
 }
 
 func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
@@ -190,6 +197,61 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 				return 0
 			},
 		},
+		totalScrapesMetric: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Subsystem: "cluster_health",
+				Name:      "scrapes_total",
+				Help:      "Total number of times ElasticSearch cluster health was scraped for metrics.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		totalScrapeErrorsMetric: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Subsystem: "cluster_health",
+				Name:      "scrape_errors_total",
+				Help:      "Total number of times an error occured scraping ElasticSearch cluster health.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		lastScrapeErrorMetric: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "cluster_health",
+				Name:      "last_scrape_error",
+				Help:      "Whether the last scrape of metrics from ElasticSearch cluster health resulted in an error (1 for error, 0 for success).",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		lastScrapeTimestampMetric: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "cluster_health",
+				Name:      "last_scrape_timestamp",
+				Help:      "Number of seconds since 1970 since last scrape from ElasticSearch cluster health.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
+		lastScrapeDurationSecondsMetric: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: "cluster_health",
+				Name:      "last_scrape_duration_seconds",
+				Help:      "Duration of the last scrape from ElasticSearch cluster health.",
+				ConstLabels: prometheus.Labels{
+					"url": url.String(),
+				},
+			},
+		),
 	}
 }
 
@@ -223,13 +285,18 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 }
 
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
+	begun := time.Now()
+	scrapeError := 0
+	c.totalScrapesMetric.Inc()
+
 	clusterHealthResponse, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode cluster health",
 			"err", err,
 		)
-		return
+		scrapeError = 1
+		c.totalScrapeErrorsMetric.Inc()
 	}
 
 	for _, metric := range c.metrics {
@@ -249,4 +316,16 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 			clusterHealthResponse.ClusterName, color,
 		)
 	}
+
+	c.totalScrapesMetric.Collect(ch)
+	c.totalScrapeErrorsMetric.Collect(ch)
+
+	c.lastScrapeErrorMetric.Set(float64(scrapeError))
+	c.lastScrapeErrorMetric.Collect(ch)
+
+	c.lastScrapeTimestampMetric.Set(float64(time.Now().Unix()))
+	c.lastScrapeTimestampMetric.Collect(ch)
+
+	c.lastScrapeDurationSecondsMetric.Set(time.Since(begun).Seconds())
+	c.lastScrapeDurationSecondsMetric.Collect(ch)
 }
