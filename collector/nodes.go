@@ -380,7 +380,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return 0
+					return float64(node.Indices.Store.Size)
 				},
 				Labels: defaultNodeLabelValues,
 			},
