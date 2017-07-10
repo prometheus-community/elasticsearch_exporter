@@ -976,12 +976,13 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 
 	res, err := c.client.Get(u.String())
 	if err != nil {
-		return nsr, fmt.Errorf("failed to get node stats from %s: %s", u.String(), err)
+		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s/%s: %s",
+			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nsr, fmt.Errorf("HTTP Request %s failed with code %d", u.String(), res.StatusCode)
+		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
