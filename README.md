@@ -36,7 +36,7 @@ elasticsearch_exporter --help
 
 | Argument              | Description |
 | --------              | ----------- |
-| es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server.
+| es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`.
 | es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
 | es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection.
