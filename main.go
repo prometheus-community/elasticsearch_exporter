@@ -29,6 +29,10 @@ func main() {
 	flag.Parse()
 
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+	logger = log.With(logger,
+		"ts", log.DefaultTimestampUTC,
+		"caller", log.DefaultCaller,
+	)
 
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
