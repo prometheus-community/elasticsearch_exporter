@@ -69,6 +69,9 @@ type Nodes struct {
 	url    *url.URL
 	all    bool
 
+	up                              prometheus.Gauge
+	totalScrapes, jsonParseFailures prometheus.Counter
+
 	nodeMetrics         []*nodeMetric
 	gcCollectionMetrics []*gcCollectionMetric
 	breakerMetrics      []*breakerMetric
@@ -82,6 +85,19 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 		client: client,
 		url:    url,
 		all:    all,
+
+		up: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
+			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+		}),
+		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
+			Help: "Current total ElasticSearch node scrapes.",
+		}),
+		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
+			Help: "Number of errors while parsing JSON.",
+		}),
 
 		nodeMetrics: []*nodeMetric{
 			{
@@ -963,6 +979,9 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.filesystemMetrics {
 		ch <- metric.Desc
 	}
+	ch <- c.up.Desc()
+	ch <- c.totalScrapes.Desc()
+	ch <- c.jsonParseFailures.Desc()
 }
 
 func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
@@ -980,26 +999,35 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 	defer res.Body.Close()
-
 	if res.StatusCode != http.StatusOK {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
+		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
 	return nsr, nil
 }
 
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
+	c.totalScrapes.Inc()
+	defer func() {
+		ch <- c.up
+		ch <- c.totalScrapes
+		ch <- c.jsonParseFailures
+	}()
+
 	nodeStatsResponse, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
+		c.up.Set(0)
 		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
 		return
 	}
+	c.up.Set(1)
 
 	for _, node := range nodeStatsResponse.Nodes {
 		for _, metric := range c.nodeMetrics {
