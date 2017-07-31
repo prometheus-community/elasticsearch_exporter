@@ -377,7 +377,7 @@
               "expr": "sum(elasticsearch_thread_pool_active_count{cluster=~\"$cluster\", type!=\"management\"}) by (type)",
               "interval": "",
               "intervalFactor": 2,
-              "legendFormat": "Type: {{type}}",
+              "legendFormat": "Type: {{ type }}",
               "refId": "A",
               "step": 240
             }
@@ -457,7 +457,7 @@
               "dsType": "elasticsearch",
               "expr": "avg(irate(node_cpu{cluster=~\"$cluster\"}[10s])) by(mode) *100",
               "intervalFactor": 2,
-              "legendFormat": "{{mode}}",
+              "legendFormat": "{{ mode }}",
               "metric": "elasticsearch_breakers_tripped",
               "metrics": [
                 {
@@ -792,7 +792,7 @@
               "expr": "avg_over_time(elasticsearch_jvm_memory_used_bytes{area=\"heap\",cluster=~\"$cluster\"}[15m]) / elasticsearch_jvm_memory_max_bytes{area=\"heap\",cluster=~\"$cluster\"}",
               "interval": "",
               "intervalFactor": 2,
-              "legendFormat": "{{ node }}",
+              "legendFormat": "{{ name }}",
               "refId": "A",
               "step": 240
             }
@@ -955,7 +955,7 @@
               "expr": "irate(elasticsearch_jvm_gc_collection_seconds_sum{cluster=~\"$cluster\"}[1m])",
               "interval": "",
               "intervalFactor": 2,
-              "legendFormat": "{{ node }} {{ gc }}",
+              "legendFormat": "{{ name }} {{ gc }}",
               "refId": "A",
               "step": 240
             }
@@ -1041,7 +1041,7 @@
               "expr": "rate(elasticsearch_thread_pool_rejected_count{cluster=~\"$cluster\", type!=\"management\"}[5m])",
               "interval": "",
               "intervalFactor": 2,
-              "legendFormat": "{{ node }} {{type}}",
+              "legendFormat": "{{ name }} {{ type }}",
               "refId": "A",
               "step": 240
             }
