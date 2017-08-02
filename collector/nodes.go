@@ -464,7 +464,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "index_time_seconds_total"),
-					"Total index calls",
+					"Cumulative index time in seconds",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
@@ -476,7 +476,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "index_total"),
-					"Cumulative index time in seconds",
+					"Total index calls",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
