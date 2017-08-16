@@ -1,8 +1,8 @@
 package collector
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
