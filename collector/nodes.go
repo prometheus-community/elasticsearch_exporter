@@ -1,13 +1,10 @@
 package collector
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -528,50 +525,13 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.jsonParseFailures.Desc()
 }
 
-func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
-	var nsr nodeStatsResponse
-
-	u := *c.url
-	u.Path = "/_nodes/_local/stats"
-	if c.all {
-		u.Path = "/_nodes/stats"
-	}
-
-	res, err := c.client.Get(u.String())
-	if err != nil {
-		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s/%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
-		c.jsonParseFailures.Inc()
-		return nsr, err
-	}
-	return nsr, nil
-}
-
-func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
+func (c *Nodes) Collect(ch chan<- prometheus.Metric, nodeStatsResponse nodeStatsResponse) {
 	c.totalScrapes.Inc()
 	defer func() {
 		ch <- c.up
 		ch <- c.totalScrapes
 		ch <- c.jsonParseFailures
 	}()
-
-	nodeStatsResponse, err := c.fetchAndDecodeNodeStats()
-	if err != nil {
-		c.up.Set(0)
-		level.Warn(c.logger).Log(
-			"msg", "failed to fetch and decode node stats",
-			"err", err,
-		)
-		return
-	}
-	c.up.Set(1)
 
 	for _, node := range nodeStatsResponse.Nodes {
 		for _, metric := range c.nodeMetrics {

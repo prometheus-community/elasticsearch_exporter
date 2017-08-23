@@ -1,14 +1,149 @@
 package collector
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/kit/log"
 )
+
+type basicAuth struct {
+	User string
+	Pass string
+	Next http.Handler
+}
+
+func (h *basicAuth) checkAuth(w http.ResponseWriter, r *http.Request) bool {
+	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(s) != 2 {
+		return false
+	}
+
+	b, err := base64.StdEncoding.DecodeString(s[1])
+	if err != nil {
+		return false
+	}
+
+	pair := strings.SplitN(string(b), ":", 2)
+	if len(pair) != 2 {
+		return false
+	}
+
+	if h.User == pair[0] && h.Pass == pair[1] {
+		return true
+	}
+	return false
+}
+
+func (h *basicAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !h.checkAuth(w, r) {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"ES\"")
+		w.WriteHeader(401)
+		w.Write([]byte("401 Unauthorized\n"))
+		return
+	}
+
+	h.Next.ServeHTTP(w, r)
+	return
+}
+
+func TestClusterHealth(t *testing.T) {
+	// Testcases created using:
+	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
+	//  curl -XPUT http://localhost:9200/twitter
+	//  curl http://localhost:9200/_cluster/health
+	tcs := map[string]string{
+		"1.7.6": `{"cluster_name":"elasticsearch","status":"yellow","timed_out":false,"number_of_nodes":1,"number_of_data_nodes":1,"active_primary_shards":5,"active_shards":5,"relocating_shards":0,"initializing_shards":0,"unassigned_shards":5,"delayed_unassigned_shards":0,"number_of_pending_tasks":0,"number_of_in_flight_fetch":0}`,
+		"2.4.5": `{"cluster_name":"elasticsearch","status":"yellow","timed_out":false,"number_of_nodes":1,"number_of_data_nodes":1,"active_primary_shards":5,"active_shards":5,"relocating_shards":0,"initializing_shards":0,"unassigned_shards":5,"delayed_unassigned_shards":0,"number_of_pending_tasks":0,"number_of_in_flight_fetch":0,"task_max_waiting_in_queue_millis":0,"active_shards_percent_as_number":50.0}`,
+		"5.4.2": `{"cluster_name":"elasticsearch","status":"yellow","timed_out":false,"number_of_nodes":1,"number_of_data_nodes":1,"active_primary_shards":5,"active_shards":5,"relocating_shards":0,"initializing_shards":0,"unassigned_shards":5,"delayed_unassigned_shards":0,"number_of_pending_tasks":0,"number_of_in_flight_fetch":0,"task_max_waiting_in_queue_millis":0,"active_shards_percent_as_number":50.0}`,
+	}
+	for ver, out := range tcs {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, out)
+		}))
+		defer ts.Close()
+
+		u, err := url.Parse(ts.URL)
+		if err != nil {
+			t.Fatalf("Failed to parse URL: %s", err)
+		}
+		c := NewClusterHealth(log.NewNopLogger(), http.DefaultClient, u)
+		chr, err := c.fetchAndDecodeClusterHealth()
+		if err != nil {
+			t.Fatalf("Failed to fetch or decode cluster health: %s", err)
+		}
+		t.Logf("[%s] Cluster Health Response: %+v", ver, chr)
+		if chr.ClusterName != "elasticsearch" {
+			t.Errorf("Invalid cluster health response")
+		}
+		if chr.Status != "yellow" {
+			t.Errorf("Invalid cluster status")
+		}
+		if chr.TimedOut {
+			t.Errorf("Check didn't time out")
+		}
+		if chr.NumberOfNodes != 1 {
+			t.Errorf("Wrong number of nodes")
+		}
+		if chr.NumberOfDataNodes != 1 {
+			t.Errorf("Wrong number of data nodes")
+		}
+	}
+}
+
+func TestNodesStats(t *testing.T) {
+	// Testcases created using:
+	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
+	//  curl -XPUT http://localhost:9200/twitter
+	//  curl http://localhost:9200/_nodes/stats
+	tcs := map[string]string{
+		"1.7.6": `{"cluster_name":"elasticsearch","nodes":{"vKnRv2bPThCJIDTj92NvQg":{"timestamp":1498820641883,"name":"Overmind","transport_address":"inet[/172.17.0.4:9300]","host":"2603876b583f","ip":["inet[/172.17.0.4:9300]","NONE"],"indices":{"docs":{"count":0,"deleted":0},"store":{"size_in_bytes":575,"throttle_time_in_millis":0},"indexing":{"index_total":0,"index_time_in_millis":0,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":0,"total_time_in_millis":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":10,"total_time_in_millis":52},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":0,"memory_in_bytes":0,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":0,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"os":{"timestamp":1498820641896},"process":{"timestamp":1498820641896,"open_file_descriptors":123},"jvm":{"timestamp":1498820641896,"uptime_in_millis":17871,"mem":{"heap_used_in_bytes":82958528,"heap_used_percent":7,"heap_committed_in_bytes":251002880,"heap_max_in_bytes":1056309248,"non_heap_used_in_bytes":44442536,"non_heap_committed_in_bytes":45400064,"pools":{"young":{"used_in_bytes":62150064,"max_in_bytes":139591680,"peak_used_in_bytes":139591680,"peak_max_in_bytes":139591680},"survivor":{"used_in_bytes":17432576,"max_in_bytes":17432576,"peak_used_in_bytes":17432576,"peak_max_in_bytes":17432576},"old":{"used_in_bytes":3375888,"max_in_bytes":899284992,"peak_used_in_bytes":10899920,"peak_max_in_bytes":899284992}}},"threads":{"count":36,"peak_count":36},"gc":{"collectors":{"young":{"collection_count":1,"collection_time_in_millis":40},"old":{"collection_count":1,"collection_time_in_millis":42}}},"buffer_pools":{"direct":{"count":27,"used_in_bytes":4981411,"total_capacity_in_bytes":4981411},"mapped":{"count":0,"used_in_bytes":0,"total_capacity_in_bytes":0}}},"thread_pool":{"percolate":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"fetch_shard_started":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"listener":{"threads":1,"queue":0,"active":0,"rejected":0,"largest":1,"completed":1},"index":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"refresh":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"suggest":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"generic":{"threads":4,"queue":0,"active":0,"rejected":0,"largest":4,"completed":14},"warmer":{"threads":1,"queue":0,"active":0,"rejected":0,"largest":1,"completed":5},"search":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"flush":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"optimize":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"fetch_shard_store":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"management":{"threads":1,"queue":0,"active":1,"rejected":0,"largest":1,"completed":1},"get":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"merge":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"bulk":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"snapshot":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0}},"network":{},"fs":{"timestamp":1498820641898,"total":{"total_in_bytes":63375708160,"free_in_bytes":59667320832,"available_in_bytes":56424390656},"data":[{"path":"/usr/share/elasticsearch/data/elasticsearch/nodes/0","mount":"/usr/share/elasticsearch/data (/dev/sda2)","type":"ext4","total_in_bytes":63375708160,"free_in_bytes":59667320832,"available_in_bytes":56424390656}]},"transport":{"server_open":13,"rx_count":6,"rx_size_in_bytes":1428,"tx_count":6,"tx_size_in_bytes":1428},"http":{"current_open":1,"total_opened":2},"breakers":{"request":{"limit_size_in_bytes":422523699,"limit_size":"402.9mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0},"fielddata":{"limit_size_in_bytes":633785548,"limit_size":"604.4mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.03,"tripped":0},"parent":{"limit_size_in_bytes":739416473,"limit_size":"705.1mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0}}}}}`,
+		"2.4.5": `{"cluster_name":"elasticsearch","nodes":{"VnnrklnAQ7KRXhW2WkgPxA":{"timestamp":1498820602662,"name":"Battering Ram","transport_address":"172.17.0.4:9300","host":"172.17.0.4","ip":["172.17.0.4:9300","NONE"],"indices":{"docs":{"count":0,"deleted":0},"store":{"size_in_bytes":650,"throttle_time_in_millis":0},"indexing":{"index_total":0,"index_time_in_millis":0,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":0,"total_time_in_millis":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":10,"total_time_in_millis":60},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":0,"memory_in_bytes":0,"terms_memory_in_bytes":0,"stored_fields_memory_in_bytes":0,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":0,"doc_values_memory_in_bytes":0,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":105630920,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":0,"size_in_bytes":215},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"os":{"timestamp":1498820602670,"cpu_percent":7,"load_average":0.32861328125,"mem":{"total_in_bytes":2096177152,"free_in_bytes":1624637440,"used_in_bytes":471539712,"free_percent":78,"used_percent":22},"swap":{"total_in_bytes":4195348480,"free_in_bytes":4005060608,"used_in_bytes":190287872}},"process":{"timestamp":1498820602670,"open_file_descriptors":116,"max_file_descriptors":1048576,"cpu":{"percent":7,"total_in_millis":10270},"mem":{"total_virtual_in_bytes":2681352192}},"jvm":{"timestamp":1498820602671,"uptime_in_millis":38833,"mem":{"heap_used_in_bytes":88986784,"heap_used_percent":8,"heap_committed_in_bytes":251002880,"heap_max_in_bytes":1056309248,"non_heap_used_in_bytes":49185912,"non_heap_committed_in_bytes":49987584,"pools":{"young":{"used_in_bytes":58281984,"max_in_bytes":139591680,"peak_used_in_bytes":139591680,"peak_max_in_bytes":139591680},"survivor":{"used_in_bytes":17432576,"max_in_bytes":17432576,"peak_used_in_bytes":17432576,"peak_max_in_bytes":17432576},"old":{"used_in_bytes":13272224,"max_in_bytes":899284992,"peak_used_in_bytes":13272224,"peak_max_in_bytes":899284992}}},"threads":{"count":35,"peak_count":38},"gc":{"collectors":{"young":{"collection_count":2,"collection_time_in_millis":87},"old":{"collection_count":1,"collection_time_in_millis":74}}},"buffer_pools":{"direct":{"count":23,"used_in_bytes":3416836,"total_capacity_in_bytes":3416836},"mapped":{"count":0,"used_in_bytes":0,"total_capacity_in_bytes":0}},"classes":{"current_loaded_count":7221,"total_loaded_count":7221,"total_unloaded_count":0}},"thread_pool":{"bulk":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"fetch_shard_started":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"fetch_shard_store":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"flush":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"force_merge":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"generic":{"threads":1,"queue":0,"active":0,"rejected":0,"largest":5,"completed":28},"get":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"index":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"listener":{"threads":1,"queue":0,"active":0,"rejected":0,"largest":1,"completed":2},"management":{"threads":2,"queue":0,"active":1,"rejected":0,"largest":2,"completed":5},"percolate":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"refresh":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"search":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"snapshot":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"suggest":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"warmer":{"threads":1,"queue":0,"active":0,"rejected":0,"largest":1,"completed":5}},"fs":{"timestamp":1498820602672,"total":{"total_in_bytes":63375708160,"free_in_bytes":59667599360,"available_in_bytes":56424669184,"spins":"true"},"data":[{"path":"/usr/share/elasticsearch/data/elasticsearch/nodes/0","mount":"/usr/share/elasticsearch/data (/dev/sda2)","type":"ext4","total_in_bytes":63375708160,"free_in_bytes":59667599360,"available_in_bytes":56424669184,"spins":"true"}]},"transport":{"server_open":0,"rx_count":6,"rx_size_in_bytes":2028,"tx_count":6,"tx_size_in_bytes":2028},"http":{"current_open":1,"total_opened":3},"breakers":{"request":{"limit_size_in_bytes":422523699,"limit_size":"402.9mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0},"fielddata":{"limit_size_in_bytes":633785548,"limit_size":"604.4mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.03,"tripped":0},"in_flight_requests":{"limit_size_in_bytes":1056309248,"limit_size":"1007.3mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0},"parent":{"limit_size_in_bytes":739416473,"limit_size":"705.1mb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0}},"script":{"compilations":0,"cache_evictions":0}}}}`,
+		"5.4.2": `{"_nodes":{"total":1,"successful":1,"failed":0},"cluster_name":"elasticsearch","nodes":{"0hHcEFK1S7qMlk8hQCm7wQ":{"timestamp":1498820489394,"name":"0hHcEFK","transport_address":"127.0.0.1:9300","host":"127.0.0.1","ip":"127.0.0.1:9300","roles":["master","data","ingest"],"indices":{"docs":{"count":0,"deleted":0},"store":{"size_in_bytes":650,"throttle_time_in_millis":0},"indexing":{"index_total":0,"index_time_in_millis":0,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":0,"total_time_in_millis":0,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":5,"total_time_in_millis":27},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":0,"memory_in_bytes":0,"terms_memory_in_bytes":0,"stored_fields_memory_in_bytes":0,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":0,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":0,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":215},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"os":{"timestamp":1498820489400,"cpu":{"percent":0,"load_average":{"1m":0.35,"5m":0.28,"15m":0.12}},"mem":{"total_in_bytes":2096177152,"free_in_bytes":83501056,"used_in_bytes":2012676096,"free_percent":4,"used_percent":96},"swap":{"total_in_bytes":4195348480,"free_in_bytes":3487707136,"used_in_bytes":707641344}},"process":{"timestamp":1498820489400,"open_file_descriptors":139,"max_file_descriptors":1048576,"cpu":{"percent":0,"total_in_millis":26600},"mem":{"total_virtual_in_bytes":3823181824}},"jvm":{"timestamp":1498820489400,"uptime_in_millis":185693,"mem":{"heap_used_in_bytes":114959064,"heap_used_percent":5,"heap_committed_in_bytes":2130051072,"heap_max_in_bytes":2130051072,"non_heap_used_in_bytes":65471864,"non_heap_committed_in_bytes":69906432,"pools":{"young":{"used_in_bytes":82057312,"max_in_bytes":139591680,"peak_used_in_bytes":139591680,"peak_max_in_bytes":139591680},"survivor":{"used_in_bytes":17432576,"max_in_bytes":17432576,"peak_used_in_bytes":17432576,"peak_max_in_bytes":17432576},"old":{"used_in_bytes":15469176,"max_in_bytes":1973026816,"peak_used_in_bytes":15469176,"peak_max_in_bytes":1973026816}}},"threads":{"count":26,"peak_count":29},"gc":{"collectors":{"young":{"collection_count":4,"collection_time_in_millis":1618},"old":{"collection_count":1,"collection_time_in_millis":76}}},"buffer_pools":{"direct":{"count":16,"used_in_bytes":33776600,"total_capacity_in_bytes":33776599},"mapped":{"count":0,"used_in_bytes":0,"total_capacity_in_bytes":0}},"classes":{"current_loaded_count":9995,"total_loaded_count":9995,"total_unloaded_count":0}},"thread_pool":{"bulk":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"fetch_shard_started":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"fetch_shard_store":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"flush":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"force_merge":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"generic":{"threads":4,"queue":0,"active":0,"rejected":0,"largest":4,"completed":28},"get":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"index":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"listener":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"management":{"threads":2,"queue":0,"active":1,"rejected":0,"largest":2,"completed":20},"refresh":{"threads":1,"queue":0,"active":0,"rejected":0,"largest":1,"completed":31},"search":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"snapshot":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0},"warmer":{"threads":0,"queue":0,"active":0,"rejected":0,"largest":0,"completed":0}},"fs":{"timestamp":1498820489401,"total":{"total_in_bytes":63375708160,"free_in_bytes":59668226048,"available_in_bytes":56425295872,"spins":"true"},"data":[{"path":"/usr/share/elasticsearch/data/nodes/0","mount":"/usr/share/elasticsearch/data (/dev/sda2)","type":"ext4","total_in_bytes":63375708160,"free_in_bytes":59668226048,"available_in_bytes":56425295872,"spins":"true"}],"io_stats":{"devices":[{"device_name":"sda2","operations":3017,"read_operations":1800,"write_operations":1217,"read_kilobytes":24816,"write_kilobytes":6580}],"total":{"operations":3017,"read_operations":1800,"write_operations":1217,"read_kilobytes":24816,"write_kilobytes":6580}}},"transport":{"server_open":0,"rx_count":0,"rx_size_in_bytes":0,"tx_count":0,"tx_size_in_bytes":0},"http":{"current_open":2,"total_opened":3},"breakers":{"request":{"limit_size_in_bytes":1278030643,"limit_size":"1.1gb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0},"fielddata":{"limit_size_in_bytes":1278030643,"limit_size":"1.1gb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.03,"tripped":0},"in_flight_requests":{"limit_size_in_bytes":2130051072,"limit_size":"1.9gb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0},"parent":{"limit_size_in_bytes":1491035750,"limit_size":"1.3gb","estimated_size_in_bytes":0,"estimated_size":"0b","overhead":1.0,"tripped":0}},"script":{"compilations":0,"cache_evictions":0},"discovery":{"cluster_state_queue":{"total":0,"pending":0,"committed":0}},"ingest":{"total":{"count":0,"time_in_millis":0,"current":0,"failed":0},"pipelines":{}}}}}`,
+	}
+	for ver, out := range tcs {
+		for hn, handler := range map[string]http.Handler{
+			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintln(w, out)
+			}),
+			"basicauth": &basicAuth{
+				User: "elastic",
+				Pass: "changeme",
+				Next: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					fmt.Fprintln(w, out)
+				}),
+			},
+		} {
+			ts := httptest.NewServer(handler)
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatalf("Failed to parse URL: %s", err)
+			}
+			u.User = url.UserPassword("elastic", "changeme")
+			c := NewNodes(log.NewNopLogger(), http.DefaultClient, u, true)
+			nsr, err := c.fetchAndDecodeNodeStats()
+			if err != nil {
+				t.Fatalf("Failed to fetch or decode node stats: %s", err)
+			}
+			t.Logf("[%s/%s] Node Stats Response: %+v", hn, ver, nsr)
+			if nsr.ClusterName != "elasticsearch" {
+				t.Errorf("Wrong cluster name")
+			}
+			for _, nsnr := range nsr.Nodes {
+				if nsnr.Indices.Docs.Count > 0 {
+					t.Errorf("Wrong doc count")
+				}
+			}
+		}
+	}
+}
 
 func TestIndices(t *testing.T) {
 	// Testcases created using:
