@@ -27,8 +27,6 @@ func NewMetricsCollector(logger log.Logger, client *http.Client, url *url.URL, a
 		nodes:         NewNodes(logger, client, url, all),
 		indices:       NewIndices(logger, client, url, all),
 	}
-
-	return nil
 }
 
 func (c *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
