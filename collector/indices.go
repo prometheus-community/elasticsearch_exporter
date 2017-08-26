@@ -23,10 +23,11 @@ type indexMetric struct {
 }
 
 type Indices struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	all    bool
+	logger        log.Logger
+	client        *http.Client
+	url           *url.URL
+	all           bool
+	exportIndices bool
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -36,12 +37,13 @@ type Indices struct {
 	indexMetrics []*indexMetric
 }
 
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, all bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, all bool, exportIndices bool) *Indices {
 	return &Indices{
-		logger: logger,
-		client: client,
-		url:    url,
-		all:    all,
+		logger:        logger,
+		client:        client,
+		url:           url,
+		all:           all,
+		exportIndices: exportIndices,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),

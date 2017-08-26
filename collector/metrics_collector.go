@@ -21,11 +21,11 @@ type MetricsCollector struct {
 	indexStatsResponse    *indexStatsResponse
 }
 
-func NewMetricsCollector(logger log.Logger, client *http.Client, url *url.URL, all bool) *MetricsCollector {
+func NewMetricsCollector(logger log.Logger, client *http.Client, url *url.URL, all bool, exportIndices bool) *MetricsCollector {
 	return &MetricsCollector{
 		clusterHealth: NewClusterHealth(logger, client, url),
 		nodes:         NewNodes(logger, client, url, all),
-		indices:       NewIndices(logger, client, url, all),
+		indices:       NewIndices(logger, client, url, all, exportIndices),
 	}
 }
 
@@ -130,22 +130,25 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
-	u := *c.url
-	u.Path = "/_all/_stats"
+	if c.exportIndices {
+		u := *c.url
+		u.Path = "/_all/_stats"
 
-	res, err := c.client.Get(u.String())
-	if err != nil {
-		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		res, err := c.client.Get(u.String())
+		if err != nil {
+			return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
+				u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		}
+
+		if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
+			c.jsonParseFailures.Inc()
+			return isr, err
+		}
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
-		c.jsonParseFailures.Inc()
-		return isr, err
-	}
 	return isr, nil
 }
