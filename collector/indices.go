@@ -113,23 +113,26 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
-	u := *c.url
-	u.Path = "/_all/_stats"
+	if c.exportIndices {
+		u := *c.url
+		u.Path = "/_all/_stats"
 
-	res, err := c.client.Get(u.String())
-	if err != nil {
-		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		res, err := c.client.Get(u.String())
+		if err != nil {
+			return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
+				u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		}
+
+		if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
+			c.jsonParseFailures.Inc()
+			return isr, err
+		}
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
-		c.jsonParseFailures.Inc()
-		return isr, err
-	}
 	return isr, nil
 }
 
