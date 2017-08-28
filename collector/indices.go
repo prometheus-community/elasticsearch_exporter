@@ -1,10 +1,13 @@
 package collector
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -566,14 +569,72 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.jsonParseFailures.Desc()
 }
 
-func (i *Indices) Collect(ch chan<- prometheus.Metric, clusterHealthResponse clusterHealthResponse,
-	nodeStatsResponse nodeStatsResponse, indexStatsResponse indexStatsResponse) {
+func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
+	var isr indexStatsResponse
+
+	u := *c.url
+	u.Path = "/_all/_stats"
+
+	res, err := c.client.Get(u.String())
+	if err != nil {
+		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
+			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
+		c.jsonParseFailures.Inc()
+		return isr, err
+	}
+	return isr, nil
+}
+
+func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	i.totalScrapes.Inc()
 	defer func() {
 		ch <- i.up
 		ch <- i.totalScrapes
 		ch <- i.jsonParseFailures
 	}()
+
+	// clusterHealth
+	clusterHealth := NewClusterHealth(i.logger, i.client, i.url)
+	clusterHealthResponse, err := clusterHealth.fetchAndDecodeClusterHealth()
+	if err != nil {
+		i.up.Set(0)
+		level.Warn(i.logger).Log(
+			"msg", "failed to fetch and decode cluster health",
+			"err", err,
+		)
+		return
+	}
+
+	// nodes
+	nodes := NewNodes(i.logger, i.client, i.url, i.all)
+	nodeStatsResponse, err := nodes.fetchAndDecodeNodeStats()
+	if err != nil {
+		i.up.Set(0)
+		level.Warn(i.logger).Log(
+			"msg", "failed to fetch and decode node stats",
+			"err", err,
+		)
+		return
+	}
+
+	// indices
+	indexStatsResponse, err := i.fetchAndDecodeIndexStats()
+	if err != nil {
+		i.up.Set(0)
+		level.Warn(i.logger).Log(
+			"msg", "failed to fetch and decode index stats",
+			"err", err,
+		)
+		return
+	}
+	i.up.Set(1)
 
 	// Node stats
 	for _, node := range nodeStatsResponse.Nodes {
