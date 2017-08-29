@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	defaultIndexLabels      = []string{"cluster", "index"}
-	defaultIndexLabelValues = func(clusterName string, indexName string) []string {
-		return []string{clusterName, indexName}
+	defaultIndexLabels      = []string{"index"}
+	defaultIndexLabelValues = func(indexName string) []string {
+		return []string{indexName}
 	}
 )
 
@@ -22,7 +22,7 @@ type indexMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
-	Labels func(clusterName string, indexName string) []string
+	Labels func(indexName string) []string
 }
 
 type Indices struct {
@@ -106,7 +106,7 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.jsonParseFailures.Desc()
 }
 
-func (c *Indices) fetchAndDecodeStats() (indexStatsResponse, error) {
+func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *c.url
@@ -126,6 +126,7 @@ func (c *Indices) fetchAndDecodeStats() (indexStatsResponse, error) {
 		c.jsonParseFailures.Inc()
 		return isr, err
 	}
+
 	return isr, nil
 }
 
@@ -137,18 +138,8 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 		ch <- i.jsonParseFailures
 	}()
 
-	clusterHealth := NewClusterHealth(i.logger, i.client, i.url)
-	clusterHealthResponse, err := clusterHealth.fetchAndDecodeClusterHealth()
-	if err != nil {
-		i.up.Set(0)
-		level.Warn(i.logger).Log(
-			"msg", "failed to fetch and decode cluster health",
-			"err", err,
-		)
-		return
-	}
-
-	indexStatsResponse, err := i.fetchAndDecodeStats()
+	// indices
+	indexStatsResponse, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
 		i.up.Set(0)
 		level.Warn(i.logger).Log(
@@ -159,13 +150,14 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	}
 	i.up.Set(1)
 
+	// Index stats
 	for indexName, indexStats := range indexStatsResponse.Indices {
 		for _, metric := range i.indexMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
 				metric.Type,
 				metric.Value(indexStats),
-				metric.Labels(clusterHealthResponse.ClusterName, indexName)...,
+				metric.Labels(indexName)...,
 			)
 		}
 	}
