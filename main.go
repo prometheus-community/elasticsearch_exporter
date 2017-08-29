@@ -58,6 +58,7 @@ func main() {
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
 	if *esExportIndices {
 		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewAliases(logger, httpClient, esURL))
 	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
