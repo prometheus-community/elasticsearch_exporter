@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	defaultIndexLabels      = []string{"cluster", "index"}
-	defaultIndexLabelValues = func(clusterName string, indexName string) []string {
-		return []string{clusterName, indexName}
+	defaultIndexLabels      = []string{"index"}
+	defaultIndexLabelValues = func(indexName string) []string {
+		return []string{indexName}
 	}
 )
 
@@ -22,15 +22,13 @@ type indexMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
-	Labels func(clusterName string, indexName string) []string
+	Labels func(indexName string) []string
 }
 
 type Indices struct {
-	logger        log.Logger
-	client        *http.Client
-	url           *url.URL
-	all           bool
-	exportIndices bool
+	logger log.Logger
+	client *http.Client
+	url    *url.URL
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -39,13 +37,11 @@ type Indices struct {
 	indexMetrics []*indexMetric
 }
 
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, all bool, exportIndices bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 	return &Indices{
-		logger:        logger,
-		client:        client,
-		url:           url,
-		all:           all,
-		exportIndices: exportIndices,
+		logger: logger,
+		client: client,
+		url:    url,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -113,24 +109,22 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
-	if c.exportIndices {
-		u := *c.url
-		u.Path = "/_all/_stats"
+	u := *c.url
+	u.Path = "/_all/_stats"
 
-		res, err := c.client.Get(u.String())
-		if err != nil {
-			return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
-				u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-		}
-		defer res.Body.Close()
-		if res.StatusCode != http.StatusOK {
-			return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-		}
+	res, err := c.client.Get(u.String())
+	if err != nil {
+		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
+			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
 
-		if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
-			c.jsonParseFailures.Inc()
-			return isr, err
-		}
+	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
+		c.jsonParseFailures.Inc()
+		return isr, err
 	}
 
 	return isr, nil
@@ -143,18 +137,6 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 		ch <- i.totalScrapes
 		ch <- i.jsonParseFailures
 	}()
-
-	// clusterHealth
-	clusterHealth := NewClusterHealth(i.logger, i.client, i.url)
-	clusterHealthResponse, err := clusterHealth.fetchAndDecodeClusterHealth()
-	if err != nil {
-		i.up.Set(0)
-		level.Warn(i.logger).Log(
-			"msg", "failed to fetch and decode cluster health",
-			"err", err,
-		)
-		return
-	}
 
 	// indices
 	indexStatsResponse, err := i.fetchAndDecodeIndexStats()
@@ -175,7 +157,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Desc,
 				metric.Type,
 				metric.Value(indexStats),
-				metric.Labels(clusterHealthResponse.ClusterName, indexName)...,
+				metric.Labels(indexName)...,
 			)
 		}
 	}

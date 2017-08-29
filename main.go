@@ -56,7 +56,9 @@ func main() {
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
-	prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esAllNodes, *esExportIndices))
+	if *esExportIndices {
+		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL))
+	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", IndexHandler(*metricsPath))
