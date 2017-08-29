@@ -82,7 +82,7 @@ func (i *Aliases) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.jsonParseFailures.Desc()
 }
 
-func (c *Aliases) fetchAndDecodeStats() (aliasesResponse, error) {
+func (c *Aliases) fetchAndDecodeAliasStats() (aliasesResponse, error) {
 	var ar aliasesResponse
 
 	u := *c.url
@@ -127,7 +127,7 @@ func (a *Aliases) Collect(ch chan<- prometheus.Metric) {
 
 	// indices
 	indices := NewIndices(a.logger, a.client, a.url)
-	indexStatsResponse, err := indices.fetchAndDecodeStats()
+	indexStatsResponse, err := indices.fetchAndDecodeIndexStats()
 	if err != nil {
 		a.up.Set(0)
 		level.Warn(a.logger).Log(
@@ -138,7 +138,7 @@ func (a *Aliases) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// aliases
-	aliasesResponse, err := a.fetchAndDecodeStats()
+	aliasesResponse, err := a.fetchAndDecodeAliasStats()
 	if err != nil {
 		a.up.Set(0)
 		level.Warn(a.logger).Log(
