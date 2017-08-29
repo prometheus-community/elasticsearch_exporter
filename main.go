@@ -22,6 +22,7 @@ func main() {
 		esURI              = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
 		esTimeout          = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes         = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
+		esExportIndices    = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
 		esCA               = flag.String("es.ca", "", "Path to PEM file that conains trusted CAs for the Elasticsearch connection.")
 		esClientPrivateKey = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
 		esClientCert       = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
@@ -55,6 +56,9 @@ func main() {
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
+	if *esExportIndices {
+		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL))
+	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", IndexHandler(*metricsPath))
