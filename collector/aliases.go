@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	defaultAliasLabels      = []string{"cluster", "alias", "index"}
-	defaultAliasLabelValues = func(clusterName string, alias string, indexName string) []string {
-		return []string{clusterName, alias, indexName}
+	defaultAliasLabels      = []string{"alias", "index"}
+	defaultAliasLabelValues = func(alias string, indexName string) []string {
+		return []string{alias, indexName}
 	}
 )
 
@@ -22,7 +22,7 @@ type aliasMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
-	Labels func(clusterName string, alias string, indexName string) []string
+	Labels func(alias string, indexName string) []string
 }
 
 type Aliases struct {
@@ -113,18 +113,6 @@ func (a *Aliases) Collect(ch chan<- prometheus.Metric) {
 		ch <- a.jsonParseFailures
 	}()
 
-	// clusterHealth
-	clusterHealth := NewClusterHealth(a.logger, a.client, a.url)
-	clusterHealthResponse, err := clusterHealth.fetchAndDecodeClusterHealth()
-	if err != nil {
-		a.up.Set(0)
-		level.Warn(a.logger).Log(
-			"msg", "failed to fetch and decode cluster health",
-			"err", err,
-		)
-		return
-	}
-
 	// indices
 	indices := NewIndices(a.logger, a.client, a.url)
 	indexStatsResponse, err := indices.fetchAndDecodeIndexStats()
@@ -158,7 +146,7 @@ func (a *Aliases) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(indexStatsIndexResponse),
-					metric.Labels(clusterHealthResponse.ClusterName, alias, indexName)...,
+					metric.Labels(alias, indexName)...,
 				)
 			}
 		}
