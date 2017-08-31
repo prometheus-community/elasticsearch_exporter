@@ -12,10 +12,13 @@ import (
 )
 
 var (
-	defaultNodeLabels       = []string{"cluster", "host", "name"}
-	defaultThreadPoolLabels = append(defaultNodeLabels, "type")
-	defaultBreakerLabels    = append(defaultNodeLabels, "breaker")
-	defaultFilesystemLabels = append(defaultNodeLabels, "mount", "path")
+	defaultNodeLabels          = []string{"cluster", "host", "name"}
+	defaultThreadPoolLabels    = append(defaultNodeLabels, "type")
+	defaultBreakerLabels       = append(defaultNodeLabels, "breaker")
+	defaultFilesystemLabels    = append(defaultNodeLabels, "mount", "path")
+	defaultCacheCategoryLabels = append(defaultNodeLabels, "category")
+	defaultCacheHitLabels      = append(defaultNodeLabels, "hit")
+	defaultCacheMissLabels     = append(defaultNodeLabels, "miss")
 
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
 		return []string{cluster, node.Host, node.Name}
@@ -33,6 +36,16 @@ type nodeMetric struct {
 	Desc   *prometheus.Desc
 	Value  func(node NodeStatsNodeResponse) float64
 	Labels func(cluster string, node NodeStatsNodeResponse) []string
+}
+
+type nodeMetricVec struct {
+	Subsystem   string
+	Name        string
+	Help        string
+	Desc        func(subsystem string, name string, help string) *prometheus.Desc
+	Labels      []string
+	LabelValues func(cluster string, node NodeStatsNodeResponse) [][]string
+	Values      func(node NodeStatsNodeResponse) []float64
 }
 
 type gcCollectionMetric struct {
@@ -73,6 +86,7 @@ type Nodes struct {
 	totalScrapes, jsonParseFailures prometheus.Counter
 
 	nodeMetrics         []*nodeMetric
+	nodeMetricsVec      []*nodeMetricVec
 	gcCollectionMetrics []*gcCollectionMetric
 	breakerMetrics      []*breakerMetric
 	threadPoolMetrics   []*threadPoolMetric
@@ -98,6 +112,43 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
 		}),
+
+		nodeMetricsVec: []*nodeMetricVec{
+			{
+				Subsystem: "indices",
+				Name:      "query_cache_count",
+				Help:      "Query cache count",
+				Desc: func(subsystem string, name string, help string) *prometheus.Desc {
+					return prometheus.NewDesc(
+						prometheus.BuildFQName(namespace, subsystem, name),
+						help, defaultCacheCategoryLabels, nil)
+				},
+				Labels: defaultCacheCategoryLabels,
+				LabelValues: func(cluster string, node NodeStatsNodeResponse) [][]string {
+					return [][]string{defaultCacheHitLabels, defaultCacheMissLabels}
+				},
+				Values: func(node NodeStatsNodeResponse) []float64 {
+					return []float64{float64(node.Indices.QueryCache.HitCount), float64(node.Indices.QueryCache.MissCount)}
+				},
+			},
+			{
+				Subsystem: "indices",
+				Name:      "request_cache_count",
+				Help:      "Request cache count",
+				Desc: func(subsystem string, name string, help string) *prometheus.Desc {
+					return prometheus.NewDesc(
+						prometheus.BuildFQName(namespace, subsystem, name),
+						help, defaultCacheCategoryLabels, nil)
+				},
+				Labels: defaultCacheCategoryLabels,
+				LabelValues: func(cluster string, node NodeStatsNodeResponse) [][]string {
+					return [][]string{defaultCacheHitLabels, defaultCacheMissLabels}
+				},
+				Values: func(node NodeStatsNodeResponse) []float64 {
+					return []float64{float64(node.Indices.RequestCache.HitCount), float64(node.Indices.RequestCache.MissCount)}
+				},
+			},
+		},
 
 		nodeMetrics: []*nodeMetric{
 			{
@@ -169,6 +220,42 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.Evictions)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_total"),
+					"Query cache total count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.TotalCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_size"),
+					"Query cache cache size",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.CacheSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_count"),
+					"Query cache cache count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.CacheCount)
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -970,6 +1057,9 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.nodeMetrics {
 		ch <- metric.Desc
 	}
+	for _, metric := range c.nodeMetricsVec {
+		ch <- metric.Desc(metric.Subsystem, metric.Name, metric.Help)
+	}
 	for _, metric := range c.gcCollectionMetrics {
 		ch <- metric.Desc
 	}
@@ -1037,6 +1127,22 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 				metric.Value(node),
 				metric.Labels(nodeStatsResponse.ClusterName, node)...,
 			)
+		}
+		for _, metric := range c.nodeMetricsVec {
+			labelValues := metric.LabelValues(nodeStatsResponse.ClusterName, node)
+			values := metric.Values(node)
+
+			for i, labelValue := range labelValues {
+				counterVec := prometheus.NewCounterVec(prometheus.CounterOpts{
+					Namespace: namespace,
+					Subsystem: metric.Subsystem,
+					Name:      metric.Name,
+					Help:      metric.Help},
+					metric.Labels)
+				counterVec.WithLabelValues(labelValue...).Set(values[i])
+				counterVec.Collect(ch)
+			}
+
 		}
 
 		// GC Stats
