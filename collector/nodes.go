@@ -16,6 +16,7 @@ var (
 	defaultThreadPoolLabels = append(defaultNodeLabels, "type")
 	defaultBreakerLabels    = append(defaultNodeLabels, "breaker")
 	defaultFilesystemLabels = append(defaultNodeLabels, "mount", "path")
+	defaultCacheLabels      = append(defaultNodeLabels, "cache")
 
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
 		return []string{cluster, node.Host, node.Name}
@@ -25,6 +26,12 @@ var (
 	}
 	defaultFilesystemLabelValues = func(cluster string, node NodeStatsNodeResponse, mount string, path string) []string {
 		return append(defaultNodeLabelValues(cluster, node), mount, path)
+	}
+	defaultCacheHitLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
+		return append(defaultNodeLabelValues(cluster, node), "hit")
+	}
+	defaultCacheMissLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
+		return append(defaultNodeLabelValues(cluster, node), "miss")
 	}
 )
 
@@ -173,6 +180,66 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				Labels: defaultNodeLabelValues,
 			},
 			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_total"),
+					"Query cache total count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.TotalCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_size"),
+					"Query cache cache size",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.CacheSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_count"),
+					"Query cache cache count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.CacheCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_count"),
+					"Query cache count",
+					defaultCacheLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.HitCount)
+				},
+				Labels: defaultCacheHitLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "query_cache_count"),
+					"Query cache count",
+					defaultCacheLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.QueryCache.MissCount)
+				},
+				Labels: defaultCacheMissLabelValues,
+			},
+			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "request_cache_memory_size_bytes"),
@@ -195,6 +262,30 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					return float64(node.Indices.RequestCache.Evictions)
 				},
 				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "request_cache_count"),
+					"Request cache count",
+					defaultCacheLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.RequestCache.HitCount)
+				},
+				Labels: defaultCacheHitLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "request_cache_count"),
+					"Request cache count",
+					defaultCacheLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.RequestCache.MissCount)
+				},
+				Labels: defaultCacheMissLabelValues,
 			},
 			{
 				Type: prometheus.CounterValue,
