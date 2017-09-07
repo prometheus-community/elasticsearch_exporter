@@ -38,6 +38,7 @@ elasticsearch_exporter --help
 | --------              | ----------- |
 | es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`.
 | es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.
+| es.indices            | If true, query stats for all indices in the cluster.
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) |
 | es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection.
 | es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.
@@ -69,6 +70,7 @@ elasticsearch_exporter --help
 | elasticsearch_filesystem_data_size_bytes                   | gauge     | 1            | Size of block device in bytes
 | elasticsearch_indices_docs                                 | gauge     | 1            | Count of documents on this node
 | elasticsearch_indices_docs_deleted                         | gauge     | 1            | Count of deleted documents on this node
+| elasticsearch_indices_docs_primary                         | gauge     |              | Count of documents with only primary shards on all nodes
 | elasticsearch_indices_fielddata_evictions                  | counter   | 1            | Evictions from field data
 | elasticsearch_indices_fielddata_memory_size_bytes          | gauge     | 1            | Field data cache memory usage in bytes
 | elasticsearch_indices_filter_cache_evictions               | counter   | 1            | Evictions from filter cache
@@ -89,10 +91,15 @@ elasticsearch_exporter --help
 | elasticsearch_indices_merges_total                         | counter   | 1            | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total        | counter   | 1            | Total merge size in bytes
 | elasticsearch_indices_merges_total_time_seconds_total      | counter   | 1            | Total time spent merging in seconds
+| elasticsearch_indices_query_cache_cache_count              | gauge     | 1            | Count of query cache
+| elasticsearch_indices_query_cache_cache_size               | gauge     | 1            | Size of query cache
+| elasticsearch_indices_query_cache_count                    | counter   | 2            | Count of query cache hit/miss
 | elasticsearch_indices_query_cache_evictions                | counter   | 1            | Evictions from query cache
 | elasticsearch_indices_query_cache_memory_size_bytes        | gauge     | 1            | Query cache memory usage in bytes
+| elasticsearch_indices_query_cache_total                    | counter   | 1            | Size of query cache total
 | elasticsearch_indices_refresh_time_seconds_total           | counter   | 1            | Total refreshes
 | elasticsearch_indices_refresh_total                        | counter   | 1            | Total time spent refreshing in seconds
+| elasticsearch_indices_request_cache_count                  | counter   | 2            | Count of request cache hit/miss
 | elasticsearch_indices_request_cache_evictions              | counter   | 1            | Evictions from request cache
 | elasticsearch_indices_request_cache_memory_size_bytes      | gauge     | 1            | Request cache memory usage in bytes
 | elasticsearch_indices_search_fetch_time_seconds            | counter   | 1            | Total search fetch time in seconds
@@ -102,6 +109,8 @@ elasticsearch_exporter --help
 | elasticsearch_indices_segments_count                       | gauge     | 1            | Count of index segments on this node
 | elasticsearch_indices_segments_memory_bytes                | gauge     | 1            | Current memory size of segments in bytes
 | elasticsearch_indices_store_size_bytes                     | gauge     | 1            | Current size of stored index data in bytes
+| elasticsearch_indices_store_size_bytes_primary             | gauge     |              | Current size of stored index data in bytes with only primary shards on all nodes
+| elasticsearch_indices_store_size_bytes_total               | gauge     |              | Current size of stored index data in bytes with all shards on all nodes
 | elasticsearch_indices_store_throttle_time_seconds_total    | counter   | 1            | Throttle time for index store in seconds
 | elasticsearch_indices_translog_operations                  | counter   | 1            | Total translog operations
 | elasticsearch_indices_translog_size_in_bytes               | counter   | 1            | Total translog size in bytes
