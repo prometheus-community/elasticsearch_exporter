@@ -61,7 +61,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs_primary"),
-					"Count of documents which only primary shards",
+					"Count of documents with only primary shards",
 					defaultIndexLabels, nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
@@ -73,7 +73,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_primary"),
-					"Current total size of stored index data in bytes which only primary shards on all nodes",
+					"Current total size of stored index data in bytes with only primary shards on all nodes",
 					defaultIndexLabels, nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
@@ -85,7 +85,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_total"),
-					"Current total size of stored index data in bytes which all shards on all nodes",
+					"Current total size of stored index data in bytes with all shards on all nodes",
 					defaultIndexLabels, nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
