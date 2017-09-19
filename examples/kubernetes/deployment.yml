@@ -22,7 +22,7 @@ spec:
         - /bin/elasticsearch_exporter
         - -es.uri=http://elasticsearch:9200
         - -es.all=true
-        image: justwatch/elasticsearch_exporter:1.0.0-rc1
+        image: justwatch/elasticsearch_exporter:1.0.1
         securityContext:
           capabilities:
             drop:
