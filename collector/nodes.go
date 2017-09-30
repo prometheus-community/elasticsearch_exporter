@@ -928,7 +928,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "breakers", "tripped"),
 					"tripped for breaker",
