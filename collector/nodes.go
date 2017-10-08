@@ -319,7 +319,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Get.Time / 1000)
+					return float64(node.Indices.Get.Time) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -343,7 +343,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Get.MissingTime / 1000)
+					return float64(node.Indices.Get.MissingTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -367,7 +367,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Get.ExistsTime / 1000)
+					return float64(node.Indices.Get.ExistsTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -391,7 +391,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Refresh.TotalTime / 1000)
+					return float64(node.Indices.Refresh.TotalTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -415,7 +415,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Search.QueryTime / 1000)
+					return float64(node.Indices.Search.QueryTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -439,7 +439,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Search.FetchTime / 1000)
+					return float64(node.Indices.Search.FetchTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -499,7 +499,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Store.ThrottleTime / 1000)
+					return float64(node.Indices.Store.ThrottleTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -547,7 +547,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Flush.Time / 1000)
+					return float64(node.Indices.Flush.Time) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -559,7 +559,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Indexing.IndexTime / 1000)
+					return float64(node.Indices.Indexing.IndexTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -583,7 +583,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Indexing.DeleteTime / 1000)
+					return float64(node.Indices.Indexing.DeleteTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -643,7 +643,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Indices.Merges.TotalTime / 1000)
+					return float64(node.Indices.Merges.TotalTime) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -785,7 +785,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					append(defaultNodeLabels, "type"), nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.Total / 1000)
+					return float64(node.Process.CPU.Total) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
 					return append(defaultNodeLabelValues(cluster, node), "total")
@@ -799,7 +799,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					append(defaultNodeLabels, "type"), nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.Sys / 1000)
+					return float64(node.Process.CPU.Sys) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
 					return append(defaultNodeLabelValues(cluster, node), "sys")
@@ -813,7 +813,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					append(defaultNodeLabels, "type"), nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.User / 1000)
+					return float64(node.Process.CPU.User) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
 					return append(defaultNodeLabelValues(cluster, node), "user")
@@ -891,7 +891,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					append(defaultNodeLabels, "gc"), nil,
 				),
 				Value: func(gcStats NodeStatsJVMGCCollectorResponse) float64 {
-					return float64(gcStats.CollectionTime / 1000)
+					return float64(gcStats.CollectionTime) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse, collector string) []string {
 					return append(defaultNodeLabelValues(cluster, node), collector)
