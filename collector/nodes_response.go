@@ -14,6 +14,8 @@ type NodeStatsNodeResponse struct {
 	Timestamp        int64                                      `json:"timestamp"`
 	TransportAddress string                                     `json:"transport_address"`
 	Hostname         string                                     `json:"hostname"`
+	Roles            []string                                   `json:"roles"`
+	Attributes       map[string]string                          `json:"attributes"`
 	Indices          NodeStatsIndicesResponse                   `json:"indices"`
 	OS               NodeStatsOSResponse                        `json:"os"`
 	Network          NodeStatsNetworkResponse                   `json:"network"`
