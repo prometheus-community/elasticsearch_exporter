@@ -27,14 +27,14 @@ var (
 		// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
 		if len(node.Roles) > 0 {
 			for _, role := range node.Roles {
-				if _, ok := roles[role]; ok {
-					roles[role] = true
+				if _, ok := roles[role]; !ok {
+					roles[role] = false
 				}
 			}
 		} else {
 			for role, setting := range node.Attributes {
 				if _, ok := roles[role]; ok {
-					roles[role] = setting == "true"
+					roles[role] = setting == "false"
 				}
 			}
 		}
