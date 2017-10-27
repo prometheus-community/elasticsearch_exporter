@@ -12,14 +12,40 @@ import (
 )
 
 var (
-	defaultNodeLabels       = []string{"cluster", "host", "name"}
+	defaultNodeLabels       = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node"}
 	defaultThreadPoolLabels = append(defaultNodeLabels, "type")
 	defaultBreakerLabels    = append(defaultNodeLabels, "breaker")
 	defaultFilesystemLabels = append(defaultNodeLabels, "mount", "path")
 	defaultCacheLabels      = append(defaultNodeLabels, "cache")
 
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
-		return []string{cluster, node.Host, node.Name}
+		roles := map[string]bool{
+			"master": true,
+			"data":   true,
+			"ingest": true,
+		}
+		// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
+		if len(node.Roles) > 0 {
+			for _, role := range node.Roles {
+				if _, ok := roles[role]; !ok {
+					roles[role] = false
+				}
+			}
+		} else {
+			for role, setting := range node.Attributes {
+				if _, ok := roles[role]; ok {
+					roles[role] = setting == "false"
+				}
+			}
+		}
+		return []string{
+			cluster,
+			node.Host,
+			node.Name,
+			fmt.Sprintf("%t", roles["master"]),
+			fmt.Sprintf("%t", roles["data"]),
+			fmt.Sprintf("%t", roles["ingest"]),
+		}
 	}
 	defaultThreadPoolLabelValues = func(cluster string, node NodeStatsNodeResponse, pool string) []string {
 		return append(defaultNodeLabelValues(cluster, node), pool)
