@@ -23,6 +23,7 @@ type NodeStatsNodeResponse struct {
 	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
 	JVM              NodeStatsJVMResponse                       `json:"jvm"`
 	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
+	Http             map[string]int                             `json:"http"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
 }

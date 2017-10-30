@@ -12,31 +12,44 @@ import (
 )
 
 var (
-	defaultNodeLabels       = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node"}
+	defaultNodeLabels       = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
 	defaultThreadPoolLabels = append(defaultNodeLabels, "type")
 	defaultBreakerLabels    = append(defaultNodeLabels, "breaker")
 	defaultFilesystemLabels = append(defaultNodeLabels, "mount", "path")
 	defaultCacheLabels      = append(defaultNodeLabels, "cache")
 
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
+		// default settings (2.x) and map, which roles to consider
 		roles := map[string]bool{
 			"master": true,
 			"data":   true,
-			"ingest": true,
+			"ingest": false,
 		}
+		isClientNode := "true"
 		// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
 		if len(node.Roles) > 0 {
 			for _, role := range node.Roles {
+				// set every absent role to false
 				if _, ok := roles[role]; !ok {
 					roles[role] = false
+				} else {
+					// if present in the roles field, set to true
+					roles[role] = true
 				}
 			}
 		} else {
 			for role, setting := range node.Attributes {
 				if _, ok := roles[role]; ok {
-					roles[role] = setting == "false"
+					if setting == "false" {
+						roles[role] = false
+					} else {
+						roles[role] = true
+					}
 				}
 			}
+		}
+		if len(node.Http) == 0 {
+			isClientNode = "false"
 		}
 		return []string{
 			cluster,
@@ -45,6 +58,7 @@ var (
 			fmt.Sprintf("%t", roles["master"]),
 			fmt.Sprintf("%t", roles["data"]),
 			fmt.Sprintf("%t", roles["ingest"]),
+			isClientNode,
 		}
 	}
 	defaultThreadPoolLabelValues = func(cluster string, node NodeStatsNodeResponse, pool string) []string {
