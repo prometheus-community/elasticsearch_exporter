@@ -13,10 +13,12 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/version"
 )
 
 func main() {
 	var (
+		Name               = "elasticsearch_exporter"
 		listenAddress      = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
 		metricsPath        = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		esURI              = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
@@ -26,8 +28,14 @@ func main() {
 		esCA               = flag.String("es.ca", "", "Path to PEM file that conains trusted CAs for the Elasticsearch connection.")
 		esClientPrivateKey = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
 		esClientCert       = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
+		showVersion        = flag.Bool("version", false, "Show version and exit")
 	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Print(version.Print(Name))
+		os.Exit(0)
+	}
 
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
 	logger = log.With(logger,
@@ -54,6 +62,9 @@ func main() {
 		},
 	}
 
+	// version metric
+	versionMetric := version.NewCollector(Name)
+	prometheus.MustRegister(versionMetric)
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
 	if *esExportIndices {
