@@ -48,6 +48,7 @@ elasticsearch_exporter --help
 | es.client-cert        | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.
 | web.listen-address    | Address to listen on for web interface and telemetry. |
 | web.telemetry-path    | Path under which to expose metrics. |
+| version               | Show version info on stdout and exit. |
 
 ### Metrics
 
