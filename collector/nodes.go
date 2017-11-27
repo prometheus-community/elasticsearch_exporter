@@ -21,8 +21,8 @@ var (
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
 		// default settings (2.x) and map, which roles to consider
 		roles := map[string]bool{
-			"master": true,
-			"data":   true,
+			"master": false,
+			"data":   false,
 			"ingest": false,
 		}
 		isClientNode := "true"
