@@ -1126,7 +1126,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 
 	res, err := c.client.Get(u.String())
 	if err != nil {
-		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s/%s: %s",
+		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 	defer res.Body.Close()

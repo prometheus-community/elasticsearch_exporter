@@ -114,7 +114,7 @@ func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 	res, err := c.client.Get(u.String())
 	if err != nil {
-		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s/%s: %s",
+		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 	defer res.Body.Close()
