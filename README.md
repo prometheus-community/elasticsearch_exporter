@@ -89,8 +89,8 @@ elasticsearch_exporter --help
 | elasticsearch_indices_get_total                            | counter   | 1            | Total get
 | elasticsearch_indices_indexing_delete_time_seconds_total   | counter   | 1            | Total time indexing delete in seconds
 | elasticsearch_indices_indexing_delete_total                | counter   | 1            | Total indexing deletes
-| elasticsearch_indices_indexing_index_time_seconds_total    | counter   | 1            | Total index calls
-| elasticsearch_indices_indexing_index_total                 | counter   | 1            | Cumulative index time in seconds
+| elasticsearch_indices_indexing_index_time_seconds_total    | counter   | 1            | Cumulative index time in seconds
+| elasticsearch_indices_indexing_index_total                 | counter   | 1            | Total index calls
 | elasticsearch_indices_merges_docs_total                    | counter   | 1            | Cumulative docs merged
 | elasticsearch_indices_merges_total                         | counter   | 1            | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total        | counter   | 1            | Total merge size in bytes
