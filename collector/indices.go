@@ -93,6 +93,270 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				},
 				Labels: defaultIndexLabelValues,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_count_primary"),
+					"Current number of segments with only primary shards on all nodes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.Count)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_count_total"),
+					"Current number of segments with all shards on all nodes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.Count)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_primary"),
+					"Current size of segments with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.MemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_total"),
+					"Current size of segments with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.MemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_primary"),
+					"Current size of terms with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.TermsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_total"),
+					"Current number of terms with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.TermsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_primary"),
+					"Current size of fields with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.StoredFieldsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_total"),
+					"Current size of fields with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.StoredFieldsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_primary"),
+					"Current size of norms with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.NormsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_total"),
+					"Current size of norms with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.NormsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_primary"),
+					"Current size of points with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.PointsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_total"),
+					"Current size of points with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.PointsMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_primary"),
+					"Current size of doc values with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.DocValuesMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_total"),
+					"Current size of doc values with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.DocValuesMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_primary"),
+					"Current size of index writer with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.IndexWriterMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_total"),
+					"Current size of index writer with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.IndexWriterMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_primary"),
+					"Current size of version map with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.VersionMapMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_total"),
+					"Current size of version map with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.VersionMapMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_primary"),
+					"Current size of fixed bit with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.FixedBitSetMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_total"),
+					"Current size of fixed bit with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.FixedBitSetMemoryInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "completion_bytes_primary"),
+					"Current size of completion with only primary shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Completion.SizeInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "completion_bytes_total"),
+					"Current size of completion with all shards on all nodes in bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Completion.SizeInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
 		},
 	}
 }
