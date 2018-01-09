@@ -174,7 +174,7 @@ who transferred this repository to us in January 2017.
 
 Maintainers of this repository:
 
-* Matthias Loibl <matthias.loibl@justwatch.com> @metalmatze
+* Christoph Oelmüller <christoph.oelmueller@justwatch.com> @zwopir
 * Dominik Schulz <dominik.schulz@justwatch.com> @dominikschulz
 
 Please refer to the Git commit log for a complete list of contributors.
