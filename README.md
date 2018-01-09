@@ -12,15 +12,15 @@ https://github.com/justwatchcom/elasticsearch_exporter/releases
 #### Docker
 
 ```bash
-docker pull justwatch/elasticsearch_exporter:1.0.1
-docker run --rm -p 9108:9108 justwatch/elasticsearch_exporter:1.0.1
+docker pull justwatch/elasticsearch_exporter:1.0.2
+docker run --rm -p 9108:9108 justwatch/elasticsearch_exporter:1.0.2
 ```
 
 Example `docker-compose.yml`:
 
 ```yaml
 elasticsearch_exporter:
-    image: justwatch/elasticsearch_exporter:1.0.1
+    image: justwatch/elasticsearch_exporter:1.0.2
     command:
      - '-es.uri=http://elasticsearch:9200'
     restart: always

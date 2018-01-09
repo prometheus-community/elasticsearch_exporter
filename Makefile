@@ -53,7 +53,7 @@ tarball: promu
 
 tarballs: promu
 	@echo ">> building release tarballs"
-	@$(PROMU) tarballs --prefix $(PREFIX) $(BIN_DIR)
+	@$(PROMU) crossbuild tarballs $(BIN_DIR)
 
 docker:
 	@echo ">> building docker image"
