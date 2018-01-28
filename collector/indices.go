@@ -25,6 +25,15 @@ type indexMetric struct {
 	Labels func(indexName string) []string
 }
 
+type shardMetric struct {
+	Opts   prometheus.GaugeOpts
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(data IndexStatsIndexShardsDetailResponse) float64
+	Labels []string
+	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels
+}
+
 type Indices struct {
 	logger log.Logger
 	client *http.Client
@@ -35,6 +44,7 @@ type Indices struct {
 	jsonParseFailures prometheus.Counter
 
 	indexMetrics []*indexMetric
+	shardMetrics []*shardMetric
 }
 
 func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
@@ -358,6 +368,24 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				Labels: defaultIndexLabelValues,
 			},
 		},
+		shardMetrics: []*shardMetric{
+			{
+				Opts: prometheus.GaugeOpts{
+					Namespace:namespace,
+					Subsystem: "indices",
+					Name: "docs_shard",
+					ConstLabels: nil,
+					Help: "Count of documents per shard",
+				},
+				Value: func (data IndexStatsIndexShardsDetailResponse) float64 {
+					return float64(data.Docs.Count)
+				},
+				Labels: []string{"index", "shard", "node"},
+				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
+					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
+				},
+			},
+		},
 	}
 }
 
@@ -375,6 +403,7 @@ func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 	u := *c.url
 	u.Path = "/_all/_stats"
+	u.RawQuery = "level=shards"
 
 	res, err := c.client.Get(u.String())
 	if err != nil {
@@ -423,6 +452,16 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Value(indexStats),
 				metric.Labels(indexName)...,
 			)
+
+		}
+		for _, metric := range i.shardMetrics {
+			gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
+			for shardNumber, shards := range indexStats.Shards {
+				for _, shard := range shards {
+					gaugeVec.With(metric.LabelValues(indexName, shardNumber, shard)).Set(metric.Value(shard))
+				}
+			}
+			gaugeVec.Collect(ch)
 		}
 	}
 }
