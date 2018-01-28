@@ -14,8 +14,8 @@ type IndexStatsShardsResponse struct {
 }
 
 type IndexStatsIndexResponse struct {
-	Primaries IndexStatsIndexDetailResponse `json:"primaries"`
-	Total     IndexStatsIndexDetailResponse `json:"total"`
+	Primaries IndexStatsIndexDetailResponse                    `json:"primaries"`
+	Total     IndexStatsIndexDetailResponse                    `json:"total"`
 	Shards    map[string][]IndexStatsIndexShardsDetailResponse `json:"shards"`
 }
 

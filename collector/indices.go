@@ -26,11 +26,11 @@ type indexMetric struct {
 }
 
 type shardMetric struct {
-	Opts   prometheus.GaugeOpts
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(data IndexStatsIndexShardsDetailResponse) float64
-	Labels []string
+	Opts        prometheus.GaugeOpts
+	Type        prometheus.ValueType
+	Desc        *prometheus.Desc
+	Value       func(data IndexStatsIndexShardsDetailResponse) float64
+	Labels      []string
 	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels
 }
 
@@ -371,13 +371,13 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 		shardMetrics: []*shardMetric{
 			{
 				Opts: prometheus.GaugeOpts{
-					Namespace:namespace,
-					Subsystem: "indices",
-					Name: "docs_shard",
+					Namespace:   namespace,
+					Subsystem:   "indices",
+					Name:        "docs_shard",
 					ConstLabels: nil,
-					Help: "Count of documents per shard",
+					Help:        "Count of documents per shard",
 				},
-				Value: func (data IndexStatsIndexShardsDetailResponse) float64 {
+				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Count)
 				},
 				Labels: []string{"index", "shard", "node"},
