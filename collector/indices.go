@@ -373,12 +373,28 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				Opts: prometheus.GaugeOpts{
 					Namespace:   namespace,
 					Subsystem:   "indices",
-					Name:        "docs_shard",
+					Name:        "shards_docs",
 					ConstLabels: nil,
-					Help:        "Count of documents per shard",
+					Help:        "Count of documents on this shard",
 				},
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Count)
+				},
+				Labels: []string{"index", "shard", "node"},
+				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
+					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
+				},
+			},
+			{
+				Opts: prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Subsystem:   "indices",
+					Name:        "shards_docs_deleted",
+					ConstLabels: nil,
+					Help:        "Count of deleted documents on this shard",
+				},
+				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
+					return float64(data.Docs.Deleted)
 				},
 				Labels: []string{"index", "shard", "node"},
 				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {

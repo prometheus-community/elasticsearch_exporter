@@ -75,7 +75,6 @@ elasticsearch_exporter --help
 | elasticsearch_indices_docs                                 | gauge     | 1            | Count of documents on this node
 | elasticsearch_indices_docs_deleted                         | gauge     | 1            | Count of deleted documents on this node
 | elasticsearch_indices_docs_primary                         | gauge     |              | Count of documents with only primary shards on all nodes
-| elasticsearch_indices_docs_shard                           | gauge     | 3            | Count of documents on each shard
 | elasticsearch_indices_fielddata_evictions                  | counter   | 1            | Evictions from field data
 | elasticsearch_indices_fielddata_memory_size_bytes          | gauge     | 1            | Field data cache memory usage in bytes
 | elasticsearch_indices_filter_cache_evictions               | counter   | 1            | Evictions from filter cache
@@ -113,6 +112,8 @@ elasticsearch_exporter --help
 | elasticsearch_indices_search_query_total                   | counter   | 1            | Total number of queries
 | elasticsearch_indices_segments_count                       | gauge     | 1            | Count of index segments on this node
 | elasticsearch_indices_segments_memory_bytes                | gauge     | 1            | Current memory size of segments in bytes
+| elasticsearch_indices_shards_docs                          | gauge     | 3            | Count of documents on this shard
+| elasticsearch_indices_shards_docs_deleted                  | gauge     | 3            | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                     | gauge     | 1            | Current size of stored index data in bytes
 | elasticsearch_indices_store_size_bytes_primary             | gauge     |              | Current size of stored index data in bytes with only primary shards on all nodes
 | elasticsearch_indices_store_size_bytes_total               | gauge     |              | Current size of stored index data in bytes with all shards on all nodes
