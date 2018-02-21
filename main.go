@@ -18,17 +18,18 @@ import (
 
 func main() {
 	var (
-		Name               = "elasticsearch_exporter"
-		listenAddress      = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
-		metricsPath        = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		esURI              = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
-		esTimeout          = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
-		esAllNodes         = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
-		esExportIndices    = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
-		esCA               = flag.String("es.ca", "", "Path to PEM file that conains trusted CAs for the Elasticsearch connection.")
-		esClientPrivateKey = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
-		esClientCert       = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
-		showVersion        = flag.Bool("version", false, "Show version and exit")
+		Name                 = "elasticsearch_exporter"
+		listenAddress        = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
+		metricsPath          = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+		esURI                = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
+		esTimeout            = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
+		esAllNodes           = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
+		esExportIndices      = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
+		esCA                 = flag.String("es.ca", "", "Path to PEM file that contains trusted CAs for the Elasticsearch connection.")
+		esClientPrivateKey   = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
+		esClientCert         = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
+		esInsecureSkipVerify = flag.Bool("es.ssl-skip-verify", false, "Skip SSL verification when connecting to Elasticsearch.")
+		showVersion          = flag.Bool("version", false, "Show version and exit")
 	)
 	flag.Parse()
 
@@ -53,7 +54,7 @@ func main() {
 	}
 
 	// returns nil if not provided and falls back to simple TCP.
-	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey)
+	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
 	httpClient := &http.Client{
 		Timeout: *esTimeout,
