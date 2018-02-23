@@ -128,6 +128,10 @@ elasticsearch_exporter --help
 | elasticsearch_jvm_memory_pool_max_bytes                    | counter   | 3            | JVM memory max by pool
 | elasticsearch_jvm_memory_pool_peak_used_bytes              | counter   | 3            | JVM memory peak used by pool
 | elasticsearch_jvm_memory_pool_peak_max_bytes               | counter   | 3            | JVM memory peak max by pool
+| elasticsearch_os_cpu_percent                               | gauge     | 1            | Percent CPU used by the OS
+| elasticsearch_os_load1                                     | gauge     | 1            | Shortterm load average
+| elasticsearch_os_load5                                     | gauge     | 1            | Midterm load average
+| elasticsearch_os_load15                                    | gauge     | 1            | Longterm load average
 | elasticsearch_process_cpu_percent                          | gauge     | 1            | Percent CPU used by process
 | elasticsearch_process_cpu_time_seconds_sum                 | counter   | 3            | Process CPU time in seconds
 | elasticsearch_process_mem_resident_size_bytes              | gauge     | 1            | Resident memory in use by process in bytes
