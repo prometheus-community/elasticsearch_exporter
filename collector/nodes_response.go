@@ -237,6 +237,7 @@ type NodeStatsOSCPUResponse struct {
 	Idle    int64                      `json:"idle"`
 	Steal   int64                      `json:"stolen"`
 	LoadAvg NodeStatsOSCPULoadResponse `json:"load_average"`
+	Percent int64                      `json:"percent"`
 }
 
 type NodeStatsOSCPULoadResponse struct {
