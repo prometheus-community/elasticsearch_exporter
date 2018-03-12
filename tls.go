@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string) *tls.Config {
+func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSkipVerify bool) *tls.Config {
 	if len(pemFile) <= 0 {
 		return nil
 	}
@@ -26,7 +26,8 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string) *tls.Config
 		}
 	}
 	return &tls.Config{
-		RootCAs: rootCerts,
+		RootCAs:            rootCerts,
+		InsecureSkipVerify: insecureSkipVerify,
 	}
 }
 
