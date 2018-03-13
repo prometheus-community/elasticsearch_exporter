@@ -4,7 +4,7 @@ elasticsearch_filesystem_data_free_percent = 100 - elasticsearch_filesystem_data
 
 # alert if too few nodes are running
 ALERT ElasticsearchTooFewNodesRunning
-  IF elasticsearch_cluster_health_number_of_node < 3
+  IF elasticsearch_cluster_health_number_of_nodes < 3
   FOR 5m
   LABELS {severity="critical"}
   ANNOTATIONS {description="There are only {{$value}} < 3 ElasticSearch nodes running", summary="ElasticSearch running on less than 3 nodes"}
