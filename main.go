@@ -25,7 +25,7 @@ func main() {
 		esTimeout            = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes           = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
 		esExportIndices      = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
-    esExportShards       = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
+		esExportShards       = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
 		esCA                 = flag.String("es.ca", "", "Path to PEM file that contains trusted CAs for the Elasticsearch connection.")
 		esClientPrivateKey   = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
 		esClientCert         = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
