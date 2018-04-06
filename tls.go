@@ -8,6 +8,12 @@ import (
 )
 
 func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSkipVerify bool) *tls.Config {
+	if insecureSkipVerify {
+		// pem settings are irrelevent if we're skipping verification anyway
+		return &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
 	if len(pemFile) <= 0 {
 		return nil
 	}
