@@ -14,8 +14,9 @@ type IndexStatsShardsResponse struct {
 }
 
 type IndexStatsIndexResponse struct {
-	Primaries IndexStatsIndexDetailResponse `json:"primaries"`
-	Total     IndexStatsIndexDetailResponse `json:"total"`
+	Primaries IndexStatsIndexDetailResponse                    `json:"primaries"`
+	Total     IndexStatsIndexDetailResponse                    `json:"total"`
+	Shards    map[string][]IndexStatsIndexShardsDetailResponse `json:"shards"`
 }
 
 type IndexStatsIndexDetailResponse struct {
@@ -35,6 +36,16 @@ type IndexStatsIndexDetailResponse struct {
 	Translog     IndexStatsIndexTranslogResponse     `json:"translog"`
 	RequestCache IndexStatsIndexRequestCacheResponse `json:"request_cache"`
 	Recovery     IndexStatsIndexRecoveryResponse     `json:"recovery"`
+}
+
+type IndexStatsIndexShardsDetailResponse struct {
+	*IndexStatsIndexDetailResponse
+	Routing IndexStatsIndexRoutingResponse `json:"routing"`
+}
+
+type IndexStatsIndexRoutingResponse struct {
+	Node    string `json:"node"`
+	Primary bool   `json:"primary"`
 }
 
 type IndexStatsIndexDocsResponse struct {

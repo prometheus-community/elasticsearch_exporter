@@ -42,6 +42,7 @@ elasticsearch_exporter --help
 | es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. | http://localhost:9200 |
 | es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
 | es.indices            | If true, query stats for all indices in the cluster. | false |
+| es.shards             | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection. | |
 | es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -113,6 +114,8 @@ elasticsearch_exporter --help
 | elasticsearch_indices_search_query_total                   | counter   | 1            | Total number of queries
 | elasticsearch_indices_segments_count                       | gauge     | 1            | Count of index segments on this node
 | elasticsearch_indices_segments_memory_bytes                | gauge     | 1            | Current memory size of segments in bytes
+| elasticsearch_indices_shards_docs                          | gauge     | 3            | Count of documents on this shard
+| elasticsearch_indices_shards_docs_deleted                  | gauge     | 3            | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                     | gauge     | 1            | Current size of stored index data in bytes
 | elasticsearch_indices_store_size_bytes_primary             | gauge     |              | Current size of stored index data in bytes with only primary shards on all nodes
 | elasticsearch_indices_store_size_bytes_total               | gauge     |              | Current size of stored index data in bytes with all shards on all nodes

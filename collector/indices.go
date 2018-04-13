@@ -25,23 +25,35 @@ type indexMetric struct {
 	Labels func(indexName string) []string
 }
 
+type shardMetric struct {
+	Opts        prometheus.GaugeOpts
+	Type        prometheus.ValueType
+	Desc        *prometheus.Desc
+	Value       func(data IndexStatsIndexShardsDetailResponse) float64
+	Labels      []string
+	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels
+}
+
 type Indices struct {
 	logger log.Logger
 	client *http.Client
 	url    *url.URL
+	shards bool
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
 	jsonParseFailures prometheus.Counter
 
 	indexMetrics []*indexMetric
+	shardMetrics []*shardMetric
 }
 
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
 	return &Indices{
 		logger: logger,
 		client: client,
 		url:    url,
+		shards: shards,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -358,6 +370,40 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL) *Indices {
 				Labels: defaultIndexLabelValues,
 			},
 		},
+		shardMetrics: []*shardMetric{
+			{
+				Opts: prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Subsystem:   "indices",
+					Name:        "shards_docs",
+					ConstLabels: nil,
+					Help:        "Count of documents on this shard",
+				},
+				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
+					return float64(data.Docs.Count)
+				},
+				Labels: []string{"index", "shard", "node"},
+				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
+					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
+				},
+			},
+			{
+				Opts: prometheus.GaugeOpts{
+					Namespace:   namespace,
+					Subsystem:   "indices",
+					Name:        "shards_docs_deleted",
+					ConstLabels: nil,
+					Help:        "Count of deleted documents on this shard",
+				},
+				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
+					return float64(data.Docs.Deleted)
+				},
+				Labels: []string{"index", "shard", "node"},
+				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
+					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
+				},
+			},
+		},
 	}
 }
 
@@ -370,13 +416,16 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.jsonParseFailures.Desc()
 }
 
-func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
+func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
-	u := *c.url
+	u := *i.url
 	u.Path = "/_all/_stats"
+	if i.shards {
+		u.RawQuery = "level=shards"
+	}
 
-	res, err := c.client.Get(u.String())
+	res, err := i.client.Get(u.String())
 	if err != nil {
 		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
@@ -387,7 +436,7 @@ func (c *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
-		c.jsonParseFailures.Inc()
+		i.jsonParseFailures.Inc()
 		return isr, err
 	}
 
@@ -423,6 +472,18 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Value(indexStats),
 				metric.Labels(indexName)...,
 			)
+
+		}
+		if i.shards {
+			for _, metric := range i.shardMetrics {
+				gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
+				for shardNumber, shards := range indexStats.Shards {
+					for _, shard := range shards {
+						gaugeVec.With(metric.LabelValues(indexName, shardNumber, shard)).Set(metric.Value(shard))
+					}
+				}
+				gaugeVec.Collect(ch)
+			}
 		}
 	}
 }
