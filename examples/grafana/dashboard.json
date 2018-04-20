@@ -71,7 +71,7 @@
           },
           "targets": [
             {
-              "expr": "sum(elasticsearch_cluster_health_number_of_nodes{cluster=~\"$cluster\"})",
+              "expr": "sum(elasticsearch_cluster_health_number_of_nodes{cluster=~\"$cluster\"})/count(elasticsearch_cluster_health_number_of_nodes{cluster=~\"$cluster\"})",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
