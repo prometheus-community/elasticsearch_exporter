@@ -44,7 +44,10 @@ func main() {
 		"ts", log.DefaultTimestampUTC,
 		"caller", log.DefaultCaller,
 	)
-
+	esURIEnv, ok := os.LookupEnv("ES_URI")
+	if ok {
+		*esURI = esURIEnv
+	}
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
 		level.Error(logger).Log(
