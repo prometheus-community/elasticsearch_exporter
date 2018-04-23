@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,6 +29,9 @@ func main() {
 		esClientPrivateKey   = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
 		esClientCert         = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
 		esInsecureSkipVerify = flag.Bool("es.ssl-skip-verify", false, "Skip SSL verification when connecting to Elasticsearch.")
+		logLevel             = flag.String("log.level", "info", "Sets the loglevel. Valid levels are debug, info, warn, error")
+		logFormat            = flag.String("log.format", "logfmt", "Sets the log format. Valid formats are json and logfmt")
+		logOutput            = flag.String("log.output", "stdout", "Sets the log output. Valid outputs are stdout and stderr")
 		showVersion          = flag.Bool("version", false, "Show version and exit")
 	)
 	flag.Parse()
@@ -39,11 +41,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-	logger = log.With(logger,
-		"ts", log.DefaultTimestampUTC,
-		"caller", log.DefaultCaller,
-	)
+	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
