@@ -43,6 +43,10 @@ func main() {
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
+	esURIEnv, ok := os.LookupEnv("ES_URI")
+	if ok {
+		*esURI = esURIEnv
+	}
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
 		level.Error(logger).Log(
