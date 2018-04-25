@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -73,7 +74,24 @@ func main() {
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
 	if *esExportIndices || *esExportShards {
-		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esExportShards))
+		resp, err := httpClient.Get(*esURI)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			level.Error(logger).Log(
+				"msg", "failed to get cluster data",
+				"err", err,
+			)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		d := new(bodyData)
+		if err := json.NewDecoder(resp.Body).Decode(d); err != nil {
+			level.Error(logger).Log(
+				"msg", "error decoding cluster data",
+				"err", err,
+			)
+			os.Exit(1)
+		}
+		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, d.ClusterName, *esExportShards))
 	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
@@ -90,6 +108,10 @@ func main() {
 			"err", err,
 		)
 	}
+}
+
+type bodyData struct {
+	ClusterName string `json:"cluster_name"`
 }
 
 // IndexHandler returns a http handler with the correct metricsPath

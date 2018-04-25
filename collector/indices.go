@@ -35,10 +35,11 @@ type shardMetric struct {
 }
 
 type Indices struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	shards bool
+	logger      log.Logger
+	client      *http.Client
+	url         *url.URL
+	shards      bool
+	clusterName string
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -46,14 +47,17 @@ type Indices struct {
 
 	indexMetrics []*indexMetric
 	shardMetrics []*shardMetric
+
+	indexCount prometheus.Gauge
 }
 
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, clusterName string, shards bool) *Indices {
 	return &Indices{
-		logger: logger,
-		client: client,
-		url:    url,
-		shards: shards,
+		logger:      logger,
+		client:      client,
+		url:         url,
+		shards:      shards,
+		clusterName: clusterName,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -66,6 +70,12 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
+		}),
+
+		indexCount: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name:        prometheus.BuildFQName(namespace, "indices", "count"),
+			Help:        "Count of indices in the ElasticSearch cluster.",
+			ConstLabels: map[string]string{"cluster": clusterName},
 		}),
 
 		indexMetrics: []*indexMetric{
@@ -486,4 +496,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+
+	i.indexCount.Set(float64(len(indexStatsResponse.Indices)))
+	ch <- i.indexCount
 }
