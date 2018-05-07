@@ -48,12 +48,17 @@ shared: &shared
           echo 'export GOROOT=/usr/local/go' >> $BASH_ENV
           echo 'export PROJECT_PATH=$GOPATH/src/$GO_REPO' >> $BASH_ENV
 
-          echo 'export VERSION=$(curl -s https://api.github.com/repos/kubernetes/helm/releases/latest | jq -r ".tag_name")' >> $BASH_ENV
+          echo 'export VERSION=$(curl -s https://api.github.com/repos/justwatchcom/elasticsearch_exporter/releases/latest | jq -r ".tag_name")' >> $BASH_ENV
           echo 'export REGISTRY=jessestuart' >> $BASH_ENV
           echo 'export IMAGE=elasticsearch_exporter' >> $BASH_ENV
           echo 'export IMAGE_ID="${REGISTRY}/${IMAGE}:${VERSION}-${TAG}"' >> $BASH_ENV
 
           source $BASH_ENV
+
+          if [ $VERSION == 'null' ]; then
+            echo "Unable to determine version."
+            exit 1
+          fi
 
           sudo rm -rf /usr/local/go
           sudo mkdir /usr/local/go
@@ -141,8 +146,8 @@ jobs:
     docker:
       - image: docker:18-git
     environment:
-      GITHUB_REPO: kubernetes/helm
-      IMAGE: tiller
+      GITHUB_REPO: justwatchcom/elasticsearch_exporter
+      IMAGE: elasticsearch_exporter
       REGISTRY: jessestuart
     steps:
       - checkout
