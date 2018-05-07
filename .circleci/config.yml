@@ -1,0 +1,181 @@
+version: 2.0
+
+build_jobs: &build_jobs
+  jobs:
+    - build-amd64
+    - build-arm64
+    - build-armhf
+    - push-manifest:
+        requires:
+          - build-amd64
+          - build-arm64
+          - build-armhf
+
+workflows:
+  version: 2
+  commit:
+    <<: *build_jobs
+  nightly:
+    <<: *build_jobs
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+
+shared: &shared
+  machine: true
+  steps:
+    - checkout
+
+    - run:
+        name: Install build dependencies.
+        command: sudo apt update && sudo apt install curl jq
+
+    - run:
+        # Unforunately, there's no easy way to "merge" anchors/references
+        # according to the # YAML 1.2 spec. So, the recommended way to handle
+        # this is to dump your # values into a file and source it at build time.
+        # @see e.g., https://circleci.com/docs/2.0/env-vars/#interpolating-environment-variables
+        name: Set up shared environment vars.
+        command: |
+          echo 'export GITHUB_REPO=jessestuart/elasticsearch_exporter' >> $BASH_ENV
+          echo 'export GO_REPO=github.com/jessestuart/elasticsearch_exporter' >> $BASH_ENV
+
+          echo 'export GOPATH=/home/circleci/go' >> $BASH_ENV
+          echo 'export GOROOT=/usr/local/go' >> $BASH_ENV
+          echo 'export PROJECT_PATH=$GOPATH/src/$GO_REPO' >> $BASH_ENV
+
+          echo 'export VERSION=$(curl -s https://api.github.com/repos/kubernetes/helm/releases/latest | jq -r ".tag_name")' >> $BASH_ENV
+          echo 'export REGISTRY=jessestuart' >> $BASH_ENV
+          echo 'export IMAGE=elasticsearch_exporter' >> $BASH_ENV
+          echo 'export IMAGE_ID="${REGISTRY}/${IMAGE}:${VERSION}-${TAG}"' >> $BASH_ENV
+
+          source $BASH_ENV
+
+          sudo rm -rf /usr/local/go
+          sudo mkdir /usr/local/go
+          export CI_USER=$(whoami)
+          sudo chown "${CI_USER}:" /usr/local/go
+
+    - restore_cache:
+        keys:
+          - go-1.10
+    - run:
+        name: Update Go version.
+        command: |
+          if ! (go version | grep 1.10.1); then
+            curl -O https://storage.googleapis.com/golang/go1.10.1.linux-amd64.tar.gz
+            tar xzf go1.10.1.linux-amd64.tar.gz
+            sudo mv go/ /usr/local
+          fi
+    - save_cache:
+        key: go-1.10
+        paths:
+          - /usr/local/go
+
+    - run:
+        name: Install promu.
+        command: |
+          curl -sL https://github.com/prometheus/promu/releases/download/v0.1.0/promu-0.1.0.linux-amd64.tar.gz | tar -xz
+          chmod +x promu-0.1.0.linux-amd64/promu
+          sudo mv promu-0.1.0.linux-amd64/promu /usr/bin
+
+    - run:
+        name: Clone repo.
+        command: |
+          mkdir -p $PROJECT_PATH
+          git clone https://github.com/${GITHUB_REPO} --depth=1 \
+            $PROJECT_PATH &>/dev/null
+
+    - run:
+        name: Compile architecture-specific tiller binary.
+        command: |
+          cd $PROJECT_PATH
+          promu crossbuild
+
+    - run:
+        name: Build and push Docker image.
+        command: |
+          .circleci/push-multiarch.sh
+
+jobs:
+  build-amd64:
+    <<: *shared
+    environment:
+      GOARCH: amd64
+      PROMU_ARCH: amd64
+      QEMU_ARCH: amd64
+      TAG: amd64
+      TARGET: amd64
+  build-arm64:
+    <<: *shared
+    environment:
+      GOARCH: arm64
+      PROMU_ARCH: arm64
+      QEMU_ARCH: aarch64
+      QEMU_VERSION: v2.11.0
+      TAG: arm64
+      TARGET: arm64v8
+  build-armhf:
+    <<: *shared
+    environment:
+      GOARCH: arm
+      PROMU_ARCH: armv7
+      QEMU_ARCH: arm
+      QEMU_VERSION: v2.11.0
+      TAG: arm
+      TARGET: arm32v6
+
+  # =======================================
+  # ---------------------------------------
+  # =======================================
+
+  push-manifest:
+    docker:
+      - image: docker:18-git
+    environment:
+      GITHUB_REPO: kubernetes/helm
+      IMAGE: tiller
+      REGISTRY: jessestuart
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Determine repo version.
+          command: |
+            apk update && apk add curl jq
+            curl -s https://api.github.com/repos/${GITHUB_REPO}/releases/latest | jq -r ".tag_name" > ~/VERSION
+
+      - run:
+          name: Install manifest-tool.
+          command: |
+            export VERSION=$(cat ~/VERSION)
+            echo "Downloading manifest-tool."
+            wget https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64
+            mv manifest-tool-linux-amd64 /usr/bin/manifest-tool
+            chmod +x /usr/bin/manifest-tool
+            manifest-tool --version
+
+      - run:
+          name: Push Docker manifest.
+          command: |
+            export VERSION=$(cat ~/VERSION)
+            echo "Pushing manifest ${REGISTRY}/${IMAGE}:latest"
+            echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin;
+            manifest-tool push from-args \
+              --platforms linux/arm,linux/arm64,linux/amd64 \
+              --template "$REGISTRY/$IMAGE:$VERSION-ARCH" \
+              --target "$REGISTRY/$IMAGE:latest"
+            manifest-tool push from-args \
+              --platforms linux/arm,linux/arm64,linux/amd64 \
+              --template "$REGISTRY/$IMAGE:$VERSION-ARCH" \
+              --target "$REGISTRY/$IMAGE:$VERSION"
+      - run:
+          name: Verify manifest was persisted remotely.
+          command: |
+            export VERSION=$(cat ~/VERSION)
+            manifest-tool inspect "$REGISTRY/$IMAGE:$VERSION"
+

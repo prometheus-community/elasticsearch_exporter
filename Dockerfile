@@ -1,14 +1,14 @@
-FROM quay.io/prometheus/golang-builder as builder
+ARG target
+FROM $target/alpine
 
-ADD .   /go/src/github.com/justwatchcom/elasticsearch_exporter
-WORKDIR /go/src/github.com/justwatchcom/elasticsearch_exporter
+ARG arch
+ENV ARCH=$arch
 
-RUN make
+COPY qemu-$ARCH-static* /usr/bin/
 
-FROM        quay.io/prometheus/busybox:latest
-MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
+LABEL maintainer="Jesse Stuart <hi@jessestuart.com>"
 
-COPY --from=builder /go/src/github.com/justwatchcom/elasticsearch_exporter/elasticsearch_exporter  /bin/elasticsearch_exporter
+COPY elasticsearch_exporter /bin/elasticsearch_exporter
 
 EXPOSE      9114
 ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
