@@ -42,7 +42,7 @@ shared: &shared
         name: Set up shared environment vars.
         command: |
           echo 'export GITHUB_REPO=jessestuart/elasticsearch_exporter' >> $BASH_ENV
-          echo 'export GO_REPO=github.com/jessestuart/elasticsearch_exporter' >> $BASH_ENV
+          echo 'export GO_REPO=github.com/justwatchcom/elasticsearch_exporter' >> $BASH_ENV
 
           echo 'export GOPATH=/home/circleci/go' >> $BASH_ENV
           echo 'export GOROOT=/usr/local/go' >> $BASH_ENV
@@ -76,12 +76,12 @@ shared: &shared
         paths:
           - /usr/local/go
 
-    - run:
-        name: Install promu.
-        command: |
-          curl -sL https://github.com/prometheus/promu/releases/download/v0.1.0/promu-0.1.0.linux-amd64.tar.gz | tar -xz
-          chmod +x promu-0.1.0.linux-amd64/promu
-          sudo mv promu-0.1.0.linux-amd64/promu /usr/bin
+    # - run:
+    #     name: Install promu.
+    #     command: |
+    #       curl -sL https://github.com/prometheus/promu/releases/download/v0.1.0/promu-0.1.0.linux-amd64.tar.gz | tar -xz
+    #       chmod +x promu-0.1.0.linux-amd64/promu
+    #       sudo mv promu-0.1.0.linux-amd64/promu /usr/bin
 
     - run:
         name: Clone repo.
@@ -91,14 +91,18 @@ shared: &shared
             $PROJECT_PATH &>/dev/null
 
     - run:
-        name: Compile architecture-specific tiller binary.
+        name: Compile architecture-specific binary.
         command: |
           cd $PROJECT_PATH
-          promu crossbuild
+          go build .
+          ls -alh
 
     - run:
         name: Build and push Docker image.
         command: |
+          pwd
+          cp $PROJECT_PATH/$IMAGE .
+          ls -alh
           .circleci/push-multiarch.sh
 
 jobs:

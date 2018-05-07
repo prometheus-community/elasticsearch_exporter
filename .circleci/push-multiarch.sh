@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "Copying built binary for $GOARCH."
-cp .build/linux-${PROMU_ARCH}/elasticsearch_exporter .
+# cp .build/linux-${PROMU_ARCH}/elasticsearch_exporter .
 
 if [ $GOARCH == 'amd64' ]; then
   touch qemu-amd64-static
