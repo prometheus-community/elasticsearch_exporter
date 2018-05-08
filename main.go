@@ -83,7 +83,9 @@ func main() {
 			os.Exit(1)
 		}
 		defer resp.Body.Close()
-		d := new(bodyData)
+		d := &struct {
+			ClusterName string `json:"cluster_name"`
+		}{}
 		if err := json.NewDecoder(resp.Body).Decode(d); err != nil {
 			level.Error(logger).Log(
 				"msg", "error decoding cluster data",
@@ -108,10 +110,6 @@ func main() {
 			"err", err,
 		)
 	}
-}
-
-type bodyData struct {
-	ClusterName string `json:"cluster_name"`
 }
 
 // IndexHandler returns a http handler with the correct metricsPath
