@@ -1,3 +1,12 @@
+## 1.0.3rc1
+
+* [BUGFIX] update prometheus alerting rule example to v2 format
+* [ENHANCEMENT] Add formatting option for logger
+* [ENHANCEMENT] Add shard-level document count (can be toggled out)
+* [ENHANCEMENT] Add OS CPU usage metric
+* [ENHANCEMENT] Add skip-ssl-verify option
+* [ENHANCEMENT] Add node-level current merge metrics
+
 ## 1.0.2 / 2018-01-09
 
 * [ENHANCEMENT] Add index metrics [#85] [#116] [#118]
