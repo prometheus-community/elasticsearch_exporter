@@ -28,6 +28,10 @@ elasticsearch_exporter:
     - "127.0.0.1:9108:9108"
 ```
 
+#### Kubernetes
+
+You can find a helm chart in the stable charts repository at https://github.com/kubernetes/charts/tree/master/stable/elasticsearch-exporter.
+
 ### Configuration
 
 **NOTE:** The exporter fetches information from Elasticsearch cluster on every scrape, therefore having too tight scrape interval can impose load on ES master nodes, particularly if you run with `-es.all` and `-es.indices`. We suggest you to measure how long does it take to fetch `/_nodes/stats` and `/_all/_stats` for your ES cluster and consider whether your scrapping interval is too tight. As a last resort, you can scrape this exporter through a dedicated job with its own scraping interval.
