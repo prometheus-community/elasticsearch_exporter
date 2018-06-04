@@ -84,6 +84,42 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "deleted_docs_primary"),
+					"Count of deleted documents with only primary shards",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Docs.Deleted)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "docs_total"),
+					"Total count of documents",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Docs.Count)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "deleted_docs_total"),
+					"Total count of deleted documents",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Docs.Deleted)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_primary"),
 					"Current total size of stored index data in bytes with only primary shards on all nodes",
 					defaultIndexLabels, nil,
