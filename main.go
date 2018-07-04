@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+    "./collector"
 	"github.com/go-kit/kit/log/level"
-	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 )
