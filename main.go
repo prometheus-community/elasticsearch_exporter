@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-    "./collector"
+    "github.com/Endouble/elasticsearch_exporter/collector"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
