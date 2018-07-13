@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -224,7 +225,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	var chr clusterHealthResponse
 
 	u := *c.url
-	u.Path = "/_cluster/health"
+	u.Path = path.Join(u.Path, "/_cluster/health")
 	res, err := c.client.Get(u.String())
 	if err != nil {
 		return chr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",

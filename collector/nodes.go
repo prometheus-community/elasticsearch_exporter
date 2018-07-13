@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -1359,9 +1360,11 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
 	u := *c.url
-	u.Path = "/_nodes/_local/stats"
+
 	if c.all {
-		u.Path = "/_nodes/stats"
+		u.Path = path.Join(u.Path, "/_nodes/stats")
+	} else {
+		u.Path = path.Join(u.Path, "/_nodes/_local/stats")
 	}
 
 	res, err := c.client.Get(u.String())
