@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -456,7 +457,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	u.Path = "/_all/_stats"
+	u.Path = path.Join(u.Path, "/_all/_stats")
 	if i.shards {
 		u.RawQuery = "level=shards"
 	}
