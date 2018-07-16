@@ -128,6 +128,7 @@ type Nodes struct {
 	client *http.Client
 	url    *url.URL
 	all    bool
+	node   string
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
@@ -141,12 +142,13 @@ type Nodes struct {
 }
 
 // NewNodes defines Nodes Prometheus metrics
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *Nodes {
+func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
 	return &Nodes{
 		logger: logger,
 		client: client,
 		url:    url,
 		all:    all,
+		node:   node,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
@@ -1444,7 +1446,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	if c.all {
 		u.Path = path.Join(u.Path, "/_nodes/stats")
 	} else {
-		u.Path = path.Join(u.Path, "/_nodes/_local/stats")
+		u.Path = path.Join(u.Path, "_nodes", c.node, "stats")
 	}
 
 	res, err := c.client.Get(u.String())

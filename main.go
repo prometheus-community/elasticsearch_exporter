@@ -22,6 +22,7 @@ func main() {
 		esURI                = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
 		esTimeout            = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes           = flag.Bool("es.all", false, "Export stats for all nodes in the cluster.")
+		esNode               = flag.String("es.node", "_local", "Node's name of which metrics should be exposed.")
 		esExportIndices      = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
 		esExportShards       = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
 		esCA                 = flag.String("es.ca", "", "Path to PEM file that contains trusted CAs for the Elasticsearch connection.")
@@ -69,7 +70,7 @@ func main() {
 	versionMetric := version.NewCollector(Name)
 	prometheus.MustRegister(versionMetric)
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
+	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 	if *esExportIndices || *esExportShards {
 		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esExportShards))
 	}
