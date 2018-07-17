@@ -69,10 +69,24 @@ func main() {
 	// version metric
 	versionMetric := version.NewCollector(Name)
 	prometheus.MustRegister(versionMetric)
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+	clusterHealth := collector.NewClusterHealth(logger, httpClient, esURL)
+
+	fetchClusterName := func() string {
+		clusterName, err := clusterHealth.FetchClusterName()
+		if err != nil {
+			level.Error(logger).Log(
+				"msg", "unable to find cluster name",
+				"err", err,
+			)
+			return ""
+		}
+		return clusterName
+	}
+
+	prometheus.MustRegister(clusterHealth)
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes))
 	if *esExportIndices || *esExportShards {
-		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esExportShards))
+		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esExportShards, fetchClusterName))
 	}
 
 	http.Handle(*metricsPath, prometheus.Handler())

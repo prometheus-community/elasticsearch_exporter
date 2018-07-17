@@ -35,7 +35,7 @@ func TestIndices(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false)
+		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false, func() string { return "testKluster" })
 		stats, err := i.fetchAndDecodeIndexStats()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode indices stats: %s", err)
@@ -49,6 +49,9 @@ func TestIndices(t *testing.T) {
 		}
 		if stats.Indices["foo_1"].Total.Store.SizeInBytes == 0 {
 			t.Errorf("Wrong number of total store size in bytes")
+		}
+		if i.fetchClusterName() != "testKluster" {
+			t.Errorf("Cluster name not persisted")
 		}
 	}
 }
