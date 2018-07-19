@@ -33,6 +33,7 @@ type clusterHealthStatusMetric struct {
 	Labels func(clusterName, color string) []string
 }
 
+// ClusterHealth type defines the collector struct
 type ClusterHealth struct {
 	logger log.Logger
 	client *http.Client
@@ -45,6 +46,7 @@ type ClusterHealth struct {
 	statusMetric *clusterHealthStatusMetric
 }
 
+// NewClusterHealth returns a new Collector exposing ClusterHealth stats.
 func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
 	subsystem := "cluster_health"
 
@@ -209,6 +211,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 	}
 }
 
+// Describe set Prometheus metrics descriptions.
 func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.metrics {
 		ch <- metric.Desc
@@ -244,6 +247,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	return chr, nil
 }
 
+// Collect collects ClusterHealth metrics.
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 	var err error
 	c.totalScrapes.Inc()
