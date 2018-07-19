@@ -48,7 +48,7 @@ var (
 				}
 			}
 		}
-		if len(node.Http) == 0 {
+		if len(node.HTTP) == 0 {
 			isClientNode = "false"
 		}
 		return []string{
