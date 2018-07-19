@@ -155,7 +155,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load1)
+					return node.OS.CPU.LoadAvg.Load1
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -167,7 +167,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load5)
+					return node.OS.CPU.LoadAvg.Load5
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -179,7 +179,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load15)
+					return node.OS.CPU.LoadAvg.Load15
 				},
 				Labels: defaultNodeLabelValues,
 			},
