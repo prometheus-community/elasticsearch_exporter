@@ -245,6 +245,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 }
 
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
+	var err error
 	c.totalScrapes.Inc()
 	defer func() {
 		ch <- c.up
@@ -252,7 +253,7 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	clusterHealthResponse, err := c.fetchAndDecodeClusterHealth()
+	clusterHealthResp, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		c.up.Set(0)
 		level.Warn(c.logger).Log(
@@ -267,8 +268,8 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			metric.Desc,
 			metric.Type,
-			metric.Value(clusterHealthResponse),
-			clusterHealthResponse.ClusterName,
+			metric.Value(clusterHealthResp),
+			clusterHealthResp.ClusterName,
 		)
 	}
 
@@ -276,8 +277,8 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			c.statusMetric.Desc,
 			c.statusMetric.Type,
-			c.statusMetric.Value(clusterHealthResponse, color),
-			clusterHealthResponse.ClusterName, color,
+			c.statusMetric.Value(clusterHealthResp, color),
+			clusterHealthResp.ClusterName, color,
 		)
 	}
 }
