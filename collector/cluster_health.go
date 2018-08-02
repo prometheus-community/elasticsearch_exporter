@@ -136,6 +136,17 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "task_max_waiting_in_queue_millis"),
+					"Tasks max time waiting in queue.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.TaskMaxWaitingInQueueMillis)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "number_of_nodes"),
 					"Number of nodes in the cluster.",
 					defaultClusterHealthLabels, nil,
