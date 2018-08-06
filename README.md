@@ -6,7 +6,7 @@ Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
 ### Installation
 
-For pre-built binaries please take a look at the releases.  
+For pre-built binaries please take a look at the releases.
 https://github.com/justwatchcom/elasticsearch_exporter/releases
 
 #### Docker
@@ -71,6 +71,7 @@ elasticsearch_exporter --help
 | elasticsearch_cluster_health_number_of_in_flight_fetch     | gauge     | 1            | The number of ongoing shard info requests.
 | elasticsearch_cluster_health_number_of_nodes               | gauge     | 1            | Number of nodes in the cluster.
 | elasticsearch_cluster_health_number_of_pending_tasks       | gauge     | 1            | Cluster level changes which have not yet been executed
+| elasticsearch_cluster_health_task_max_waiting_in_queue_millis | gauge     | 1            | Max time in millis that a task is waiting in queue.
 | elasticsearch_cluster_health_relocating_shards             | gauge     | 1            | The number of shards that are currently moving from one node to another node.
 | elasticsearch_cluster_health_status                        | gauge     | 3            | Whether all primary and replica shards are allocated.
 | elasticsearch_cluster_health_timed_out                     | gauge     | 1            | Number of cluster health checks timed out
