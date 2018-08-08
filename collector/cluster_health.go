@@ -232,6 +232,20 @@ func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.jsonParseFailures.Desc()
 }
 
+func (c *ClusterHealth) FetchClusterName() (string, error) {
+	clusterHealthResponse, err := c.fetchAndDecodeClusterHealth()
+	if err != nil {
+		c.up.Set(0)
+		level.Warn(c.logger).Log(
+			"msg", "failed to fetch and decode cluster health",
+			"err", err,
+		)
+		return "", nil
+	}
+
+	return clusterHealthResponse.ClusterName, nil
+}
+
 func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, error) {
 	var chr clusterHealthResponse
 

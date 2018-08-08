@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	defaultIndexLabels      = []string{"index"}
-	defaultIndexLabelValues = func(indexName string) []string {
-		return []string{indexName}
+	defaultIndexLabels      = []string{"index", "cluster"}
+	defaultIndexLabelValues = func(indexName string, clusterName string) []string {
+		return []string{indexName, clusterName}
 	}
 )
 
@@ -23,7 +23,7 @@ type indexMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
-	Labels func(indexName string) []string
+	Labels func(indexName string, clusterName string) []string
 }
 
 type shardMetric struct {
@@ -32,14 +32,16 @@ type shardMetric struct {
 	Desc        *prometheus.Desc
 	Value       func(data IndexStatsIndexShardsDetailResponse) float64
 	Labels      []string
-	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels
+	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse, clusterName string) prometheus.Labels
 }
 
 type Indices struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	shards bool
+	logger           log.Logger
+	client           *http.Client
+	url              *url.URL
+	shards           bool
+	fetchClusterName func() string
+	clusterName      string // This clusterName is sticky--once set, it does not change.
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -49,12 +51,14 @@ type Indices struct {
 	shardMetrics []*shardMetric
 }
 
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, fetchClusterName func() string) *Indices {
 	return &Indices{
-		logger: logger,
-		client: client,
-		url:    url,
-		shards: shards,
+		logger:           logger,
+		client:           client,
+		url:              url,
+		shards:           shards,
+		fetchClusterName: fetchClusterName,
+		clusterName:      "",
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -419,9 +423,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Count)
 				},
-				Labels: []string{"index", "shard", "node"},
-				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
-					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
+				Labels: []string{"index", "shard", "node", "cluster"},
+				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse, clusterName string) prometheus.Labels {
+					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node, "cluster": clusterName}
 				},
 			},
 			{
@@ -435,9 +439,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Deleted)
 				},
-				Labels: []string{"index", "shard", "node"},
-				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
-					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
+				Labels: []string{"index", "shard", "node", "cluster"},
+				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse, clusterName string) prometheus.Labels {
+					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node, "cluster": clusterName}
 				},
 			},
 		},
@@ -488,6 +492,10 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 		ch <- i.jsonParseFailures
 	}()
 
+	if i.clusterName == "" {
+		i.clusterName = i.fetchClusterName()
+	}
+
 	// indices
 	indexStatsResponse, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
@@ -507,7 +515,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Desc,
 				metric.Type,
 				metric.Value(indexStats),
-				metric.Labels(indexName)...,
+				metric.Labels(indexName, i.clusterName)...,
 			)
 
 		}
@@ -516,7 +524,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
 				for shardNumber, shards := range indexStats.Shards {
 					for _, shard := range shards {
-						gaugeVec.With(metric.LabelValues(indexName, shardNumber, shard)).Set(metric.Value(shard))
+						gaugeVec.With(metric.LabelValues(indexName, shardNumber, shard, i.clusterName)).Set(metric.Value(shard))
 					}
 				}
 				gaugeVec.Collect(ch)
