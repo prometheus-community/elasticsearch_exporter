@@ -923,7 +923,17 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
-	defer res.Body.Close()
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(i.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
@@ -948,7 +958,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	indexStatsResp, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
 		i.up.Set(0)
-		level.Warn(i.logger).Log(
+		_ = level.Warn(i.logger).Log(
 			"msg", "failed to fetch and decode index stats",
 			"err", err,
 		)

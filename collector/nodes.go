@@ -1372,7 +1372,17 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
-	defer res.Body.Close()
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(c.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
@@ -1395,7 +1405,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
 		c.up.Set(0)
-		level.Warn(c.logger).Log(
+		_ = level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
