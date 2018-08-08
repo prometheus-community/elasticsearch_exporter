@@ -35,6 +35,7 @@ type shardMetric struct {
 	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels
 }
 
+// Indices information struct
 type Indices struct {
 	logger log.Logger
 	client *http.Client
@@ -49,6 +50,7 @@ type Indices struct {
 	shardMetrics []*shardMetric
 }
 
+// NewIndices defines Indices Prometheus metrics
 func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
 	return &Indices{
 		logger: logger,
@@ -900,6 +902,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	}
 }
 
+// Describe add Indices metrics descriptions
 func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range i.indexMetrics {
 		ch <- metric.Desc
@@ -946,6 +949,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	return isr, nil
 }
 
+// Collect gets Indices metric values
 func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	i.totalScrapes.Inc()
 	defer func() {
