@@ -34,6 +34,7 @@ type clusterHealthStatusMetric struct {
 	Labels func(clusterName, color string) []string
 }
 
+// ClusterHealth type defines the collector struct
 type ClusterHealth struct {
 	logger log.Logger
 	client *http.Client
@@ -46,6 +47,7 @@ type ClusterHealth struct {
 	statusMetric *clusterHealthStatusMetric
 }
 
+// NewClusterHealth returns a new Collector exposing ClusterHealth stats.
 func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
 	subsystem := "cluster_health"
 
@@ -221,6 +223,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 	}
 }
 
+// Describe set Prometheus metrics descriptions.
 func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.metrics {
 		ch <- metric.Desc
@@ -256,7 +259,9 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	return chr, nil
 }
 
+// Collect collects ClusterHealth metrics.
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
+	var err error
 	c.totalScrapes.Inc()
 	defer func() {
 		ch <- c.up
@@ -264,7 +269,7 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	clusterHealthResponse, err := c.fetchAndDecodeClusterHealth()
+	clusterHealthResp, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		c.up.Set(0)
 		level.Warn(c.logger).Log(
@@ -279,8 +284,8 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			metric.Desc,
 			metric.Type,
-			metric.Value(clusterHealthResponse),
-			clusterHealthResponse.ClusterName,
+			metric.Value(clusterHealthResp),
+			clusterHealthResp.ClusterName,
 		)
 	}
 
@@ -288,8 +293,8 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			c.statusMetric.Desc,
 			c.statusMetric.Type,
-			c.statusMetric.Value(clusterHealthResponse, color),
-			clusterHealthResponse.ClusterName, color,
+			c.statusMetric.Value(clusterHealthResp, color),
+			clusterHealthResp.ClusterName, color,
 		)
 	}
 }

@@ -945,7 +945,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	}()
 
 	// indices
-	indexStatsResponse, err := i.fetchAndDecodeIndexStats()
+	indexStatsResp, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
 		i.up.Set(0)
 		level.Warn(i.logger).Log(
@@ -957,7 +957,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	i.up.Set(1)
 
 	// Index stats
-	for indexName, indexStats := range indexStatsResponse.Indices {
+	for indexName, indexStats := range indexStatsResp.Indices {
 		for _, metric := range i.indexMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,

@@ -162,7 +162,7 @@ elasticsearch_exporter --help
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
 The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the elastsearch cluster, we rely on a label `cluster`.
-Depending on your setup, it can derived from the plattform metadata:
+Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)
 

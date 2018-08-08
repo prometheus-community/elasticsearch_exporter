@@ -159,5 +159,4 @@ func (h *basicAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Next.ServeHTTP(w, r)
-	return
 }
