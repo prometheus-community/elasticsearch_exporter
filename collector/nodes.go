@@ -111,6 +111,7 @@ type filesystemMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, mount string, path string) []string
 }
 
+// Nodes information struct
 type Nodes struct {
 	logger log.Logger
 	client *http.Client
@@ -127,6 +128,7 @@ type Nodes struct {
 	filesystemMetrics   []*filesystemMetric
 }
 
+// NewNodes defines Nodes Prometheus metrics
 func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *Nodes {
 	return &Nodes{
 		logger: logger,
@@ -1338,6 +1340,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 	}
 }
 
+// Describe add metrics descriptions
 func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.nodeMetrics {
 		ch <- metric.Desc
@@ -1394,6 +1397,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	return nsr, nil
 }
 
+// Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	c.totalScrapes.Inc()
 	defer func() {
