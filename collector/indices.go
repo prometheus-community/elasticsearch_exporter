@@ -406,6 +406,462 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				},
 				Labels: defaultIndexLabelValues,
 			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),
+					"Total search query time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.QueryTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_query_total"),
+					"Total number of queries",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.QueryTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_fetch_time_seconds_total"),
+					"Total search fetch time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.FetchTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_fetch_total"),
+					"Total search fetch count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.FetchTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_time_seconds_total"),
+					"Total search scroll time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.ScrollTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_total"),
+					"Total search scroll count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.ScrollTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_suggest_time_seconds_total"),
+					"Total search suggest time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.SuggestTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_suggest_total"),
+					"Total search suggest count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.SuggestTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_time_seconds_total"),
+					"Total indexing index time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.IndexTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_total"),
+					"Total indexing index count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.IndexTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_time_seconds_total"),
+					"Total indexing delete time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.DeleteTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_total"),
+					"Total indexing delete count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.DeleteTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_noop_update_total"),
+					"Total indexing no-op update count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.NoopUpdateTotal)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_throttle_time_seconds_total"),
+					"Total indexing throttle time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.ThrottleTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "get_time_seconds_total"),
+					"Total get time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Get.TimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "get_total"),
+					"Total get count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Get.Total)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "merge_time_seconds_total"),
+					"Total merge time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Merges.TotalTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "merge_total"),
+					"Total merge count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Merges.Total)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "merge_throttle_time_seconds_total"),
+					"Total merge I/O throttle time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Merges.TotalThrottledTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "merge_stopped_time_seconds_total"),
+					"Total large merge stopped time in seconds, allowing smaller merges to complete",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Merges.TotalStoppedTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "merge_auto_throttle_bytes_total"),
+					"Total bytes that were auto-throttled during merging",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Merges.TotalAutoThrottleInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "refresh_time_seconds_total"),
+					"Total refresh time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Refresh.TotalTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "refresh_total"),
+					"Total refresh count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Refresh.Total)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "flush_time_seconds_total"),
+					"Total flush time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Flush.TotalTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "flush_total"),
+					"Total flush count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Flush.Total)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "warmer_time_seconds_total"),
+					"Total warmer time in seconds",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Warmer.TotalTimeInMillis) / 1000
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "warmer_total"),
+					"Total warmer count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Warmer.Total)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "query_cache_memory_bytes_total"),
+					"Total query cache memory bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.QueryCache.MemorySizeInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "query_cache_size"),
+					"Total query cache size",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.QueryCache.CacheSize)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "query_cache_hits_total"),
+					"Total query cache hits count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.QueryCache.HitCount)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "query_cache_misses_total"),
+					"Total query cache misses count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.QueryCache.MissCount)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "query_cache_evictions_total"),
+					"Total query cache evictions count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.QueryCache.Evictions)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "request_cache_memory_bytes_total"),
+					"Total request cache memory bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.RequestCache.MemorySizeInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "request_cache_hits_total"),
+					"Total request cache hits count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.RequestCache.HitCount)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "request_cache_misses_total"),
+					"Total request cache misses count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.RequestCache.MissCount)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "request_cache_evictions_total"),
+					"Total request cache evictions count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.RequestCache.Evictions)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "fielddata_memory_bytes_total"),
+					"Total fielddata memory bytes",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Fielddata.MemorySizeInBytes)
+				},
+				Labels: defaultIndexLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "fielddata_evictions_total"),
+					"Total fielddata evictions count",
+					defaultIndexLabels, nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Fielddata.Evictions)
+				},
+				Labels: defaultIndexLabelValues,
+			},
 		},
 		shardMetrics: []*shardMetric{
 			{
