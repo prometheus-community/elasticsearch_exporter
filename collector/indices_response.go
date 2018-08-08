@@ -176,7 +176,7 @@ type IndexStatsIndexSegmentsResponse struct {
 	IndexWriterMemoryInBytes  int64 `json:"index_writer_memory_in_bytes"`
 	VersionMapMemoryInBytes   int64 `json:"version_map_memory_in_bytes"`
 	FixedBitSetMemoryInBytes  int64 `json:"fixed_bit_set_memory_in_bytes"`
-	MaxUnsafeAutoIdTimestamp  int64 `json:"max_unsafe_auto_id_timestamp"`
+	MaxUnsafeAutoIDTimestamp  int64 `json:"max_unsafe_auto_id_timestamp"`
 }
 
 // IndexStatsIndexTranslogResponse defines index stats index translog information structure
