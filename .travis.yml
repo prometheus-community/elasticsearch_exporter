@@ -7,8 +7,9 @@ go:
 script:
   - make style
   - make vet
-  - make test
+  - make gometalinter
   - make build
+  - make test
 
 matrix:
   allow_failures:
