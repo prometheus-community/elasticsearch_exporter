@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -49,7 +48,7 @@ func main() {
 	}
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
-		level.Error(logger).Log(
+		_ = level.Error(logger).Log(
 			"msg", "failed to parse es.uri",
 			"err", err,
 		)
@@ -76,39 +75,31 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", IndexHandler(*metricsPath))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_, err = w.Write([]byte(`<html>
+			<head><title>Elasticsearch Exporter</title></head>
+			<body>
+			<h1>Elasticsearch Exporter</h1>
+			<p><a href="` + *metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
+		if err != nil {
+			_ = level.Error(logger).Log(
+				"msg", "failed handling writer",
+				"err", err,
+			)
+		}
+	})
 
-	level.Info(logger).Log(
+	_ = level.Info(logger).Log(
 		"msg", "starting elasticsearch_exporter",
 		"addr", *listenAddress,
 	)
 
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		level.Error(logger).Log(
+		_ = level.Error(logger).Log(
 			"msg", "http server quit",
 			"err", err,
 		)
-	}
-}
-
-// IndexHandler returns a http handler with the correct metricsPath
-func IndexHandler(metricsPath string) http.HandlerFunc {
-	indexHTML := `
-<html>
-	<head>
-		<title>Elasticsearch Exporter</title>
-	</head>
-	<body>
-		<h1>Elasticsearch Exporter</h1>
-		<p>
-			<a href='%s'>Metrics</a>
-		</p>
-	</body>
-</html>
-`
-	index := []byte(fmt.Sprintf(strings.TrimSpace(indexHTML), metricsPath))
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write(index)
 	}
 }
