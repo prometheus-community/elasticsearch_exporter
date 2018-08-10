@@ -50,5 +50,11 @@ func TestIndices(t *testing.T) {
 		if stats.Indices["foo_1"].Total.Store.SizeInBytes == 0 {
 			t.Errorf("Wrong number of total store size in bytes")
 		}
+		if stats.Indices["foo_1"].Total.Indexing.IndexTimeInMillis == 0 {
+			t.Errorf("Wrong indexing time recorded")
+		}
+		if stats.Indices["foo_1"].Total.Indexing.IndexTotal == 0 {
+			t.Errorf("Wrong indexing total recorded")
+		}
 	}
 }

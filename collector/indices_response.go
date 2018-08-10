@@ -7,18 +7,21 @@ type indexStatsResponse struct {
 	Indices map[string]IndexStatsIndexResponse `json:"indices"`
 }
 
+// IndexStatsShardsResponse defines index stats shards information structure
 type IndexStatsShardsResponse struct {
 	Total      int64 `json:"total"`
 	Successful int64 `json:"successful"`
 	Failed     int64 `json:"failed"`
 }
 
+// IndexStatsIndexResponse defines index stats index information structure
 type IndexStatsIndexResponse struct {
 	Primaries IndexStatsIndexDetailResponse                    `json:"primaries"`
 	Total     IndexStatsIndexDetailResponse                    `json:"total"`
 	Shards    map[string][]IndexStatsIndexShardsDetailResponse `json:"shards"`
 }
 
+// IndexStatsIndexDetailResponse defines index stats index details information structure
 type IndexStatsIndexDetailResponse struct {
 	Docs         IndexStatsIndexDocsResponse         `json:"docs"`
 	Store        IndexStatsIndexStoreResponse        `json:"store"`
@@ -38,26 +41,31 @@ type IndexStatsIndexDetailResponse struct {
 	Recovery     IndexStatsIndexRecoveryResponse     `json:"recovery"`
 }
 
+// IndexStatsIndexShardsDetailResponse defines index stats index shard details information structure
 type IndexStatsIndexShardsDetailResponse struct {
 	*IndexStatsIndexDetailResponse
 	Routing IndexStatsIndexRoutingResponse `json:"routing"`
 }
 
+// IndexStatsIndexRoutingResponse defines index stats index routing information structure
 type IndexStatsIndexRoutingResponse struct {
 	Node    string `json:"node"`
 	Primary bool   `json:"primary"`
 }
 
+// IndexStatsIndexDocsResponse defines index stats index documents information structure
 type IndexStatsIndexDocsResponse struct {
 	Count   int64 `json:"count"`
 	Deleted int64 `json:"deleted"`
 }
 
+// IndexStatsIndexStoreResponse defines index stats index store information structure
 type IndexStatsIndexStoreResponse struct {
 	SizeInBytes          int64 `json:"size_in_bytes"`
 	ThrottleTimeInMillis int64 `json:"throttle_time_in_millis"`
 }
 
+// IndexStatsIndexIndexingResponse defines index stats index indexing information structure
 type IndexStatsIndexIndexingResponse struct {
 	IndexTotal           int64 `json:"index_total"`
 	IndexTimeInMillis    int64 `json:"index_time_in_millis"`
@@ -71,6 +79,7 @@ type IndexStatsIndexIndexingResponse struct {
 	ThrottleTimeInMillis int64 `json:"throttle_time_in_millis"`
 }
 
+// IndexStatsIndexGetResponse defines index stats index get information structure
 type IndexStatsIndexGetResponse struct {
 	Total               int64 `json:"total"`
 	TimeInMillis        int64 `json:"time_in_millis"`
@@ -81,6 +90,7 @@ type IndexStatsIndexGetResponse struct {
 	Current             int64 `json:"current"`
 }
 
+// IndexStatsIndexSearchResponse defines index stats index search information structure
 type IndexStatsIndexSearchResponse struct {
 	OpenContexts        int64 `json:"open_contexts"`
 	QueryTotal          int64 `json:"query_total"`
@@ -97,6 +107,7 @@ type IndexStatsIndexSearchResponse struct {
 	SuggestCurrent      int64 `json:"suggest_current"`
 }
 
+// IndexStatsIndexMergesResponse defines index stats index merges information structure
 type IndexStatsIndexMergesResponse struct {
 	Current                    int64 `json:"current"`
 	CurrentDocs                int64 `json:"current_docs"`
@@ -110,23 +121,27 @@ type IndexStatsIndexMergesResponse struct {
 	TotalAutoThrottleInBytes   int64 `json:"total_auto_throttle_in_bytes"`
 }
 
+// IndexStatsIndexRefreshResponse defines index stats index refresh information structure
 type IndexStatsIndexRefreshResponse struct {
 	Total             int64 `json:"total"`
 	TotalTimeInMillis int64 `json:"total_time_in_millis"`
 	Listeners         int64 `json:"listeners"`
 }
 
+// IndexStatsIndexFlushResponse defines index stats index flush information structure
 type IndexStatsIndexFlushResponse struct {
 	Total             int64 `json:"total"`
 	TotalTimeInMillis int64 `json:"total_time_in_millis"`
 }
 
+// IndexStatsIndexWarmerResponse defines index stats index warmer information structure
 type IndexStatsIndexWarmerResponse struct {
 	Current           int64 `json:"current"`
 	Total             int64 `json:"total"`
 	TotalTimeInMillis int64 `json:"total_time_in_millis"`
 }
 
+// IndexStatsIndexQueryCacheResponse defines index stats index query cache information structure
 type IndexStatsIndexQueryCacheResponse struct {
 	MemorySizeInBytes int64 `json:"memory_size_in_bytes"`
 	TotalCount        int64 `json:"total_count"`
@@ -137,15 +152,18 @@ type IndexStatsIndexQueryCacheResponse struct {
 	Evictions         int64 `json:"evictions"`
 }
 
+// IndexStatsIndexFielddataResponse defines index stats index fielddata information structure
 type IndexStatsIndexFielddataResponse struct {
 	MemorySizeInBytes int64 `json:"memory_size_in_bytes"`
 	Evictions         int64 `json:"evictions"`
 }
 
+// IndexStatsIndexCompletionResponse defines index stats index completion information structure
 type IndexStatsIndexCompletionResponse struct {
 	SizeInBytes int64 `json:"size_in_bytes"`
 }
 
+// IndexStatsIndexSegmentsResponse defines index stats index segments information structure
 type IndexStatsIndexSegmentsResponse struct {
 	Count                     int64 `json:"count"`
 	MemoryInBytes             int64 `json:"memory_in_bytes"`
@@ -158,14 +176,16 @@ type IndexStatsIndexSegmentsResponse struct {
 	IndexWriterMemoryInBytes  int64 `json:"index_writer_memory_in_bytes"`
 	VersionMapMemoryInBytes   int64 `json:"version_map_memory_in_bytes"`
 	FixedBitSetMemoryInBytes  int64 `json:"fixed_bit_set_memory_in_bytes"`
-	MaxUnsafeAutoIdTimestamp  int64 `json:"max_unsafe_auto_id_timestamp"`
+	MaxUnsafeAutoIDTimestamp  int64 `json:"max_unsafe_auto_id_timestamp"`
 }
 
+// IndexStatsIndexTranslogResponse defines index stats index translog information structure
 type IndexStatsIndexTranslogResponse struct {
 	Operations  int64 `json:"operations"`
 	SizeInBytes int64 `json:"size_in_bytes"`
 }
 
+// IndexStatsIndexRequestCacheResponse defines index stats index request cache information structure
 type IndexStatsIndexRequestCacheResponse struct {
 	MemorySizeInBytes int64 `json:"memory_size_in_bytes"`
 	Evictions         int64 `json:"evictions"`
@@ -173,6 +193,7 @@ type IndexStatsIndexRequestCacheResponse struct {
 	MissCount         int64 `json:"miss_count"`
 }
 
+// IndexStatsIndexRecoveryResponse defines index stats index recovery information structure
 type IndexStatsIndexRecoveryResponse struct {
 	CurrentAsSource      int64 `json:"current_as_source"`
 	CurrentAsTarget      int64 `json:"current_as_target"`

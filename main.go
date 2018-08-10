@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -26,8 +25,8 @@ func main() {
 		esExportIndices      = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
 		esExportShards       = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
 		esCA                 = flag.String("es.ca", "", "Path to PEM file that contains trusted CAs for the Elasticsearch connection.")
-		esClientPrivateKey   = flag.String("es.client-private-key", "", "Path to PEM file that conains the private key for client auth when connecting to Elasticsearch.")
-		esClientCert         = flag.String("es.client-cert", "", "Path to PEM file that conains the corresponding cert for the private key to connect to Elasticsearch.")
+		esClientPrivateKey   = flag.String("es.client-private-key", "", "Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.")
+		esClientCert         = flag.String("es.client-cert", "", "Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.")
 		esInsecureSkipVerify = flag.Bool("es.ssl-skip-verify", false, "Skip SSL verification when connecting to Elasticsearch.")
 		logLevel             = flag.String("log.level", "info", "Sets the loglevel. Valid levels are debug, info, warn, error")
 		logFormat            = flag.String("log.format", "logfmt", "Sets the log format. Valid formats are json and logfmt")
@@ -49,7 +48,7 @@ func main() {
 	}
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
-		level.Error(logger).Log(
+		_ = level.Error(logger).Log(
 			"msg", "failed to parse es.uri",
 			"err", err,
 		)
@@ -76,39 +75,31 @@ func main() {
 	}
 
 	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", IndexHandler(*metricsPath))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_, err = w.Write([]byte(`<html>
+			<head><title>Elasticsearch Exporter</title></head>
+			<body>
+			<h1>Elasticsearch Exporter</h1>
+			<p><a href="` + *metricsPath + `">Metrics</a></p>
+			</body>
+			</html>`))
+		if err != nil {
+			_ = level.Error(logger).Log(
+				"msg", "failed handling writer",
+				"err", err,
+			)
+		}
+	})
 
-	level.Info(logger).Log(
+	_ = level.Info(logger).Log(
 		"msg", "starting elasticsearch_exporter",
 		"addr", *listenAddress,
 	)
 
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		level.Error(logger).Log(
+		_ = level.Error(logger).Log(
 			"msg", "http server quit",
 			"err", err,
 		)
-	}
-}
-
-// IndexHandler returns a http handler with the correct metricsPath
-func IndexHandler(metricsPath string) http.HandlerFunc {
-	indexHTML := `
-<html>
-	<head>
-		<title>Elasticsearch Exporter</title>
-	</head>
-	<body>
-		<h1>Elasticsearch Exporter</h1>
-		<p>
-			<a href='%s'>Metrics</a>
-		</p>
-	</body>
-</html>
-`
-	index := []byte(fmt.Sprintf(strings.TrimSpace(indexHTML), metricsPath))
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write(index)
 	}
 }

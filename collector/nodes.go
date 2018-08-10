@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -49,7 +50,7 @@ var (
 				}
 			}
 		}
-		if len(node.Http) == 0 {
+		if len(node.HTTP) == 0 {
 			isClientNode = "false"
 		}
 		return []string{
@@ -121,6 +122,7 @@ type filesystemIODeviceMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, device string) []string
 }
 
+// Nodes information struct
 type Nodes struct {
 	logger log.Logger
 	client *http.Client
@@ -138,6 +140,7 @@ type Nodes struct {
 	filesystemIODeviceMetrics []*filesystemIODeviceMetric
 }
 
+// NewNodes defines Nodes Prometheus metrics
 func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *Nodes {
 	return &Nodes{
 		logger: logger,
@@ -167,7 +170,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load1)
+					return node.OS.CPU.LoadAvg.Load1
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -179,7 +182,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load5)
+					return node.OS.CPU.LoadAvg.Load5
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -191,7 +194,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load15)
+					return node.OS.CPU.LoadAvg.Load15
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -1411,6 +1414,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 	}
 }
 
+// Describe add metrics descriptions
 func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.nodeMetrics {
 		ch <- metric.Desc
@@ -1436,9 +1440,11 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
 	u := *c.url
-	u.Path = "/_nodes/_local/stats"
+
 	if c.all {
-		u.Path = "/_nodes/stats"
+		u.Path = path.Join(u.Path, "/_nodes/stats")
+	} else {
+		u.Path = path.Join(u.Path, "/_nodes/_local/stats")
 	}
 
 	res, err := c.client.Get(u.String())
@@ -1446,7 +1452,17 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
-	defer res.Body.Close()
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(c.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
@@ -1458,6 +1474,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	return nsr, nil
 }
 
+// Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	c.totalScrapes.Inc()
 	defer func() {
@@ -1466,10 +1483,10 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	nodeStatsResponse, err := c.fetchAndDecodeNodeStats()
+	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
 		c.up.Set(0)
-		level.Warn(c.logger).Log(
+		_ = level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
@@ -1477,13 +1494,13 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	}
 	c.up.Set(1)
 
-	for _, node := range nodeStatsResponse.Nodes {
+	for _, node := range nodeStatsResp.Nodes {
 		for _, metric := range c.nodeMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
 				metric.Type,
 				metric.Value(node),
-				metric.Labels(nodeStatsResponse.ClusterName, node)...,
+				metric.Labels(nodeStatsResp.ClusterName, node)...,
 			)
 		}
 
@@ -1494,7 +1511,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(gcStats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, collector)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, collector)...,
 				)
 			}
 		}
@@ -1506,7 +1523,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(bstats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, breaker)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, breaker)...,
 				)
 			}
 		}
@@ -1518,7 +1535,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(pstats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, pool)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, pool)...,
 				)
 			}
 		}
@@ -1530,7 +1547,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(fsDataStats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, fsDataStats.Mount, fsDataStats.Path)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, fsDataStats.Mount, fsDataStats.Path)...,
 				)
 			}
 		}
@@ -1542,7 +1559,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(fsIODeviceStats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, fsIODeviceStats.DeviceName)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, fsIODeviceStats.DeviceName)...,
 				)
 			}
 		}

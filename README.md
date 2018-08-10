@@ -6,7 +6,7 @@ Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
 ### Installation
 
-For pre-built binaries please take a look at the releases.  
+For pre-built binaries please take a look at the releases.
 https://github.com/justwatchcom/elasticsearch_exporter/releases
 
 #### Docker
@@ -58,115 +58,116 @@ elasticsearch_exporter --help
 
 ### Metrics
 
-|Name                                                               |Type       |Cardinality   |Help
-|----                                                               |----       |-----------   |----
-| elasticsearch_breakers_estimated_size_bytes                       | gauge     | 4            | Estimated size in bytes of breaker
-| elasticsearch_breakers_limit_size_bytes                           | gauge     | 4            | Limit size in bytes for breaker
-| elasticsearch_breakers_tripped                                    | counter   | 4            | tripped for breaker
-| elasticsearch_cluster_health_active_primary_shards                | gauge     | 1            | The number of primary shards in your cluster. This is an aggregate total across all indices.
-| elasticsearch_cluster_health_active_shards                        | gauge     | 1            | Aggregate total of all shards across all indices, which includes replica shards.
-| elasticsearch_cluster_health_delayed_unassigned_shards            | gauge     | 1            | Shards delayed to reduce reallocation overhead
-| elasticsearch_cluster_health_initializing_shards                  | gauge     | 1            | Count of shards that are being freshly created.
-| elasticsearch_cluster_health_number_of_data_nodes                 | gauge     | 1            | Number of data nodes in the cluster.
-| elasticsearch_cluster_health_number_of_in_flight_fetch            | gauge     | 1            | The number of ongoing shard info requests.
-| elasticsearch_cluster_health_number_of_nodes                      | gauge     | 1            | Number of nodes in the cluster.
-| elasticsearch_cluster_health_number_of_pending_tasks              | gauge     | 1            | Cluster level changes which have not yet been executed
-| elasticsearch_cluster_health_relocating_shards                    | gauge     | 1            | The number of shards that are currently moving from one node to another node.
-| elasticsearch_cluster_health_status                               | gauge     | 3            | Whether all primary and replica shards are allocated.
-| elasticsearch_cluster_health_timed_out                            | gauge     | 1            | Number of cluster health checks timed out
-| elasticsearch_cluster_health_unassigned_shards                    | gauge     | 1            | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
-| elasticsearch_filesystem_data_available_bytes                     | gauge     | 1            | Available space on block device in bytes
-| elasticsearch_filesystem_data_free_bytes                          | gauge     | 1            | Free space on block device in bytes
-| elasticsearch_filesystem_data_size_bytes                          | gauge     | 1            | Size of block device in bytes
+|Name                                                        |Type       |Cardinality   |Help
+|----                                                        |----       |-----------   |----
+| elasticsearch_breakers_estimated_size_bytes                | gauge     | 4            | Estimated size in bytes of breaker
+| elasticsearch_breakers_limit_size_bytes                    | gauge     | 4            | Limit size in bytes for breaker
+| elasticsearch_breakers_tripped                             | counter   | 4            | tripped for breaker
+| elasticsearch_cluster_health_active_primary_shards         | gauge     | 1            | The number of primary shards in your cluster. This is an aggregate total across all indices.
+| elasticsearch_cluster_health_active_shards                 | gauge     | 1            | Aggregate total of all shards across all indices, which includes replica shards.
+| elasticsearch_cluster_health_delayed_unassigned_shards     | gauge     | 1            | Shards delayed to reduce reallocation overhead
+| elasticsearch_cluster_health_initializing_shards           | gauge     | 1            | Count of shards that are being freshly created.
+| elasticsearch_cluster_health_number_of_data_nodes          | gauge     | 1            | Number of data nodes in the cluster.
+| elasticsearch_cluster_health_number_of_in_flight_fetch     | gauge     | 1            | The number of ongoing shard info requests.
+| elasticsearch_cluster_health_number_of_nodes               | gauge     | 1            | Number of nodes in the cluster.
+| elasticsearch_cluster_health_number_of_pending_tasks       | gauge     | 1            | Cluster level changes which have not yet been executed
+| elasticsearch_cluster_health_task_max_waiting_in_queue_millis | gauge     | 1            | Max time in millis that a task is waiting in queue.
+| elasticsearch_cluster_health_relocating_shards             | gauge     | 1            | The number of shards that are currently moving from one node to another node.
+| elasticsearch_cluster_health_status                        | gauge     | 3            | Whether all primary and replica shards are allocated.
+| elasticsearch_cluster_health_timed_out                     | gauge     | 1            | Number of cluster health checks timed out
+| elasticsearch_cluster_health_unassigned_shards             | gauge     | 1            | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
+| elasticsearch_filesystem_data_available_bytes              | gauge     | 1            | Available space on block device in bytes
+| elasticsearch_filesystem_data_free_bytes                   | gauge     | 1            | Free space on block device in bytes
+| elasticsearch_filesystem_data_size_bytes                   | gauge     | 1            | Size of block device in bytes
 | elasticsearch_filesystem_io_stats_device_operations_count         | gauge     | 1            | Count of disk operations
 | elasticsearch_filesystem_io_stats_device_read_operations_count    | gauge     | 1            | Count of disk read operations
 | elasticsearch_filesystem_io_stats_device_write_operations_count   | gauge     | 1            | Count of disk write operations
 | elasticsearch_filesystem_io_stats_device_read_size_kilobytes_sum  | gauge     | 1            | Total kilobytes read from disk
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum | gauge     | 1            | Total kilobytes written to disk
-| elasticsearch_indices_docs                                        | gauge     | 1            | Count of documents on this node
-| elasticsearch_indices_docs_deleted                                | gauge     | 1            | Count of deleted documents on this node
-| elasticsearch_indices_docs_primary                                | gauge     |              | Count of documents with only primary shards on all nodes
-| elasticsearch_indices_fielddata_evictions                         | counter   | 1            | Evictions from field data
-| elasticsearch_indices_fielddata_memory_size_bytes                 | gauge     | 1            | Field data cache memory usage in bytes
-| elasticsearch_indices_filter_cache_evictions                      | counter   | 1            | Evictions from filter cache
-| elasticsearch_indices_filter_cache_memory_size_bytes              | gauge     | 1            | Filter cache memory usage in bytes
-| elasticsearch_indices_flush_time_seconds                          | counter   | 1            | Cumulative flush time in seconds
-| elasticsearch_indices_flush_total                                 | counter   | 1            | Total flushes
-| elasticsearch_indices_get_exists_time_seconds                     | counter   | 1            | Total time get exists in seconds
-| elasticsearch_indices_get_exists_total                            | counter   | 1            | Total get exists operations
-| elasticsearch_indices_get_missing_time_seconds                    | counter   | 1            | Total time of get missing in seconds
-| elasticsearch_indices_get_missing_total                           | counter   | 1            | Total get missing
-| elasticsearch_indices_get_time_seconds                            | counter   | 1            | Total get time in seconds
-| elasticsearch_indices_get_total                                   | counter   | 1            | Total get
-| elasticsearch_indices_indexing_delete_time_seconds_total          | counter   | 1            | Total time indexing delete in seconds
-| elasticsearch_indices_indexing_delete_total                       | counter   | 1            | Total indexing deletes
-| elasticsearch_indices_indexing_index_time_seconds_total           | counter   | 1            | Cumulative index time in seconds
-| elasticsearch_indices_indexing_index_total                        | counter   | 1            | Total index calls
-| elasticsearch_indices_merges_docs_total                           | counter   | 1            | Cumulative docs merged
-| elasticsearch_indices_merges_total                                | counter   | 1            | Total merges
-| elasticsearch_indices_merges_total_size_bytes_total               | counter   | 1            | Total merge size in bytes
-| elasticsearch_indices_merges_total_time_seconds_total             | counter   | 1            | Total time spent merging in seconds
-| elasticsearch_indices_query_cache_cache_count                     | gauge     | 1            | Count of query cache
-| elasticsearch_indices_query_cache_cache_size                      | gauge     | 1            | Size of query cache
-| elasticsearch_indices_query_cache_count                           | counter   | 2            | Count of query cache hit/miss
-| elasticsearch_indices_query_cache_evictions                       | counter   | 1            | Evictions from query cache
-| elasticsearch_indices_query_cache_memory_size_bytes               | gauge     | 1            | Query cache memory usage in bytes
-| elasticsearch_indices_query_cache_total                           | counter   | 1            | Size of query cache total
-| elasticsearch_indices_refresh_time_seconds_total                  | counter   | 1            | Total refreshes
-| elasticsearch_indices_refresh_total                               | counter   | 1            | Total time spent refreshing in seconds
-| elasticsearch_indices_request_cache_count                         | counter   | 2            | Count of request cache hit/miss
-| elasticsearch_indices_request_cache_evictions                     | counter   | 1            | Evictions from request cache
-| elasticsearch_indices_request_cache_memory_size_bytes             | gauge     | 1            | Request cache memory usage in bytes
-| elasticsearch_indices_search_fetch_time_seconds                   | counter   | 1            | Total search fetch time in seconds
-| elasticsearch_indices_search_fetch_total                          | counter   | 1            | Total number of fetches
-| elasticsearch_indices_search_query_time_seconds                   | counter   | 1            | Total search query time in seconds
-| elasticsearch_indices_search_query_total                          | counter   | 1            | Total number of queries
-| elasticsearch_indices_segments_count                              | gauge     | 1            | Count of index segments on this node
-| elasticsearch_indices_segments_memory_bytes                       | gauge     | 1            | Current memory size of segments in bytes
-| elasticsearch_indices_shards_docs                                 | gauge     | 3            | Count of documents on this shard
-| elasticsearch_indices_shards_docs_deleted                         | gauge     | 3            | Count of deleted documents on each shard
-| elasticsearch_indices_store_size_bytes                            | gauge     | 1            | Current size of stored index data in bytes
-| elasticsearch_indices_store_size_bytes_primary                    | gauge     |              | Current size of stored index data in bytes with only primary shards on all nodes
-| elasticsearch_indices_store_size_bytes_total                      | gauge     |              | Current size of stored index data in bytes with all shards on all nodes
-| elasticsearch_indices_store_throttle_time_seconds_total           | counter   | 1            | Throttle time for index store in seconds
-| elasticsearch_indices_translog_operations                         | counter   | 1            | Total translog operations
-| elasticsearch_indices_translog_size_in_bytes                      | counter   | 1            | Total translog size in bytes
-| elasticsearch_jvm_gc_collection_seconds_count                     | counter   | 2            | Count of JVM GC runs
-| elasticsearch_jvm_gc_collection_seconds_sum                       | counter   | 2            | GC run time in seconds
-| elasticsearch_jvm_memory_committed_bytes                          | gauge     | 2            | JVM memory currently committed by area
-| elasticsearch_jvm_memory_max_bytes                                | gauge     | 1            | JVM memory max
-| elasticsearch_jvm_memory_used_bytes                               | gauge     | 2            | JVM memory currently used by area
-| elasticsearch_jvm_memory_pool_used_bytes                          | gauge     | 3            | JVM memory currently used by pool
-| elasticsearch_jvm_memory_pool_max_bytes                           | counter   | 3            | JVM memory max by pool
-| elasticsearch_jvm_memory_pool_peak_used_bytes                     | counter   | 3            | JVM memory peak used by pool
-| elasticsearch_jvm_memory_pool_peak_max_bytes                      | counter   | 3            | JVM memory peak max by pool
-| elasticsearch_os_cpu_percent                                      | gauge     | 1            | Percent CPU used by the OS
-| elasticsearch_os_load1                                            | gauge     | 1            | Shortterm load average
-| elasticsearch_os_load5                                            | gauge     | 1            | Midterm load average
-| elasticsearch_os_load15                                           | gauge     | 1            | Longterm load average
-| elasticsearch_process_cpu_percent                                 | gauge     | 1            | Percent CPU used by process
-| elasticsearch_process_cpu_time_seconds_sum                        | counter   | 3            | Process CPU time in seconds
-| elasticsearch_process_mem_resident_size_bytes                     | gauge     | 1            | Resident memory in use by process in bytes
-| elasticsearch_process_mem_share_size_bytes                        | gauge     | 1            | Shared memory in use by process in bytes
-| elasticsearch_process_mem_virtual_size_bytes                      | gauge     | 1            | Total virtual memory used in bytes
-| elasticsearch_process_open_files_count                            | gauge     | 1            | Open file descriptors
-| elasticsearch_thread_pool_active_count                            | gauge     | 14           | Thread Pool threads active
-| elasticsearch_thread_pool_completed_count                         | counter   | 14           | Thread Pool operations completed
-| elasticsearch_thread_pool_largest_count                           | gauge     | 14           | Thread Pool largest threads count
-| elasticsearch_thread_pool_queue_count                             | gauge     | 14           | Thread Pool operations queued
-| elasticsearch_thread_pool_rejected_count                          | counter   | 14           | Thread Pool operations rejected
-| elasticsearch_thread_pool_threads_count                           | gauge     | 14           | Thread Pool current threads count
-| elasticsearch_transport_rx_packets_total                          | counter   | 1            | Count of packets received
-| elasticsearch_transport_rx_size_bytes_total                       | counter   | 1            | Total number of bytes received
-| elasticsearch_transport_tx_packets_total                          | counter   | 1            | Count of packets sent
-| elasticsearch_transport_tx_size_bytes_total                       | counter   | 1            | Total number of bytes sent
+| elasticsearch_indices_docs                                 | gauge     | 1            | Count of documents on this node
+| elasticsearch_indices_docs_deleted                         | gauge     | 1            | Count of deleted documents on this node
+| elasticsearch_indices_docs_primary                         | gauge     |              | Count of documents with only primary shards on all nodes
+| elasticsearch_indices_fielddata_evictions                  | counter   | 1            | Evictions from field data
+| elasticsearch_indices_fielddata_memory_size_bytes          | gauge     | 1            | Field data cache memory usage in bytes
+| elasticsearch_indices_filter_cache_evictions               | counter   | 1            | Evictions from filter cache
+| elasticsearch_indices_filter_cache_memory_size_bytes       | gauge     | 1            | Filter cache memory usage in bytes
+| elasticsearch_indices_flush_time_seconds                   | counter   | 1            | Cumulative flush time in seconds
+| elasticsearch_indices_flush_total                          | counter   | 1            | Total flushes
+| elasticsearch_indices_get_exists_time_seconds              | counter   | 1            | Total time get exists in seconds
+| elasticsearch_indices_get_exists_total                     | counter   | 1            | Total get exists operations
+| elasticsearch_indices_get_missing_time_seconds             | counter   | 1            | Total time of get missing in seconds
+| elasticsearch_indices_get_missing_total                    | counter   | 1            | Total get missing
+| elasticsearch_indices_get_time_seconds                     | counter   | 1            | Total get time in seconds
+| elasticsearch_indices_get_total                            | counter   | 1            | Total get
+| elasticsearch_indices_indexing_delete_time_seconds_total   | counter   | 1            | Total time indexing delete in seconds
+| elasticsearch_indices_indexing_delete_total                | counter   | 1            | Total indexing deletes
+| elasticsearch_indices_indexing_index_time_seconds_total    | counter   | 1            | Cumulative index time in seconds
+| elasticsearch_indices_indexing_index_total                 | counter   | 1            | Total index calls
+| elasticsearch_indices_merges_docs_total                    | counter   | 1            | Cumulative docs merged
+| elasticsearch_indices_merges_total                         | counter   | 1            | Total merges
+| elasticsearch_indices_merges_total_size_bytes_total        | counter   | 1            | Total merge size in bytes
+| elasticsearch_indices_merges_total_time_seconds_total      | counter   | 1            | Total time spent merging in seconds
+| elasticsearch_indices_query_cache_cache_count              | gauge     | 1            | Count of query cache
+| elasticsearch_indices_query_cache_cache_size               | gauge     | 1            | Size of query cache
+| elasticsearch_indices_query_cache_count                    | counter   | 2            | Count of query cache hit/miss
+| elasticsearch_indices_query_cache_evictions                | counter   | 1            | Evictions from query cache
+| elasticsearch_indices_query_cache_memory_size_bytes        | gauge     | 1            | Query cache memory usage in bytes
+| elasticsearch_indices_query_cache_total                    | counter   | 1            | Size of query cache total
+| elasticsearch_indices_refresh_time_seconds_total           | counter   | 1            | Total refreshes
+| elasticsearch_indices_refresh_total                        | counter   | 1            | Total time spent refreshing in seconds
+| elasticsearch_indices_request_cache_count                  | counter   | 2            | Count of request cache hit/miss
+| elasticsearch_indices_request_cache_evictions              | counter   | 1            | Evictions from request cache
+| elasticsearch_indices_request_cache_memory_size_bytes      | gauge     | 1            | Request cache memory usage in bytes
+| elasticsearch_indices_search_fetch_time_seconds            | counter   | 1            | Total search fetch time in seconds
+| elasticsearch_indices_search_fetch_total                   | counter   | 1            | Total number of fetches
+| elasticsearch_indices_search_query_time_seconds            | counter   | 1            | Total search query time in seconds
+| elasticsearch_indices_search_query_total                   | counter   | 1            | Total number of queries
+| elasticsearch_indices_segments_count                       | gauge     | 1            | Count of index segments on this node
+| elasticsearch_indices_segments_memory_bytes                | gauge     | 1            | Current memory size of segments in bytes
+| elasticsearch_indices_shards_docs                          | gauge     | 3            | Count of documents on this shard
+| elasticsearch_indices_shards_docs_deleted                  | gauge     | 3            | Count of deleted documents on each shard
+| elasticsearch_indices_store_size_bytes                     | gauge     | 1            | Current size of stored index data in bytes
+| elasticsearch_indices_store_size_bytes_primary             | gauge     |              | Current size of stored index data in bytes with only primary shards on all nodes
+| elasticsearch_indices_store_size_bytes_total               | gauge     |              | Current size of stored index data in bytes with all shards on all nodes
+| elasticsearch_indices_store_throttle_time_seconds_total    | counter   | 1            | Throttle time for index store in seconds
+| elasticsearch_indices_translog_operations                  | counter   | 1            | Total translog operations
+| elasticsearch_indices_translog_size_in_bytes               | counter   | 1            | Total translog size in bytes
+| elasticsearch_jvm_gc_collection_seconds_count              | counter   | 2            | Count of JVM GC runs
+| elasticsearch_jvm_gc_collection_seconds_sum                | counter   | 2            | GC run time in seconds
+| elasticsearch_jvm_memory_committed_bytes                   | gauge     | 2            | JVM memory currently committed by area
+| elasticsearch_jvm_memory_max_bytes                         | gauge     | 1            | JVM memory max
+| elasticsearch_jvm_memory_used_bytes                        | gauge     | 2            | JVM memory currently used by area
+| elasticsearch_jvm_memory_pool_used_bytes                   | gauge     | 3            | JVM memory currently used by pool
+| elasticsearch_jvm_memory_pool_max_bytes                    | counter   | 3            | JVM memory max by pool
+| elasticsearch_jvm_memory_pool_peak_used_bytes              | counter   | 3            | JVM memory peak used by pool
+| elasticsearch_jvm_memory_pool_peak_max_bytes               | counter   | 3            | JVM memory peak max by pool
+| elasticsearch_os_cpu_percent                               | gauge     | 1            | Percent CPU used by the OS
+| elasticsearch_os_load1                                     | gauge     | 1            | Shortterm load average
+| elasticsearch_os_load5                                     | gauge     | 1            | Midterm load average
+| elasticsearch_os_load15                                    | gauge     | 1            | Longterm load average
+| elasticsearch_process_cpu_percent                          | gauge     | 1            | Percent CPU used by process
+| elasticsearch_process_cpu_time_seconds_sum                 | counter   | 3            | Process CPU time in seconds
+| elasticsearch_process_mem_resident_size_bytes              | gauge     | 1            | Resident memory in use by process in bytes
+| elasticsearch_process_mem_share_size_bytes                 | gauge     | 1            | Shared memory in use by process in bytes
+| elasticsearch_process_mem_virtual_size_bytes               | gauge     | 1            | Total virtual memory used in bytes
+| elasticsearch_process_open_files_count                     | gauge     | 1            | Open file descriptors
+| elasticsearch_thread_pool_active_count                     | gauge     | 14           | Thread Pool threads active
+| elasticsearch_thread_pool_completed_count                  | counter   | 14           | Thread Pool operations completed
+| elasticsearch_thread_pool_largest_count                    | gauge     | 14           | Thread Pool largest threads count
+| elasticsearch_thread_pool_queue_count                      | gauge     | 14           | Thread Pool operations queued
+| elasticsearch_thread_pool_rejected_count                   | counter   | 14           | Thread Pool operations rejected
+| elasticsearch_thread_pool_threads_count                    | gauge     | 14           | Thread Pool current threads count
+| elasticsearch_transport_rx_packets_total                   | counter   | 1            | Count of packets received
+| elasticsearch_transport_rx_size_bytes_total                | counter   | 1            | Total number of bytes received
+| elasticsearch_transport_tx_packets_total                   | counter   | 1            | Count of packets sent
+| elasticsearch_transport_tx_size_bytes_total                | counter   | 1            | Total number of bytes sent
 
 ### Alerts & Recording Rules
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
 The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the elastsearch cluster, we rely on a label `cluster`.
-Depending on your setup, it can derived from the plattform metadata:
+Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -33,6 +34,7 @@ type clusterHealthStatusMetric struct {
 	Labels func(clusterName, color string) []string
 }
 
+// ClusterHealth type defines the collector struct
 type ClusterHealth struct {
 	logger log.Logger
 	client *http.Client
@@ -45,6 +47,7 @@ type ClusterHealth struct {
 	statusMetric *clusterHealthStatusMetric
 }
 
+// NewClusterHealth returns a new Collector exposing ClusterHealth stats.
 func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
 	subsystem := "cluster_health"
 
@@ -136,6 +139,17 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, subsystem, "task_max_waiting_in_queue_millis"),
+					"Tasks max time waiting in queue.",
+					defaultClusterHealthLabels, nil,
+				),
+				Value: func(clusterHealth clusterHealthResponse) float64 {
+					return float64(clusterHealth.TaskMaxWaitingInQueueMillis)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "number_of_nodes"),
 					"Number of nodes in the cluster.",
 					defaultClusterHealthLabels, nil,
@@ -209,6 +223,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 	}
 }
 
+// Describe set Prometheus metrics descriptions.
 func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.metrics {
 		ch <- metric.Desc
@@ -224,13 +239,22 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	var chr clusterHealthResponse
 
 	u := *c.url
-	u.Path = "/_cluster/health"
+	u.Path = path.Join(u.Path, "/_cluster/health")
 	res, err := c.client.Get(u.String())
 	if err != nil {
 		return chr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
-	defer res.Body.Close()
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(c.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
 
 	if res.StatusCode != http.StatusOK {
 		return chr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
@@ -244,7 +268,9 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	return chr, nil
 }
 
+// Collect collects ClusterHealth metrics.
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
+	var err error
 	c.totalScrapes.Inc()
 	defer func() {
 		ch <- c.up
@@ -252,10 +278,10 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	clusterHealthResponse, err := c.fetchAndDecodeClusterHealth()
+	clusterHealthResp, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		c.up.Set(0)
-		level.Warn(c.logger).Log(
+		_ = level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode cluster health",
 			"err", err,
 		)
@@ -267,8 +293,8 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			metric.Desc,
 			metric.Type,
-			metric.Value(clusterHealthResponse),
-			clusterHealthResponse.ClusterName,
+			metric.Value(clusterHealthResp),
+			clusterHealthResp.ClusterName,
 		)
 	}
 
@@ -276,8 +302,8 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			c.statusMetric.Desc,
 			c.statusMetric.Type,
-			c.statusMetric.Value(clusterHealthResponse, color),
-			clusterHealthResponse.ClusterName, color,
+			c.statusMetric.Value(clusterHealthResp, color),
+			clusterHealthResp.ClusterName, color,
 		)
 	}
 }
