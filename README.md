@@ -79,6 +79,11 @@ elasticsearch_exporter --help
 | elasticsearch_filesystem_data_available_bytes              | gauge     | 1            | Available space on block device in bytes
 | elasticsearch_filesystem_data_free_bytes                   | gauge     | 1            | Free space on block device in bytes
 | elasticsearch_filesystem_data_size_bytes                   | gauge     | 1            | Size of block device in bytes
+| elasticsearch_filesystem_io_stats_device_operations_count         | gauge     | 1            | Count of disk operations
+| elasticsearch_filesystem_io_stats_device_read_operations_count    | gauge     | 1            | Count of disk read operations
+| elasticsearch_filesystem_io_stats_device_write_operations_count   | gauge     | 1            | Count of disk write operations
+| elasticsearch_filesystem_io_stats_device_read_size_kilobytes_sum  | gauge     | 1            | Total kilobytes read from disk
+| elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum | gauge     | 1            | Total kilobytes written to disk
 | elasticsearch_indices_docs                                 | gauge     | 1            | Count of documents on this node
 | elasticsearch_indices_docs_deleted                         | gauge     | 1            | Count of deleted documents on this node
 | elasticsearch_indices_docs_primary                         | gauge     |              | Count of documents with only primary shards on all nodes

@@ -301,22 +301,32 @@ type NodeStatsHTTPResponse struct {
 
 // NodeStatsFSResponse is a representation of a file system information, data path, free disk space, read/write stats
 type NodeStatsFSResponse struct {
-	Timestamp int64                     `json:"timestamp"`
-	Data      []NodeStatsFSDataResponse `json:"data"`
+	Timestamp int64                      `json:"timestamp"`
+	Data      []NodeStatsFSDataResponse  `json:"data"`
+	IOStats   NodeStatsFSIOStatsResponse `json:"io_stats"`
 }
 
 // NodeStatsFSDataResponse defines node stats filesystem data structure
 type NodeStatsFSDataResponse struct {
-	Path          string `json:"path"`
-	Mount         string `json:"mount"`
-	Device        string `json:"dev"`
-	Total         int64  `json:"total_in_bytes"`
-	Free          int64  `json:"free_in_bytes"`
-	Available     int64  `json:"available_in_bytes"`
-	DiskReads     int64  `json:"disk_reads"`
-	DiskWrites    int64  `json:"disk_writes"`
-	DiskReadSize  int64  `json:"disk_read_size_in_bytes"`
-	DiskWriteSize int64  `json:"disk_write_size_in_bytes"`
+	Path      string `json:"path"`
+	Mount     string `json:"mount"`
+	Device    string `json:"dev"`
+	Total     int64  `json:"total_in_bytes"`
+	Free      int64  `json:"free_in_bytes"`
+	Available int64  `json:"available_in_bytes"`
+}
+
+type NodeStatsFSIOStatsResponse struct {
+	Devices []NodeStatsFSIOStatsDeviceResponse `json:"devices"`
+}
+
+type NodeStatsFSIOStatsDeviceResponse struct {
+	DeviceName      string `json:"device_name"`
+	Operations      int64  `json:"operations"`
+	ReadOperations  int64  `json:"read_operations"`
+	WriteOperations int64  `json:"write_operations"`
+	ReadSize        int64  `json:"read_kilobytes"`
+	WriteSize       int64  `json:"write_kilobytes"`
 }
 
 // ClusterHealthResponse is a representation of a Elasticsearch Cluster Health
