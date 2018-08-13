@@ -316,10 +316,12 @@ type NodeStatsFSDataResponse struct {
 	Available int64  `json:"available_in_bytes"`
 }
 
+// NodeStatsFSIOStatsResponse defines node stats filesystem device structure
 type NodeStatsFSIOStatsResponse struct {
 	Devices []NodeStatsFSIOStatsDeviceResponse `json:"devices"`
 }
 
+// NodeStatsFSIOStatsDeviceResponse is a representation of a node stat filesystem device
 type NodeStatsFSIOStatsDeviceResponse struct {
 	DeviceName      string `json:"device_name"`
 	Operations      int64  `json:"operations"`
