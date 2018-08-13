@@ -1003,6 +1003,34 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_buffer_pool", "used_bytes"),
+					"JVM buffer currently used",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.BufferPools["direct"].Used)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "direct")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_buffer_pool", "used_bytes"),
+					"JVM buffer currently used",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.BufferPools["mapped"].Used)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "mapped")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
 					defaultNodeLabels, nil,
