@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// ClusterInfoResponse is the cluster info retrievable from the / endpoint
+// Response is the cluster info retrievable from the / endpoint
 type Response struct {
 	Name        string      `json:"name"`
 	ClusterName string      `json:"cluster_name"`
@@ -14,7 +14,7 @@ type Response struct {
 	Tagline     string      `json:"tagline"`
 }
 
-// ClusterVersionInfo is the version info retrievable from the / endpoint, embedded in Response
+// VersionInfo is the version info retrievable from the / endpoint, embedded in Response
 type VersionInfo struct {
 	Number        semver.Version `json:"number"`
 	BuildHash     string         `json:"build_hash"`
