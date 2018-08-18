@@ -8,11 +8,14 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/blang/semver"
 )
 
-var (
+const (
 	nodeName      = "test-node-"
 	clusterName   = "test-cluster-1"
 	clusterUUID   = "r1bT9sBrR7S9-CamE41Qqg"
@@ -27,7 +30,8 @@ var (
 type mockES struct{}
 
 func (mockES) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(fmt.Sprintf(`{
+
+	fmt.Fprintf(w, `{
   "name" : "%s",
   "cluster_name" : "%s",
   "cluster_uuid" : "%s",
@@ -49,7 +53,7 @@ func (mockES) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		buildSnapshot,
 		luceneVersion,
 		tagline,
-	)))
+	)
 }
 
 type mockConsumer struct {
@@ -91,7 +95,10 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Skipf("internal test error: %s", err)
 	}
-	New(log.NewNopLogger(), http.DefaultClient, u, 0)
+	r := New(log.NewNopLogger(), http.DefaultClient, u, 0)
+	if r.url != u {
+		t.Errorf("new Retriever mal-constructed")
+	}
 }
 
 func TestRetriever_RegisterConsumer(t *testing.T) {
@@ -111,11 +118,30 @@ func TestRetriever_RegisterConsumer(t *testing.T) {
 		}
 	}
 	if len(retriever.consumerChannels) != len(consumerNames) {
-		t.Error("number of registered consumerChannels don't match the number of calls to the register func")
+		t.Error("number of registered consumerChannels doesn't match the number of calls to the register func")
 	}
 }
 
 func TestRetriever_fetchAndDecodeClusterInfo(t *testing.T) {
+	// these override test package globals
+	versionNumber, _ := semver.Make(versionNumber)
+	luceneVersion, _ := semver.Make(luceneVersion)
+	buildDate, _ := time.Parse(time.RFC3339, buildDate)
+
+	var expected = &Response{
+		Name:        nodeName,
+		ClusterName: clusterName,
+		ClusterUUID: clusterUUID,
+		Version: VersionInfo{
+			Number:        versionNumber,
+			BuildHash:     buildHash,
+			BuildDate:     buildDate,
+			BuildSnapshot: buildSnapshot,
+			LuceneVersion: luceneVersion,
+		},
+		Tagline: tagline,
+	}
+
 	mockES := httptest.NewServer(mockES{})
 	u, err := url.Parse(mockES.URL)
 	if err != nil {
@@ -126,8 +152,10 @@ func TestRetriever_fetchAndDecodeClusterInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to retrieve cluster info: %s", err)
 	}
-	// ToDo: check marshaled values
-	t.Logf("%+v\n", ci)
+
+	if !reflect.DeepEqual(ci, expected) {
+		t.Errorf("unexpected response, want %v, got %v", expected, ci)
+	}
 }
 
 func TestRetriever_Run(t *testing.T) {
