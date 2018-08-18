@@ -34,7 +34,7 @@ You can find a helm chart in the stable charts repository at https://github.com/
 
 ### Configuration
 
-**NOTE:** The exporter fetches information from Elasticsearch cluster on every scrape, therefore having too tight scrape interval can impose load on ES master nodes, particularly if you run with `-es.all` and `-es.indices`. We suggest you to measure how long does it take to fetch `/_nodes/stats` and `/_all/_stats` for your ES cluster and consider whether your scrapping interval is too tight. As a last resort, you can scrape this exporter through a dedicated job with its own scraping interval.
+**NOTE:** The exporter fetches information from an ElasticSearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `-es.all` and `-es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
 
 Below is the command line options summary:
 ```bash
@@ -166,7 +166,7 @@ elasticsearch_exporter --help
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
-The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the elastsearch cluster, we rely on a label `cluster`.
+The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the ElasticSearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)
