@@ -68,28 +68,25 @@ func (r *Retriever) RegisterConsumer(c consumer) error {
 func (r *Retriever) Run(ctx context.Context) {
 	// start update routine
 	go func(ctx context.Context) {
-		for {
-			select {
-			case <-r.sync:
-				_ = level.Info(r.logger).Log(
-					"msg", "providing consumers with updated cluster info label",
+		for range r.sync {
+			_ = level.Info(r.logger).Log(
+				"msg", "providing consumers with updated cluster info label",
+			)
+			res, err := r.fetchAndDecodeClusterInfo()
+			if err != nil {
+				_ = level.Error(r.logger).Log(
+					"msg", "failed to retrieve cluster info from ES",
+					"err", err,
 				)
-				res, err := r.fetchAndDecodeClusterInfo()
-				if err != nil {
-					_ = level.Error(r.logger).Log(
-						"msg", "failed to retrieve cluster info from ES",
-						"err", err,
-					)
-					continue
-				}
-				for name, consumerCh := range r.consumerChannels {
-					_ = level.Debug(r.logger).Log(
-						"msg", "sending update",
-						"consumer", name,
-						"res", fmt.Sprintf("%+v", res),
-					)
-					*consumerCh <- res
-				}
+				continue
+			}
+			for name, consumerCh := range r.consumerChannels {
+				_ = level.Debug(r.logger).Log(
+					"msg", "sending update",
+					"consumer", name,
+					"res", fmt.Sprintf("%+v", res),
+				)
+				*consumerCh <- res
 			}
 		}
 	}(ctx)
