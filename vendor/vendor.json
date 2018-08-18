@@ -9,6 +9,12 @@
 			"revisionTime": "2016-02-29T21:34:45Z"
 		},
 		{
+			"checksumSHA1": "f423Rwr9K0TMRFwPgJgjojAmZd8=",
+			"path": "github.com/blang/semver",
+			"revision": "3c1074078d32d767e08ab2c8564867292da86926",
+			"revisionTime": "2018-07-15T01:52:53Z"
+		},
+		{
 			"checksumSHA1": "bzCBeQrZ+LxbYyJbp7uDILX6t7c=",
 			"path": "github.com/go-kit/kit/log",
 			"revision": "0c52d4024a04395dabac42b65e5825d08d3335df",
