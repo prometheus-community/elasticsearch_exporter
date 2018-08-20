@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"net/http"
 	"net/url"
 	"path"
 	"time"
+
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -28,12 +30,53 @@ type consumer interface {
 // Retriever periodically gets the cluster info from the / endpoint end
 // sends it to all registered consumer channels
 type Retriever struct {
-	consumerChannels map[string]*chan *Response
-	logger           log.Logger
-	client           *http.Client
-	url              *url.URL
-	interval         time.Duration
-	sync             chan struct{}
+	consumerChannels      map[string]*chan *Response
+	logger                log.Logger
+	client                *http.Client
+	url                   *url.URL
+	interval              time.Duration
+	sync                  chan struct{}
+	versionMetric         *prometheus.GaugeVec
+	up                    prometheus.Gauge
+	lastUpstreamSuccessTs prometheus.Gauge
+	lastUpstreamErrorTs   prometheus.Gauge
+}
+
+// Describe implements the prometheus.Collector interface
+func (r *Retriever) Describe(ch chan<- *prometheus.Desc) {
+	r.versionMetric.Describe(ch)
+	r.up.Describe(ch)
+	r.lastUpstreamSuccessTs.Describe(ch)
+	r.lastUpstreamErrorTs.Describe(ch)
+}
+
+// Collect implements the prometheus.Collector interface
+func (r *Retriever) Collect(ch chan<- prometheus.Metric) {
+	r.versionMetric.Collect(ch)
+	r.up.Collect(ch)
+	r.lastUpstreamSuccessTs.Collect(ch)
+	r.lastUpstreamErrorTs.Collect(ch)
+}
+
+func (r *Retriever) updateMetrics(res *Response) {
+	// scrape failed, response is nil
+	if res == nil {
+		r.up.Set(0.0)
+		// cant export the cluster name as label because - retrieval failed
+		r.lastUpstreamErrorTs.Set(float64(time.Now().Unix()))
+		return
+	}
+	r.up.Set(1.0)
+	r.versionMetric.WithLabelValues(
+		res.ClusterName,
+		res.ClusterUUID,
+		res.Version.BuildDate.String(),
+		res.Version.BuildHash,
+		res.Version.Number.String(),
+		res.Version.LuceneVersion.String(),
+	)
+	// consequently not exporting it here
+	r.lastUpstreamSuccessTs.Set(float64(time.Now().Unix()))
 }
 
 // New creates a new Retriever
@@ -78,8 +121,10 @@ func (r *Retriever) Run(ctx context.Context) {
 					"msg", "failed to retrieve cluster info from ES",
 					"err", err,
 				)
+				r.updateMetrics(nil)
 				continue
 			}
+			r.updateMetrics(res)
 			for name, consumerCh := range r.consumerChannels {
 				_ = level.Debug(r.logger).Log(
 					"msg", "sending update",
