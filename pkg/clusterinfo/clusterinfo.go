@@ -148,6 +148,7 @@ func (r *Retriever) RegisterConsumer(c consumer) error {
 // The update loop is terminated upon ctx cancellation. The call blocks until the first
 // call to the cluster info endpoint was successful
 func (r *Retriever) Run(ctx context.Context) {
+	unblock := make(chan struct{})
 	// start update routine
 	go func(ctx context.Context) {
 		for range r.sync {
@@ -172,19 +173,24 @@ func (r *Retriever) Run(ctx context.Context) {
 				)
 				*consumerCh <- res
 			}
+			// unblock the first clusterinfo retrieval
+			if _, ok := <-unblock; ok {
+				close(unblock)
+			}
 		}
 	}(ctx)
 	// trigger initial cluster info call
 	r.sync <- struct{}{}
 
-	if r.interval <= 0 {
-		_ = level.Info(r.logger).Log(
-			"msg", "no periodic cluster info label update requested",
-		)
-		return
-	}
 	// start a ticker routine
 	go func(ctx context.Context) {
+		if r.interval <= 0 {
+			_ = level.Info(r.logger).Log(
+				"msg", "no periodic cluster info label update requested",
+			)
+			close(unblock)
+			return
+		}
 		ticker := time.NewTicker(r.interval)
 		for {
 			select {
@@ -199,6 +205,8 @@ func (r *Retriever) Run(ctx context.Context) {
 			}
 		}
 	}(ctx)
+	// block until the first retrieval was successful
+	<-unblock
 }
 
 func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
