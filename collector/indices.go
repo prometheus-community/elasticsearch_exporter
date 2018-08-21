@@ -9,38 +9,37 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	defaultIndexLabels      = []string{"index"}
-	defaultIndexLabelValues = func(indexName string) []string {
-		return []string{indexName}
-	}
-)
+type labels struct {
+	keys   func(...string) []string
+	values func(...string) []string
+}
 
 type indexMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
-	Labels func(indexName string) []string
+	Labels labels
 }
 
 type shardMetric struct {
-	Opts        prometheus.GaugeOpts
-	Type        prometheus.ValueType
-	Desc        *prometheus.Desc
-	Value       func(data IndexStatsIndexShardsDetailResponse) float64
-	Labels      []string
-	LabelValues func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(data IndexStatsIndexShardsDetailResponse) float64
+	Labels labels
 }
 
 // Indices information struct
 type Indices struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	shards bool
+	logger          log.Logger
+	client          *http.Client
+	url             *url.URL
+	shards          bool
+	clusterInfoCh   chan *clusterinfo.Response
+	lastClusterInfo *clusterinfo.Response
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -52,11 +51,43 @@ type Indices struct {
 
 // NewIndices defines Indices Prometheus metrics
 func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
-	return &Indices{
-		logger: logger,
-		client: client,
-		url:    url,
-		shards: shards,
+	var lastClusterinfo *clusterinfo.Response
+
+	indexLabels := labels{
+		keys: func(...string) []string {
+			return []string{"index", "cluster"}
+		},
+		values: func(s ...string) []string {
+			if lastClusterinfo != nil {
+				return append(s, lastClusterinfo.ClusterName)
+			}
+			// this shouldn't happen, as the clusterinfo Retriever has a blocking
+			// Run method. It blocks until the first clusterinfo call has succeeded
+			return append(s, "unknown_cluster")
+		},
+	}
+
+	shardLabels := labels{
+		keys: func(...string) []string {
+			return []string{"index", "shard", "node", "cluster"}
+		},
+		values: func(s ...string) []string {
+			if lastClusterinfo != nil {
+				return append(s, lastClusterinfo.ClusterName)
+			}
+			// this shouldn't happen, as the clusterinfo Retriever has a blocking
+			// Run method. It blocks until the first clusterinfo call has succeeded
+			return append(s, "unknown_cluster")
+		},
+	}
+
+	indices := &Indices{
+		logger:          logger,
+		client:          client,
+		url:             url,
+		shards:          shards,
+		clusterInfoCh:   make(chan *clusterinfo.Response),
+		lastClusterInfo: lastClusterinfo,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -77,829 +108,845 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs_primary"),
 					"Count of documents with only primary shards",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Docs.Count)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "deleted_docs_primary"),
 					"Count of deleted documents with only primary shards",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Docs.Deleted)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs_total"),
 					"Total count of documents",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Docs.Count)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "deleted_docs_total"),
 					"Total count of deleted documents",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Docs.Deleted)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_primary"),
 					"Current total size of stored index data in bytes with only primary shards on all nodes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Store.SizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_total"),
 					"Current total size of stored index data in bytes with all shards on all nodes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Store.SizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_count_primary"),
 					"Current number of segments with only primary shards on all nodes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.Count)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_count_total"),
 					"Current number of segments with all shards on all nodes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.Count)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_primary"),
 					"Current size of segments with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.MemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_total"),
 					"Current size of segments with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.MemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_primary"),
 					"Current size of terms with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.TermsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_total"),
 					"Current number of terms with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.TermsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_primary"),
 					"Current size of fields with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.StoredFieldsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_total"),
 					"Current size of fields with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.StoredFieldsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_primary"),
 					"Current size of norms with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.NormsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_total"),
 					"Current size of norms with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.NormsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_primary"),
 					"Current size of points with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.PointsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_total"),
 					"Current size of points with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.PointsMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_primary"),
 					"Current size of doc values with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.DocValuesMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_total"),
 					"Current size of doc values with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.DocValuesMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_primary"),
 					"Current size of index writer with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.IndexWriterMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_total"),
 					"Current size of index writer with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.IndexWriterMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_primary"),
 					"Current size of version map with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.VersionMapMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_total"),
 					"Current size of version map with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.VersionMapMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_primary"),
 					"Current size of fixed bit with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.FixedBitSetMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_total"),
 					"Current size of fixed bit with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.FixedBitSetMemoryInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "completion_bytes_primary"),
 					"Current size of completion with only primary shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Completion.SizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "completion_bytes_total"),
 					"Current size of completion with all shards on all nodes in bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Completion.SizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),
 					"Total search query time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.QueryTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_total"),
 					"Total number of queries",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.QueryTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_fetch_time_seconds_total"),
 					"Total search fetch time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.FetchTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_fetch_total"),
 					"Total search fetch count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.FetchTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_time_seconds_total"),
 					"Total search scroll time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_total"),
 					"Total search scroll count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_suggest_time_seconds_total"),
 					"Total search suggest time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.SuggestTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_suggest_total"),
 					"Total search suggest count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.SuggestTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_time_seconds_total"),
 					"Total indexing index time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.IndexTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_total"),
 					"Total indexing index count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.IndexTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_time_seconds_total"),
 					"Total indexing delete time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.DeleteTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_total"),
 					"Total indexing delete count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.DeleteTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_noop_update_total"),
 					"Total indexing no-op update count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.NoopUpdateTotal)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_throttle_time_seconds_total"),
 					"Total indexing throttle time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.ThrottleTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "get_time_seconds_total"),
 					"Total get time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Get.TimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "get_total"),
 					"Total get count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Get.Total)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_time_seconds_total"),
 					"Total merge time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_total"),
 					"Total merge count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.Total)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_throttle_time_seconds_total"),
 					"Total merge I/O throttle time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalThrottledTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_stopped_time_seconds_total"),
 					"Total large merge stopped time in seconds, allowing smaller merges to complete",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalStoppedTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_auto_throttle_bytes_total"),
 					"Total bytes that were auto-throttled during merging",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalAutoThrottleInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "refresh_time_seconds_total"),
 					"Total refresh time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Refresh.TotalTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "refresh_total"),
 					"Total refresh count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Refresh.Total)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "flush_time_seconds_total"),
 					"Total flush time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Flush.TotalTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "flush_total"),
 					"Total flush count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Flush.Total)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "warmer_time_seconds_total"),
 					"Total warmer time in seconds",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Warmer.TotalTimeInMillis) / 1000
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "warmer_total"),
 					"Total warmer count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Warmer.Total)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_memory_bytes_total"),
 					"Total query cache memory bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.MemorySizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_size"),
 					"Total query cache size",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.CacheSize)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_hits_total"),
 					"Total query cache hits count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.HitCount)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_misses_total"),
 					"Total query cache misses count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.MissCount)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_evictions_total"),
 					"Total query cache evictions count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.Evictions)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_memory_bytes_total"),
 					"Total request cache memory bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.MemorySizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_hits_total"),
 					"Total request cache hits count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.HitCount)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_misses_total"),
 					"Total request cache misses count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.MissCount)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_evictions_total"),
 					"Total request cache evictions count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.Evictions)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "fielddata_memory_bytes_total"),
 					"Total fielddata memory bytes",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Fielddata.MemorySizeInBytes)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "fielddata_evictions_total"),
 					"Total fielddata evictions count",
-					defaultIndexLabels, nil,
+					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Fielddata.Evictions)
 				},
-				Labels: defaultIndexLabelValues,
+				Labels: indexLabels,
 			},
 		},
 		shardMetrics: []*shardMetric{
 			{
-				Opts: prometheus.GaugeOpts{
-					Namespace:   namespace,
-					Subsystem:   "indices",
-					Name:        "shards_docs",
-					ConstLabels: nil,
-					Help:        "Count of documents on this shard",
-				},
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "shared_docs"),
+					"Count of documents on this shard",
+					shardLabels.keys(), nil,
+				),
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Count)
 				},
-				Labels: []string{"index", "shard", "node"},
-				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
-					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
-				},
+				Labels: shardLabels,
 			},
 			{
-				Opts: prometheus.GaugeOpts{
-					Namespace:   namespace,
-					Subsystem:   "indices",
-					Name:        "shards_docs_deleted",
-					ConstLabels: nil,
-					Help:        "Count of deleted documents on this shard",
-				},
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "shards_docs_deleted"),
+					"Count of deleted documents on this shard",
+					shardLabels.keys(), nil,
+				),
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Deleted)
 				},
-				Labels: []string{"index", "shard", "node"},
-				LabelValues: func(indexName string, shardName string, data IndexStatsIndexShardsDetailResponse) prometheus.Labels {
-					return prometheus.Labels{"index": indexName, "shard": shardName, "node": data.Routing.Node}
-				},
+				Labels: shardLabels,
 			},
 		},
 	}
+
+	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
+	go func() {
+		_ = level.Debug(logger).Log("msg", "starting cluster info receive loop")
+		for ci := range indices.clusterInfoCh {
+			_ = level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
+			if ci != nil {
+				indices.lastClusterInfo = ci
+			}
+		}
+		_ = level.Debug(logger).Log("msg", "exiting cluster info receive loop")
+	}()
+	return indices
+}
+
+// ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
+// (not exported) clusterinfo.consumer interface
+func (i *Indices) ClusterLabelUpdates() *chan *clusterinfo.Response {
+	return &i.clusterInfoCh
+}
+
+// String implements the stringer interface. It is part of the clusterinfo.consumer interface
+func (i *Indices) String() string {
+	return namespace + "indices"
 }
 
 // Describe add Indices metrics descriptions
@@ -977,19 +1024,23 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Desc,
 				metric.Type,
 				metric.Value(indexStats),
-				metric.Labels(indexName)...,
+				metric.Labels.values(indexName)...,
 			)
 
 		}
 		if i.shards {
 			for _, metric := range i.shardMetrics {
-				gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
+				// gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
 				for shardNumber, shards := range indexStats.Shards {
 					for _, shard := range shards {
-						gaugeVec.With(metric.LabelValues(indexName, shardNumber, shard)).Set(metric.Value(shard))
+						ch <- prometheus.MustNewConstMetric(
+							metric.Desc,
+							metric.Type,
+							metric.Value(shard),
+							metric.Labels.values(indexName, shardNumber, shard.Routing.Node)...,
+						)
 					}
 				}
-				gaugeVec.Collect(ch)
 			}
 		}
 	}
