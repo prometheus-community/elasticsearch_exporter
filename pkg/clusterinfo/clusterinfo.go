@@ -15,6 +15,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	namespace = "elasticsearch"
+	subsystem = "custerinfo"
+)
+
 var (
 	// ErrConsumerAlreadyRegistered is returned if a consumer is already registered
 	ErrConsumerAlreadyRegistered = errors.New("consumer already registered")
@@ -37,9 +42,56 @@ type Retriever struct {
 	interval              time.Duration
 	sync                  chan struct{}
 	versionMetric         *prometheus.GaugeVec
-	up                    prometheus.Gauge
-	lastUpstreamSuccessTs prometheus.Gauge
-	lastUpstreamErrorTs   prometheus.Gauge
+	up                    *prometheus.GaugeVec
+	lastUpstreamSuccessTs *prometheus.GaugeVec
+	lastUpstreamErrorTs   *prometheus.GaugeVec
+}
+
+// New creates a new Retriever
+func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
+	return &Retriever{
+		consumerChannels: make(map[string]*chan *Response),
+		logger:           logger,
+		client:           client,
+		url:              u,
+		interval:         interval,
+		sync:             make(chan struct{}, 1),
+		versionMetric: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "",
+				Help: "",
+			},
+			[]string{
+				"cluster",
+				"cluster_uuid",
+				"build_date",
+				"build_hash",
+				"version",
+				"lucene_version",
+			},
+		),
+		up: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: prometheus.BuildFQName(namespace, subsystem, "up"),
+				Help: "Up metric for the cluster info collector",
+			},
+			[]string{"url"},
+		),
+		lastUpstreamSuccessTs: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: prometheus.BuildFQName(namespace, subsystem, "last_retrieval_success_ts"),
+				Help: "Timestamp of the last successful cluster info retrieval",
+			},
+			[]string{"url"},
+		),
+		lastUpstreamErrorTs: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: prometheus.BuildFQName(namespace, subsystem, "last_retrieval_failure_ts"),
+				Help: "Timestamp of the last failed cluster info retrieval",
+			},
+			[]string{"url"},
+		),
+	}
 }
 
 // Describe implements the prometheus.Collector interface
@@ -61,12 +113,11 @@ func (r *Retriever) Collect(ch chan<- prometheus.Metric) {
 func (r *Retriever) updateMetrics(res *Response) {
 	// scrape failed, response is nil
 	if res == nil {
-		r.up.Set(0.0)
-		// cant export the cluster name as label because - retrieval failed
-		r.lastUpstreamErrorTs.Set(float64(time.Now().Unix()))
+		r.up.WithLabelValues(r.url.String()).Set(0.0)
+		r.lastUpstreamErrorTs.WithLabelValues(r.url.String()).Set(float64(time.Now().Unix()))
 		return
 	}
-	r.up.Set(1.0)
+	r.up.WithLabelValues(r.url.String()).Set(1.0)
 	r.versionMetric.WithLabelValues(
 		res.ClusterName,
 		res.ClusterUUID,
@@ -76,19 +127,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 		res.Version.LuceneVersion.String(),
 	)
 	// consequently not exporting it here
-	r.lastUpstreamSuccessTs.Set(float64(time.Now().Unix()))
-}
-
-// New creates a new Retriever
-func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
-	return &Retriever{
-		consumerChannels: make(map[string]*chan *Response),
-		logger:           logger,
-		client:           client,
-		url:              u,
-		interval:         interval,
-		sync:             make(chan struct{}, 1),
-	}
+	r.lastUpstreamSuccessTs.WithLabelValues(r.url.String()).Set(float64(time.Now().Unix()))
 }
 
 // Update triggers an external cluster info label update
