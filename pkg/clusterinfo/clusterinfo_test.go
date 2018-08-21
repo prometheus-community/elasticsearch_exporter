@@ -3,7 +3,6 @@ package clusterinfo
 import (
 	"context"
 	"fmt"
-	"github.com/go-kit/kit/log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,6 +10,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/log"
 
 	"github.com/blang/semver"
 )
