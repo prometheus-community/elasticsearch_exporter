@@ -58,8 +58,8 @@ func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Durat
 		sync:             make(chan struct{}, 1),
 		versionMetric: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: "",
-				Help: "",
+				Name: prometheus.BuildFQName(namespace, subsystem, "version_info"),
+				Help: "Constant metric with ES version information as labels",
 			},
 			[]string{
 				"cluster",
@@ -111,6 +111,7 @@ func (r *Retriever) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (r *Retriever) updateMetrics(res *Response) {
+	level.Debug(r.logger).Log("msg", "updating cluster info metrics")
 	// scrape failed, response is nil
 	if res == nil {
 		r.up.WithLabelValues(r.url.String()).Set(0.0)
@@ -126,7 +127,6 @@ func (r *Retriever) updateMetrics(res *Response) {
 		res.Version.Number.String(),
 		res.Version.LuceneVersion.String(),
 	)
-	// consequently not exporting it here
 	r.lastUpstreamSuccessTs.WithLabelValues(r.url.String()).Set(float64(time.Now().Unix()))
 }
 
@@ -148,50 +148,9 @@ func (r *Retriever) RegisterConsumer(c consumer) error {
 // The update loop is terminated upon ctx cancellation. The call blocks until the first
 // call to the cluster info endpoint was successful
 func (r *Retriever) Run(ctx context.Context) {
-	unblock := make(chan struct{})
+	initial := true
 	// start update routine
 	go func(ctx context.Context) {
-		for range r.sync {
-			_ = level.Info(r.logger).Log(
-				"msg", "providing consumers with updated cluster info label",
-			)
-			res, err := r.fetchAndDecodeClusterInfo()
-			if err != nil {
-				_ = level.Error(r.logger).Log(
-					"msg", "failed to retrieve cluster info from ES",
-					"err", err,
-				)
-				r.updateMetrics(nil)
-				continue
-			}
-			r.updateMetrics(res)
-			for name, consumerCh := range r.consumerChannels {
-				_ = level.Debug(r.logger).Log(
-					"msg", "sending update",
-					"consumer", name,
-					"res", fmt.Sprintf("%+v", res),
-				)
-				*consumerCh <- res
-			}
-			// unblock the first clusterinfo retrieval
-			if _, ok := <-unblock; ok {
-				close(unblock)
-			}
-		}
-	}(ctx)
-	// trigger initial cluster info call
-	r.sync <- struct{}{}
-
-	// start a ticker routine
-	go func(ctx context.Context) {
-		if r.interval <= 0 {
-			_ = level.Info(r.logger).Log(
-				"msg", "no periodic cluster info label update requested",
-			)
-			close(unblock)
-			return
-		}
-		ticker := time.NewTicker(r.interval)
 		for {
 			select {
 			case <-ctx.Done():
@@ -200,13 +159,76 @@ func (r *Retriever) Run(ctx context.Context) {
 					"err", ctx.Err(),
 				)
 				return
+			case <-r.sync:
+				_ = level.Info(r.logger).Log(
+					"msg", "providing consumers with updated cluster info label",
+				)
+				res, err := r.fetchAndDecodeClusterInfo()
+				if err != nil {
+					_ = level.Error(r.logger).Log(
+						"msg", "failed to retrieve cluster info from ES",
+						"err", err,
+					)
+					r.updateMetrics(nil)
+					continue
+				}
+				r.updateMetrics(res)
+				for name, consumerCh := range r.consumerChannels {
+					_ = level.Debug(r.logger).Log(
+						"msg", "sending update",
+						"consumer", name,
+						"res", fmt.Sprintf("%+v", res),
+					)
+					*consumerCh <- res
+				}
+				initial = false
+			}
+		}
+	}(ctx)
+	// trigger initial cluster info call
+	_ = level.Info(r.logger).Log(
+		"msg", "triggering initial cluster info call",
+	)
+	r.sync <- struct{}{}
+
+	// start a ticker routine
+	go func(ctx context.Context) {
+		if r.interval <= 0 {
+			_ = level.Info(r.logger).Log(
+				"msg", "no periodic cluster info label update requested",
+			)
+			return
+		}
+		ticker := time.NewTicker(r.interval)
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(r.logger).Log(
+					"msg", "context cancelled, exiting cluster info trigger loop",
+					"err", ctx.Err(),
+				)
+				return
 			case <-ticker.C:
+				_ = level.Debug(r.logger).Log(
+					"msg", "triggering periodic update",
+				)
 				r.sync <- struct{}{}
 			}
 		}
 	}(ctx)
 	// block until the first retrieval was successful
-	<-unblock
+	for {
+		select {
+		// ToDo: make initial call timeout configurable
+		case <-time.After(10 * time.Second):
+			return
+		default:
+			if !initial {
+				time.Sleep(1 * time.Second)
+				return
+			}
+		}
+	}
 }
 
 func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
