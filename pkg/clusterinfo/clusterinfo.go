@@ -147,7 +147,7 @@ func (r *Retriever) RegisterConsumer(c consumer) error {
 // Run starts the update loop and periodically queries the / endpoint
 // The update loop is terminated upon ctx cancellation. The call blocks until the first
 // call to the cluster info endpoint was successful
-func (r *Retriever) Run(ctx context.Context) {
+func (r *Retriever) Run(ctx context.Context) error {
 	initial := true
 	// start update routine
 	go func(ctx context.Context) {
@@ -217,18 +217,18 @@ func (r *Retriever) Run(ctx context.Context) {
 		}
 	}(ctx)
 	// block until the first retrieval was successful
-	for {
-		select {
-		// ToDo: make initial call timeout configurable
-		case <-time.After(10 * time.Second):
-			return
-		default:
-			if !initial {
-				time.Sleep(1 * time.Second)
-				return
-			}
+	retryTicker := time.NewTicker(1 * time.Second)
+	tries := 0
+	for range retryTicker.C {
+		if !initial {
+			return nil
 		}
+		if tries > 10 {
+			return errors.New("initial cluster info call timed out")
+		}
+		tries++
 	}
+	return nil
 }
 
 func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
