@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"os"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
+	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -48,6 +50,9 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Envar("ES_SNAPSHOTS").Bool()
+		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
+			"Cluster info update interval for the cluster label").
+			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
 		esCA = kingpin.Flag("es.ca",
 			"Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.").
 			Default("").Envar("ES_CA").String()
@@ -85,6 +90,7 @@ func main() {
 		)
 		os.Exit(1)
 	}
+
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
@@ -99,20 +105,48 @@ func main() {
 	// version metric
 	versionMetric := version.NewCollector(Name)
 	prometheus.MustRegister(versionMetric)
+
+	// cluster info retriever
+	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
+
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+
 	if *esExportIndices || *esExportShards {
-		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esExportShards))
+		indicesCollector := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
+		prometheus.MustRegister(indicesCollector)
+		if err := clusterInfoRetriever.RegisterConsumer(indicesCollector); err != nil {
+			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
+			os.Exit(1)
+		}
 	}
+
 	if *esExportSnapshots {
 		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
 	}
+
 	if *esExportClusterSettings {
 		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
 	}
+
 	if *esExportIndicesSettings {
 		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
 	}
+
+	// start the cluster info retriever
+	if err := clusterInfoRetriever.Run(context.Background()); err != nil {
+		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
+		os.Exit(1)
+	}
+
+	level.Info(logger).Log(
+		"msg", "started cluster info retriever",
+		"interval", (*esClusterInfoInterval).String(),
+	)
+
+	// register cluster info retriever as prometheus collector
+	prometheus.MustRegister(clusterInfoRetriever)
+
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`<html>
