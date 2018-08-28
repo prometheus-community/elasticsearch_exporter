@@ -47,6 +47,7 @@ elasticsearch_exporter --help
 | es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
 | es.indices            | If true, query stats for all indices in the cluster. | false |
 | es.shards             | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
+| es.snapshots          | If true, query stats for the cluster snapshots. | false |
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection. | |
 | es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -151,6 +152,15 @@ elasticsearch_exporter --help
 | elasticsearch_process_mem_share_size_bytes                 | gauge     | 1            | Shared memory in use by process in bytes
 | elasticsearch_process_mem_virtual_size_bytes               | gauge     | 1            | Total virtual memory used in bytes
 | elasticsearch_process_open_files_count                     | gauge     | 1            | Open file descriptors
+| elasticsearch_snapshot_stats_number_of_snapshots           | gauge     | 1            | Total number of snapshots
+| elasticsearch_snapshot_stats_oldest_snapshot_timestamp     | gauge     | 1            | Oldest snapshot timestamp
+| elasticsearch_snapshot_stats_snapshot_start_time_timestamp | gauge     | 1            | Last snapshot start timestamp
+| elasticsearch_snapshot_stats_snapshot_end_time_timestamp   | gauge     | 1            | Last snapshot end timestamp
+| elasticsearch_snapshot_stats_snapshot_number_of_failures   | gauge     | 1            | Last spnapshot number of failures
+| elasticsearch_snapshot_stats_snapshot_number_of_indices    | gauge     | 1            | Last snapshot number of indices
+| elasticsearch_snapshot_stats_snapshot_failed_shards        | gauge     | 1            | Last snapshot failed shards
+| elasticsearch_snapshot_stats_snapshot_successful_shards    | gauge     | 1            | Last snapshot successful shards
+| elasticsearch_snapshot_stats_snapshot_total_shards         | gauge     | 1            | Last snapshot total shard
 | elasticsearch_thread_pool_active_count                     | gauge     | 14           | Thread Pool threads active
 | elasticsearch_thread_pool_completed_count                  | counter   | 14           | Thread Pool operations completed
 | elasticsearch_thread_pool_largest_count                    | gauge     | 14           | Thread Pool largest threads count
