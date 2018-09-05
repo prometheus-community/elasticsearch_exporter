@@ -241,7 +241,7 @@ func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResp
 		var ssr SnapshotStatsResponse
 		err := s.getAndParseURL(&u, &ssr)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		mssr[repository] = ssr
 	}
