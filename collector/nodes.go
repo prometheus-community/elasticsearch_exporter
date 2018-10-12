@@ -240,7 +240,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "mem_actualfree"),
-					"Memory actually free for OS in bytes",
+					"Amount of free physical memory in bytes",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
@@ -252,7 +252,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "mem_actualused"),
-					"Memory actually used by OS in bytes",
+					"Amount of used physical memory in bytes",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
