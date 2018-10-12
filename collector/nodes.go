@@ -215,7 +215,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "os", "mem_free"),
+					prometheus.BuildFQName(namespace, "os", "mem_free_bytes"),
 					"Amount of free physical memory in bytes",
 					defaultNodeLabels, nil,
 				),
@@ -227,7 +227,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "os", "mem_used"),
+					prometheus.BuildFQName(namespace, "os", "mem_used_bytes"),
 					"Amount of used physical memory in bytes",
 					defaultNodeLabels, nil,
 				),
@@ -239,7 +239,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "os", "mem_actualfree"),
+					prometheus.BuildFQName(namespace, "os", "mem_actual_free_bytes"),
 					"Amount of free physical memory in bytes",
 					defaultNodeLabels, nil,
 				),
@@ -251,7 +251,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "os", "mem_actualused"),
+					prometheus.BuildFQName(namespace, "os", "mem_actual_used_bytes"),
 					"Amount of used physical memory in bytes",
 					defaultNodeLabels, nil,
 				),
