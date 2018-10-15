@@ -1,4 +1,4 @@
-# calculate filesytem used and free percent
+# calculate filesystem used and free percent
 elasticsearch_filesystem_data_used_percent = 100 * (elasticsearch_filesystem_data_size_bytes - elasticsearch_filesystem_data_free_bytes) / elasticsearch_filesystem_data_size_bytes
 elasticsearch_filesystem_data_free_percent = 100 - elasticsearch_filesystem_data_used_percent
 

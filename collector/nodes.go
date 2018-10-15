@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -12,11 +13,12 @@ import (
 )
 
 var (
-	defaultNodeLabels       = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
-	defaultThreadPoolLabels = append(defaultNodeLabels, "type")
-	defaultBreakerLabels    = append(defaultNodeLabels, "breaker")
-	defaultFilesystemLabels = append(defaultNodeLabels, "mount", "path")
-	defaultCacheLabels      = append(defaultNodeLabels, "cache")
+	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
+	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
+	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
+	defaultFilesystemDataLabels     = append(defaultNodeLabels, "mount", "path")
+	defaultFilesystemIODeviceLabels = append(defaultNodeLabels, "device")
+	defaultCacheLabels              = append(defaultNodeLabels, "cache")
 
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
 		// default settings (2.x) and map, which roles to consider
@@ -48,7 +50,7 @@ var (
 				}
 			}
 		}
-		if len(node.Http) == 0 {
+		if len(node.HTTP) == 0 {
 			isClientNode = "false"
 		}
 		return []string{
@@ -64,8 +66,11 @@ var (
 	defaultThreadPoolLabelValues = func(cluster string, node NodeStatsNodeResponse, pool string) []string {
 		return append(defaultNodeLabelValues(cluster, node), pool)
 	}
-	defaultFilesystemLabelValues = func(cluster string, node NodeStatsNodeResponse, mount string, path string) []string {
+	defaultFilesystemDataLabelValues = func(cluster string, node NodeStatsNodeResponse, mount string, path string) []string {
 		return append(defaultNodeLabelValues(cluster, node), mount, path)
+	}
+	defaultFilesystemIODeviceLabelValues = func(cluster string, node NodeStatsNodeResponse, device string) []string {
+		return append(defaultNodeLabelValues(cluster, node), device)
 	}
 	defaultCacheHitLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
 		return append(defaultNodeLabelValues(cluster, node), "hit")
@@ -103,35 +108,47 @@ type threadPoolMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, breaker string) []string
 }
 
-type filesystemMetric struct {
+type filesystemDataMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(fsStats NodeStatsFSDataResponse) float64
 	Labels func(cluster string, node NodeStatsNodeResponse, mount string, path string) []string
 }
 
+type filesystemIODeviceMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(fsStats NodeStatsFSIOStatsDeviceResponse) float64
+	Labels func(cluster string, node NodeStatsNodeResponse, device string) []string
+}
+
+// Nodes information struct
 type Nodes struct {
 	logger log.Logger
 	client *http.Client
 	url    *url.URL
 	all    bool
+	node   string
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
 
-	nodeMetrics         []*nodeMetric
-	gcCollectionMetrics []*gcCollectionMetric
-	breakerMetrics      []*breakerMetric
-	threadPoolMetrics   []*threadPoolMetric
-	filesystemMetrics   []*filesystemMetric
+	nodeMetrics               []*nodeMetric
+	gcCollectionMetrics       []*gcCollectionMetric
+	breakerMetrics            []*breakerMetric
+	threadPoolMetrics         []*threadPoolMetric
+	filesystemDataMetrics     []*filesystemDataMetric
+	filesystemIODeviceMetrics []*filesystemIODeviceMetric
 }
 
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *Nodes {
+// NewNodes defines Nodes Prometheus metrics
+func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
 	return &Nodes{
 		logger: logger,
 		client: client,
 		url:    url,
 		all:    all,
+		node:   node,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
@@ -155,7 +172,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load1)
+					return node.OS.CPU.LoadAvg.Load1
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -167,7 +184,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load5)
+					return node.OS.CPU.LoadAvg.Load5
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -179,7 +196,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.OS.CPU.LoadAvg.Load15)
+					return node.OS.CPU.LoadAvg.Load15
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -988,6 +1005,34 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_buffer_pool", "used_bytes"),
+					"JVM buffer currently used",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.BufferPools["direct"].Used)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "direct")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_buffer_pool", "used_bytes"),
+					"JVM buffer currently used",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.BufferPools["mapped"].Used)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "mapped")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
 					defaultNodeLabels, nil,
@@ -1296,47 +1341,110 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool) *N
 				Labels: defaultThreadPoolLabelValues,
 			},
 		},
-		filesystemMetrics: []*filesystemMetric{
+		filesystemDataMetrics: []*filesystemDataMetric{
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_data", "available_bytes"),
 					"Available space on block device in bytes",
-					defaultFilesystemLabels, nil,
+					defaultFilesystemDataLabels, nil,
 				),
 				Value: func(fsStats NodeStatsFSDataResponse) float64 {
 					return float64(fsStats.Available)
 				},
-				Labels: defaultFilesystemLabelValues,
+				Labels: defaultFilesystemDataLabelValues,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_data", "free_bytes"),
 					"Free space on block device in bytes",
-					defaultFilesystemLabels, nil,
+					defaultFilesystemDataLabels, nil,
 				),
 				Value: func(fsStats NodeStatsFSDataResponse) float64 {
 					return float64(fsStats.Free)
 				},
-				Labels: defaultFilesystemLabelValues,
+				Labels: defaultFilesystemDataLabelValues,
 			},
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_data", "size_bytes"),
 					"Size of block device in bytes",
-					defaultFilesystemLabels, nil,
+					defaultFilesystemDataLabels, nil,
 				),
 				Value: func(fsStats NodeStatsFSDataResponse) float64 {
 					return float64(fsStats.Total)
 				},
-				Labels: defaultFilesystemLabelValues,
+				Labels: defaultFilesystemDataLabelValues,
+			},
+		},
+		filesystemIODeviceMetrics: []*filesystemIODeviceMetric{
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "operations_count"),
+					"Count of disk operations",
+					defaultFilesystemIODeviceLabels, nil,
+				),
+				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
+					return float64(fsIODeviceStats.Operations)
+				},
+				Labels: defaultFilesystemIODeviceLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "read_operations_count"),
+					"Count of disk read operations",
+					defaultFilesystemIODeviceLabels, nil,
+				),
+				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
+					return float64(fsIODeviceStats.ReadOperations)
+				},
+				Labels: defaultFilesystemIODeviceLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "write_operations_count"),
+					"Count of disk write operations",
+					defaultFilesystemIODeviceLabels, nil,
+				),
+				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
+					return float64(fsIODeviceStats.WriteOperations)
+				},
+				Labels: defaultFilesystemIODeviceLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "read_size_kilobytes_sum"),
+					"Total kilobytes read from disk",
+					defaultFilesystemIODeviceLabels, nil,
+				),
+				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
+					return float64(fsIODeviceStats.ReadSize)
+				},
+				Labels: defaultFilesystemIODeviceLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "write_size_kilobytes_sum"),
+					"Total kilobytes written to disk",
+					defaultFilesystemIODeviceLabels, nil,
+				),
+				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
+					return float64(fsIODeviceStats.WriteSize)
+				},
+				Labels: defaultFilesystemIODeviceLabelValues,
 			},
 		},
 	}
 }
 
+// Describe add metrics descriptions
 func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.nodeMetrics {
 		ch <- metric.Desc
@@ -1347,7 +1455,10 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.threadPoolMetrics {
 		ch <- metric.Desc
 	}
-	for _, metric := range c.filesystemMetrics {
+	for _, metric := range c.filesystemDataMetrics {
+		ch <- metric.Desc
+	}
+	for _, metric := range c.filesystemIODeviceMetrics {
 		ch <- metric.Desc
 	}
 	ch <- c.up.Desc()
@@ -1359,9 +1470,11 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
 	u := *c.url
-	u.Path = "/_nodes/_local/stats"
+
 	if c.all {
-		u.Path = "/_nodes/stats"
+		u.Path = path.Join(u.Path, "/_nodes/stats")
+	} else {
+		u.Path = path.Join(u.Path, "_nodes", c.node, "stats")
 	}
 
 	res, err := c.client.Get(u.String())
@@ -1369,7 +1482,17 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
-	defer res.Body.Close()
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(c.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
@@ -1381,6 +1504,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	return nsr, nil
 }
 
+// Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	c.totalScrapes.Inc()
 	defer func() {
@@ -1389,10 +1513,10 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	nodeStatsResponse, err := c.fetchAndDecodeNodeStats()
+	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
 		c.up.Set(0)
-		level.Warn(c.logger).Log(
+		_ = level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
@@ -1400,13 +1524,13 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	}
 	c.up.Set(1)
 
-	for _, node := range nodeStatsResponse.Nodes {
+	for _, node := range nodeStatsResp.Nodes {
 		for _, metric := range c.nodeMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
 				metric.Type,
 				metric.Value(node),
-				metric.Labels(nodeStatsResponse.ClusterName, node)...,
+				metric.Labels(nodeStatsResp.ClusterName, node)...,
 			)
 		}
 
@@ -1417,7 +1541,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(gcStats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, collector)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, collector)...,
 				)
 			}
 		}
@@ -1429,7 +1553,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(bstats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, breaker)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, breaker)...,
 				)
 			}
 		}
@@ -1441,21 +1565,34 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Desc,
 					metric.Type,
 					metric.Value(pstats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, pool)...,
+					metric.Labels(nodeStatsResp.ClusterName, node, pool)...,
 				)
 			}
 		}
 
-		// File System Stats
-		for _, fsStats := range node.FS.Data {
-			for _, metric := range c.filesystemMetrics {
+		// File System Data Stats
+		for _, fsDataStats := range node.FS.Data {
+			for _, metric := range c.filesystemDataMetrics {
 				ch <- prometheus.MustNewConstMetric(
 					metric.Desc,
 					metric.Type,
-					metric.Value(fsStats),
-					metric.Labels(nodeStatsResponse.ClusterName, node, fsStats.Mount, fsStats.Path)...,
+					metric.Value(fsDataStats),
+					metric.Labels(nodeStatsResp.ClusterName, node, fsDataStats.Mount, fsDataStats.Path)...,
 				)
 			}
 		}
+
+		// File System IO Device Stats
+		for _, fsIODeviceStats := range node.FS.IOStats.Devices {
+			for _, metric := range c.filesystemIODeviceMetrics {
+				ch <- prometheus.MustNewConstMetric(
+					metric.Desc,
+					metric.Type,
+					metric.Value(fsIODeviceStats),
+					metric.Labels(nodeStatsResp.ClusterName, node, fsIODeviceStats.DeviceName)...,
+				)
+			}
+		}
+
 	}
 }

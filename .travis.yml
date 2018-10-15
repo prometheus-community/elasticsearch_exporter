@@ -1,14 +1,15 @@
 language: go
 
 go:
-  - 1.8.x
+  - 1.9.x
   - tip
 
 script:
   - make style
   - make vet
-  - make test
+  - make gometalinter
   - make build
+  - make test
 
 matrix:
   allow_failures:

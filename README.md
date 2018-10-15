@@ -6,7 +6,7 @@ Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
 ### Installation
 
-For pre-built binaries please take a look at the releases.  
+For pre-built binaries please take a look at the releases.
 https://github.com/justwatchcom/elasticsearch_exporter/releases
 
 #### Docker
@@ -34,7 +34,7 @@ You can find a helm chart in the stable charts repository at https://github.com/
 
 ### Configuration
 
-**NOTE:** The exporter fetches information from Elasticsearch cluster on every scrape, therefore having too tight scrape interval can impose load on ES master nodes, particularly if you run with `-es.all` and `-es.indices`. We suggest you to measure how long does it take to fetch `/_nodes/stats` and `/_all/_stats` for your ES cluster and consider whether your scrapping interval is too tight. As a last resort, you can scrape this exporter through a dedicated job with its own scraping interval.
+**NOTE:** The exporter fetches information from an ElasticSearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `-es.all` and `-es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
 
 Below is the command line options summary:
 ```bash
@@ -47,6 +47,7 @@ elasticsearch_exporter --help
 | es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
 | es.indices            | If true, query stats for all indices in the cluster. | false |
 | es.shards             | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
+| es.snapshots          | If true, query stats for the cluster snapshots. | false |
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection. | |
 | es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -71,6 +72,7 @@ elasticsearch_exporter --help
 | elasticsearch_cluster_health_number_of_in_flight_fetch     | gauge     | 1            | The number of ongoing shard info requests.
 | elasticsearch_cluster_health_number_of_nodes               | gauge     | 1            | Number of nodes in the cluster.
 | elasticsearch_cluster_health_number_of_pending_tasks       | gauge     | 1            | Cluster level changes which have not yet been executed
+| elasticsearch_cluster_health_task_max_waiting_in_queue_millis | gauge     | 1            | Max time in millis that a task is waiting in queue.
 | elasticsearch_cluster_health_relocating_shards             | gauge     | 1            | The number of shards that are currently moving from one node to another node.
 | elasticsearch_cluster_health_status                        | gauge     | 3            | Whether all primary and replica shards are allocated.
 | elasticsearch_cluster_health_timed_out                     | gauge     | 1            | Number of cluster health checks timed out
@@ -78,6 +80,11 @@ elasticsearch_exporter --help
 | elasticsearch_filesystem_data_available_bytes              | gauge     | 1            | Available space on block device in bytes
 | elasticsearch_filesystem_data_free_bytes                   | gauge     | 1            | Free space on block device in bytes
 | elasticsearch_filesystem_data_size_bytes                   | gauge     | 1            | Size of block device in bytes
+| elasticsearch_filesystem_io_stats_device_operations_count         | gauge     | 1            | Count of disk operations
+| elasticsearch_filesystem_io_stats_device_read_operations_count    | gauge     | 1            | Count of disk read operations
+| elasticsearch_filesystem_io_stats_device_write_operations_count   | gauge     | 1            | Count of disk write operations
+| elasticsearch_filesystem_io_stats_device_read_size_kilobytes_sum  | gauge     | 1            | Total kilobytes read from disk
+| elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum | gauge     | 1            | Total kilobytes written to disk
 | elasticsearch_indices_docs                                 | gauge     | 1            | Count of documents on this node
 | elasticsearch_indices_docs_deleted                         | gauge     | 1            | Count of deleted documents on this node
 | elasticsearch_indices_docs_primary                         | gauge     |              | Count of documents with only primary shards on all nodes
@@ -145,6 +152,15 @@ elasticsearch_exporter --help
 | elasticsearch_process_mem_share_size_bytes                 | gauge     | 1            | Shared memory in use by process in bytes
 | elasticsearch_process_mem_virtual_size_bytes               | gauge     | 1            | Total virtual memory used in bytes
 | elasticsearch_process_open_files_count                     | gauge     | 1            | Open file descriptors
+| elasticsearch_snapshot_stats_number_of_snapshots           | gauge     | 1            | Total number of snapshots
+| elasticsearch_snapshot_stats_oldest_snapshot_timestamp     | gauge     | 1            | Oldest snapshot timestamp
+| elasticsearch_snapshot_stats_snapshot_start_time_timestamp | gauge     | 1            | Last snapshot start timestamp
+| elasticsearch_snapshot_stats_snapshot_end_time_timestamp   | gauge     | 1            | Last snapshot end timestamp
+| elasticsearch_snapshot_stats_snapshot_number_of_failures   | gauge     | 1            | Last spnapshot number of failures
+| elasticsearch_snapshot_stats_snapshot_number_of_indices    | gauge     | 1            | Last snapshot number of indices
+| elasticsearch_snapshot_stats_snapshot_failed_shards        | gauge     | 1            | Last snapshot failed shards
+| elasticsearch_snapshot_stats_snapshot_successful_shards    | gauge     | 1            | Last snapshot successful shards
+| elasticsearch_snapshot_stats_snapshot_total_shards         | gauge     | 1            | Last snapshot total shard
 | elasticsearch_thread_pool_active_count                     | gauge     | 14           | Thread Pool threads active
 | elasticsearch_thread_pool_completed_count                  | counter   | 14           | Thread Pool operations completed
 | elasticsearch_thread_pool_largest_count                    | gauge     | 14           | Thread Pool largest threads count
@@ -160,8 +176,8 @@ elasticsearch_exporter --help
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
-The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the elastsearch cluster, we rely on a label `cluster`.
-Depending on your setup, it can derived from the plattform metadata:
+The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the ElasticSearch cluster, we rely on a label `cluster`.
+Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)
 
@@ -187,7 +203,6 @@ who transferred this repository to us in January 2017.
 Maintainers of this repository:
 
 * Christoph Oelmüller <christoph.oelmueller@justwatch.com> @zwopir
-* Dominik Schulz <dominik.schulz@justwatch.com> @dominikschulz
 
 Please refer to the Git commit log for a complete list of contributors.
 
