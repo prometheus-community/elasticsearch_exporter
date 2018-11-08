@@ -26,7 +26,7 @@ func main() {
 		esExportIndices      = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
 		esExportShards       = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
 		esExportSnapshots    = flag.Bool("es.snapshots", false, "Export stats for the cluster snapshots.")
-		esCA                 = flag.String("es.ca", "", "Path to PEM file that contains trusted CAs for the Elasticsearch connection.")
+		esCA                 = flag.String("es.ca", "", "Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.")
 		esClientPrivateKey   = flag.String("es.client-private-key", "", "Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.")
 		esClientCert         = flag.String("es.client-cert", "", "Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.")
 		esInsecureSkipVerify = flag.Bool("es.ssl-skip-verify", false, "Skip SSL verification when connecting to Elasticsearch.")
