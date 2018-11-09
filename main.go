@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -17,6 +18,7 @@ import (
 func main() {
 	var (
 		Name                 = "elasticsearch_exporter"
+		proxyEnvVariable     = "http_proxy"
 		listenAddress        = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
 		metricsPath          = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 		esURI                = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
@@ -33,6 +35,8 @@ func main() {
 		logLevel             = flag.String("log.level", "info", "Sets the loglevel. Valid levels are debug, info, warn, error")
 		logFormat            = flag.String("log.format", "logfmt", "Sets the log format. Valid formats are json and logfmt")
 		logOutput            = flag.String("log.output", "stdout", "Sets the log output. Valid outputs are stdout and stderr")
+		netProxyHost         = flag.String("network.proxy", "", "Set proxy host.")
+		netProxyEnable       = flag.Bool("network.proxy-enable", false, "Enable Proxy config setting and evaluation.")
 		showVersion          = flag.Bool("version", false, "Show version and exit")
 	)
 	flag.Parse()
@@ -56,15 +60,56 @@ func main() {
 		)
 		os.Exit(1)
 	}
-
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
+	constructedTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	// If proxy Enabled do determine a hosts proxy configuration
+	if *netProxyEnable {
+		// if no proxyHost specified determin http proxy from ENV_VAR
+		if len(*netProxyHost) == 0 {
+
+			// reconfigure the envVar by scheme prefix of Elasticsearch URI
+			if strings.HasPrefix(*esURI, "https") {
+				proxyEnvVariable = "https_proxy"
+				level.Debug(logger).Log(
+					"msg", fmt.Sprintf("https detected switch ENV_VAR to %s", proxyEnvVariable),
+				)
+			}
+			// read proxy ENV_VAR and if successfull set as Proxy
+			proxyServerEnv, ok := os.LookupEnv(proxyEnvVariable)
+			if ok {
+				level.Debug(logger).Log(
+					"msg", fmt.Sprintf("Set proxy to %s from ENV_VAR %s", proxyServerEnv, proxyEnvVariable),
+				)
+				*netProxyHost = proxyServerEnv
+			}
+		}
+
+		level.Debug(logger).Log(
+			"msg", fmt.Sprintf("Configure proxy to %s", *netProxyHost),
+		)
+		proxyURL, err := url.Parse(*netProxyHost)
+		if err != nil {
+			_ = level.Debug(logger).Log(
+				"msg", "failed to parse network.proxy",
+				"err", err,
+			)
+			os.Exit(1)
+		}
+		constructedTransport.Proxy = http.ProxyURL(proxyURL)
+	} else {
+		level.Debug(logger).Log(
+			"msg", "disabled proxy configuration",
+		)
+	}
+
 	httpClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+		Timeout:   *esTimeout,
+		Transport: constructedTransport,
 	}
 
 	// version metric

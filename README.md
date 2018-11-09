@@ -41,21 +41,25 @@ Below is the command line options summary:
 elasticsearch_exporter --help
 ```
 
-| Argument              | Description | Default     |
-| --------              | ----------- | ----------- |
-| es.uri                | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. | http://localhost:9200 |
-| es.all                | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
-| es.indices            | If true, query stats for all indices in the cluster. | false |
-| es.shards             | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
-| es.snapshots          | If true, query stats for the cluster snapshots. | false |
-| es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
-| es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection. | |
-| es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
-| es.client-cert        | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
-| es.ssl-skip-verify    | Skip SSL verification when connecting to Elasticsearch. | false |
-| web.listen-address    | Address to listen on for web interface and telemetry. | :9108 |
-| web.telemetry-path    | Path under which to expose metrics. | /metrics |
-| version               | Show version info on stdout and exit. | |
+| Argument                | Description | ENV_VAR | Default     |
+| --------                | ----------- | ----------- |----------- |
+| es.uri                  | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. | ES_URI |  http://localhost:9200 |
+| es.all                  | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | | false |
+| es.indices              | If true, query stats for all indices in the cluster. | | false |
+| es.shards               | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | | false |
+| es.snapshots            | If true, query stats for the cluster snapshots. | | false |
+| es.timeout              | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | | 5s |
+| es.ca                   | Path to PEM file that contains trusted CAs for the Elasticsearch connection. ||  |
+| es.client-private-key   | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | | |
+| es.client-cert          | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | | |
+| es.ssl-skip-verify      | Skip SSL verification when connecting to Elasticsearch. | | false |
+| http.user               | Configures the http client with this proxy. | ES_USER | |
+| http.password           | Ignore any proxy setting or ENV_VAR. | ES_PASSWORD | |
+| network.proxy           | Set proxy host. | http(s)_proxy | |
+| network.netProxyDisable | Disable Proxy config setting and evaluation. | | false |
+| web.listen-address      | Address to listen on for web interface and telemetry.|  | :9108 |
+| web.telemetry-path      | Path under which to expose metrics. |  | /metrics |
+| version                 | Show version info on stdout and exit. | | |
 
 ### Metrics
 
