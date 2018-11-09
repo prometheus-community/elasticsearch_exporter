@@ -74,7 +74,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "active_primary_shards"),
-					"Tthe number of primary shards in your cluster. This is an aggregate total across all indices.",
+					"The number of primary shards in your cluster. This is an aggregate total across all indices.",
 					defaultClusterHealthLabels, nil,
 				),
 				Value: func(clusterHealth clusterHealthResponse) float64 {
