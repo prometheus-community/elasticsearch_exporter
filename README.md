@@ -114,8 +114,8 @@ elasticsearch_exporter --help
 | elasticsearch_indices_query_cache_evictions                | counter   | 1            | Evictions from query cache
 | elasticsearch_indices_query_cache_memory_size_bytes        | gauge     | 1            | Query cache memory usage in bytes
 | elasticsearch_indices_query_cache_total                    | counter   | 1            | Size of query cache total
-| elasticsearch_indices_refresh_time_seconds_total           | counter   | 1            | Total refreshes
-| elasticsearch_indices_refresh_total                        | counter   | 1            | Total time spent refreshing in seconds
+| elasticsearch_indices_refresh_time_seconds_total           | counter   | 1            | Total time spent refreshing in seconds
+| elasticsearch_indices_refresh_total                        | counter   | 1            | Total refreshes
 | elasticsearch_indices_request_cache_count                  | counter   | 2            | Count of request cache hit/miss
 | elasticsearch_indices_request_cache_evictions              | counter   | 1            | Evictions from request cache
 | elasticsearch_indices_request_cache_memory_size_bytes      | gauge     | 1            | Request cache memory usage in bytes
