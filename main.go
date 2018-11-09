@@ -64,6 +64,7 @@ func main() {
 		Timeout: *esTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: tlsConfig,
+			Proxy:           http.ProxyFromEnvironment,
 		},
 	}
 
