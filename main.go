@@ -1,10 +1,14 @@
 package main
 
 import (
-	"context"
+	"flag"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
+
+	"context"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
@@ -125,14 +129,7 @@ func main() {
 		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
 	}
 
-	if *esExportClusterSettings {
-		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
-	}
-
-	if *esExportIndicesSettings {
-		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
-	}
-
+	// TODO: add properly terminated context
 	// start the cluster info retriever
 	if err := clusterInfoRetriever.Run(context.Background()); err != nil {
 		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
