@@ -49,7 +49,7 @@ elasticsearch_exporter --help
 | es.shards             | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots          | If true, query stats for the cluster snapshots. | false |
 | es.timeout            | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
-| es.ca                 | Path to PEM file that contains trusted CAs for the Elasticsearch connection. | |
+| es.ca                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
 | es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
 | es.client-cert        | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
 | es.ssl-skip-verify    | Skip SSL verification when connecting to Elasticsearch. | false |
@@ -114,8 +114,8 @@ elasticsearch_exporter --help
 | elasticsearch_indices_query_cache_evictions                | counter   | 1            | Evictions from query cache
 | elasticsearch_indices_query_cache_memory_size_bytes        | gauge     | 1            | Query cache memory usage in bytes
 | elasticsearch_indices_query_cache_total                    | counter   | 1            | Size of query cache total
-| elasticsearch_indices_refresh_time_seconds_total           | counter   | 1            | Total refreshes
-| elasticsearch_indices_refresh_total                        | counter   | 1            | Total time spent refreshing in seconds
+| elasticsearch_indices_refresh_time_seconds_total           | counter   | 1            | Total time spent refreshing in seconds
+| elasticsearch_indices_refresh_total                        | counter   | 1            | Total refreshes
 | elasticsearch_indices_request_cache_count                  | counter   | 2            | Count of request cache hit/miss
 | elasticsearch_indices_request_cache_evictions              | counter   | 1            | Evictions from request cache
 | elasticsearch_indices_request_cache_memory_size_bytes      | gauge     | 1            | Request cache memory usage in bytes
@@ -156,7 +156,7 @@ elasticsearch_exporter --help
 | elasticsearch_snapshot_stats_oldest_snapshot_timestamp     | gauge     | 1            | Oldest snapshot timestamp
 | elasticsearch_snapshot_stats_snapshot_start_time_timestamp | gauge     | 1            | Last snapshot start timestamp
 | elasticsearch_snapshot_stats_snapshot_end_time_timestamp   | gauge     | 1            | Last snapshot end timestamp
-| elasticsearch_snapshot_stats_snapshot_number_of_failures   | gauge     | 1            | Last spnapshot number of failures
+| elasticsearch_snapshot_stats_snapshot_number_of_failures   | gauge     | 1            | Last snapshot number of failures
 | elasticsearch_snapshot_stats_snapshot_number_of_indices    | gauge     | 1            | Last snapshot number of indices
 | elasticsearch_snapshot_stats_snapshot_failed_shards        | gauge     | 1            | Last snapshot failed shards
 | elasticsearch_snapshot_stats_snapshot_successful_shards    | gauge     | 1            | Last snapshot successful shards
