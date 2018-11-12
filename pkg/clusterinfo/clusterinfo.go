@@ -115,7 +115,7 @@ func (r *Retriever) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (r *Retriever) updateMetrics(res *Response) {
-	level.Debug(r.logger).Log("msg", "updating cluster info metrics")
+	_ = level.Debug(r.logger).Log("msg", "updating cluster info metrics")
 	// scrape failed, response is nil
 	if res == nil {
 		r.up.WithLabelValues(r.url.String()).Set(0.0)
@@ -230,7 +230,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 	select {
 	case <-startupComplete:
 		// first sync has been successful
-		level.Debug(r.logger).Log("msg", "initial clusterinfo sync succeeded")
+		_ = level.Debug(r.logger).Log("msg", "initial clusterinfo sync succeeded")
 		return nil
 	case <-time.After(initialTimeout):
 		// initial call timed out

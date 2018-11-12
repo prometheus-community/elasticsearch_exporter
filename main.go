@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"time"
 
 	"context"
@@ -137,23 +138,18 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// start the cluster info retriever
-	switch err := clusterInfoRetriever.Run(ctx); err {
+	switch runErr := clusterInfoRetriever.Run(ctx); runErr {
 	case nil:
-		level.Info(logger).Log(
+		_ = level.Info(logger).Log(
 			"msg", "started cluster info retriever",
 			"interval", (*esClusterInfoInterval).String(),
 		)
 	case clusterinfo.ErrInitialCallTimeout:
-		level.Info(logger).Log("msg", "initial cluster info call timed out")
+		_ = level.Info(logger).Log("msg", "initial cluster info call timed out")
 	default:
-		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
+		_ = level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
 		os.Exit(1)
 	}
-
-	level.Info(logger).Log(
-		"msg", "started cluster info retriever",
-		"interval", (*esClusterInfoInterval).String(),
-	)
 
 	// register cluster info retriever as prometheus collector
 	prometheus.MustRegister(clusterInfoRetriever)
@@ -193,14 +189,14 @@ func main() {
 		}
 	}()
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	// create a context for graceful http server shutdown
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()
 	<-c
-	level.Info(logger).Log("msg", "shutting down")
-	server.Shutdown(srvCtx)
+	_ = level.Info(logger).Log("msg", "shutting down")
+	_ = server.Shutdown(srvCtx)
 	cancel()
 }
