@@ -15,7 +15,7 @@ import (
 
 type labels struct {
 	keys   func(...string) []string
-	values func(...string) []string
+	values func(*clusterinfo.Response, ...string) []string
 }
 
 type indexMetric struct {
@@ -51,13 +51,12 @@ type Indices struct {
 
 // NewIndices defines Indices Prometheus metrics
 func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
-	var lastClusterinfo *clusterinfo.Response
 
 	indexLabels := labels{
 		keys: func(...string) []string {
 			return []string{"index", "cluster"}
 		},
-		values: func(s ...string) []string {
+		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
 			if lastClusterinfo != nil {
 				return append(s, lastClusterinfo.ClusterName)
 			}
@@ -71,7 +70,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		keys: func(...string) []string {
 			return []string{"index", "shard", "node", "cluster"}
 		},
-		values: func(s ...string) []string {
+		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
 			if lastClusterinfo != nil {
 				return append(s, lastClusterinfo.ClusterName)
 			}
@@ -82,12 +81,14 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	}
 
 	indices := &Indices{
-		logger:          logger,
-		client:          client,
-		url:             url,
-		shards:          shards,
-		clusterInfoCh:   make(chan *clusterinfo.Response),
-		lastClusterInfo: lastClusterinfo,
+		logger:        logger,
+		client:        client,
+		url:           url,
+		shards:        shards,
+		clusterInfoCh: make(chan *clusterinfo.Response),
+		lastClusterInfo: &clusterinfo.Response{
+			ClusterName: "unknown_cluster",
+		},
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -1024,7 +1025,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Desc,
 				metric.Type,
 				metric.Value(indexStats),
-				metric.Labels.values(indexName)...,
+				metric.Labels.values(i.lastClusterInfo, indexName)...,
 			)
 
 		}
@@ -1037,7 +1038,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 							metric.Desc,
 							metric.Type,
 							metric.Value(shard),
-							metric.Labels.values(indexName, shardNumber, shard.Routing.Node)...,
+							metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node)...,
 						)
 					}
 				}
