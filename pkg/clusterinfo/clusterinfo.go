@@ -23,6 +23,9 @@ const (
 var (
 	// ErrConsumerAlreadyRegistered is returned if a consumer is already registered
 	ErrConsumerAlreadyRegistered = errors.New("consumer already registered")
+	// ErrInitialCallTimeout is returned if the initial clusterinfo call timed out
+	ErrInitialCallTimeout = errors.New("initial cluster info call timed out")
+	initialTimeout        = 10 * time.Second
 )
 
 type consumer interface {
@@ -149,7 +152,7 @@ func (r *Retriever) RegisterConsumer(c consumer) error {
 // The update loop is terminated upon ctx cancellation. The call blocks until the first
 // call to the cluster info endpoint was successful
 func (r *Retriever) Run(ctx context.Context) error {
-	initial := true
+	startupComplete := make(chan struct{})
 	// start update routine
 	go func(ctx context.Context) {
 		for {
@@ -182,7 +185,12 @@ func (r *Retriever) Run(ctx context.Context) error {
 					)
 					*consumerCh <- res
 				}
-				initial = false
+				// close startupComplete if not already closed
+				select {
+				case <-startupComplete:
+				default:
+					close(startupComplete)
+				}
 			}
 		}
 	}(ctx)
@@ -217,18 +225,21 @@ func (r *Retriever) Run(ctx context.Context) error {
 			}
 		}
 	}(ctx)
+
 	// block until the first retrieval was successful
-	retryTicker := time.NewTicker(1 * time.Second)
-	tries := 0
-	for range retryTicker.C {
-		if !initial {
-			return nil
-		}
-		if tries > 10 {
-			return errors.New("initial cluster info call timed out")
-		}
-		tries++
+	select {
+	case <-startupComplete:
+		// first sync has been successful
+		level.Debug(r.logger).Log("msg", "initial clusterinfo sync succeeded")
+		return nil
+	case <-time.After(initialTimeout):
+		// initial call timed out
+		return ErrInitialCallTimeout
+	case <-ctx.Done():
+		// context cancelled
+		return nil
 	}
+
 	return nil
 }
 

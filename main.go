@@ -80,9 +80,10 @@ func main() {
 			Default("stdout").Envar("LOG_OUTPUT").String()
 	)
 
-	kingpin.Version(version.Print(Name))
-	kingpin.CommandLine.HelpFlag.Short('h')
-	kingpin.Parse()
+	if *showVersion {
+		fmt.Print(version.Print(Name))
+		os.Exit(0)
+	}
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
@@ -129,9 +130,22 @@ func main() {
 		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
 	}
 
-	// TODO: add properly terminated context
+	// create a http server
+	server := &http.Server{}
+
+	// create a context that is cancelled on SIGKILL
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// start the cluster info retriever
-	if err := clusterInfoRetriever.Run(context.Background()); err != nil {
+	switch err := clusterInfoRetriever.Run(ctx); err {
+	case nil:
+		level.Info(logger).Log(
+			"msg", "started cluster info retriever",
+			"interval", (*esClusterInfoInterval).String(),
+		)
+	case clusterinfo.ErrInitialCallTimeout:
+		level.Info(logger).Log("msg", "initial cluster info call timed out")
+	default:
 		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
 		os.Exit(1)
 	}
@@ -144,9 +158,10 @@ func main() {
 	// register cluster info retriever as prometheus collector
 	prometheus.MustRegister(clusterInfoRetriever)
 
-	http.Handle(*metricsPath, prometheus.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`<html>
+	mux := http.DefaultServeMux
+	mux.Handle(*metricsPath, prometheus.Handler())
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_, err = w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>
 			<body>
 			<h1>Elasticsearch Exporter</h1>
@@ -161,15 +176,31 @@ func main() {
 		}
 	})
 
+	server.Handler = mux
+	server.Addr = *listenAddress
+
 	_ = level.Info(logger).Log(
 		"msg", "starting elasticsearch_exporter",
 		"addr", *listenAddress,
 	)
 
-	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		_ = level.Error(logger).Log(
-			"msg", "http server quit",
-			"err", err,
-		)
-	}
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			_ = level.Error(logger).Log(
+				"msg", "http server quit",
+				"err", err,
+			)
+		}
+	}()
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+
+	// create a context for graceful http server shutdown
+	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer srvCancel()
+	<-c
+	level.Info(logger).Log("msg", "shutting down")
+	server.Shutdown(srvCtx)
+	cancel()
 }
