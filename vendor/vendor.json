@@ -39,6 +39,12 @@
 			"revisionTime": "2016-04-25T21:53:00Z"
 		},
 		{
+			"checksumSHA1": "yw6trQTxmryPs2hvnI5LHNw3xjc=",
+			"path": "github.com/imdario/mergo",
+			"revision": "ca3dcc1022bae9b5510f3c83705b72db1b1a96f9",
+			"revisionTime": "2018-11-07T19:11:38Z"
+		},
+		{
 			"checksumSHA1": "abKzFXAn0KDr5U+JON1ZgJ2lUtU=",
 			"path": "github.com/kr/logfmt",
 			"revision": "b84e30acd515aadc4b783ad4ff83aff3299bdfe0",
