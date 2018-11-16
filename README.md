@@ -13,7 +13,7 @@ https://github.com/justwatchcom/elasticsearch_exporter/releases
 
 ```bash
 docker pull justwatch/elasticsearch_exporter:1.0.2
-docker run --rm -p 9108:9108 justwatch/elasticsearch_exporter:1.0.2
+docker run --rm -p 9114:9114 justwatch/elasticsearch_exporter:1.0.2
 ```
 
 Example `docker-compose.yml`:
@@ -25,7 +25,7 @@ elasticsearch_exporter:
      - '-es.uri=http://elasticsearch:9200'
     restart: always
     ports:
-    - "127.0.0.1:9108:9108"
+    - "127.0.0.1:9114:9114"
 ```
 
 #### Kubernetes
@@ -55,7 +55,7 @@ elasticsearch_exporter --help
 | es.client-private-key | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
 | es.client-cert        | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
 | es.ssl-skip-verify    | Skip SSL verification when connecting to Elasticsearch. | false |
-| web.listen-address    | Address to listen on for web interface and telemetry. | :9108 |
+| web.listen-address    | Address to listen on for web interface and telemetry. | :9114 |
 | web.telemetry-path    | Path under which to expose metrics. | /metrics |
 | version               | Show version info on stdout and exit. | |
 

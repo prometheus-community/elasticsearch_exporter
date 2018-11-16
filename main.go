@@ -17,7 +17,7 @@ func main() {
 		Name          = "elasticsearch_exporter"
 		listenAddress = kingpin.Flag("web.listen-address",
 			"Address to listen on for web interface and telemetry.").
-			Default(":9108").String()
+			Default(":9114").String()
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
 			Default("/metrics").String()
@@ -36,7 +36,7 @@ func main() {
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Bool()
-		esExportIndicesSettings) = kingpin.Flag("es.indices_settings"),
+		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
 			Default("false").Bool()
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
@@ -69,7 +69,6 @@ func main() {
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").String()
->>>>>>> Switch from flag to kingpin fixes #173
 	)
 
 	kingpin.Version(version.Print(Name))

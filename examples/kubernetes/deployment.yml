@@ -44,16 +44,16 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 9108
+            port: 9114
           initialDelaySeconds: 30
           timeoutSeconds: 10
         name: p8s-elastic-exporter
         ports:
-        - containerPort: 9108
+        - containerPort: 9114
         readinessProbe:
           httpGet:
             path: /health
-            port: 9108
+            port: 9114
           initialDelaySeconds: 10
           timeoutSeconds: 10
         resources:
