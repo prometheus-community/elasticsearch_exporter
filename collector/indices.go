@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -13,9 +14,15 @@ import (
 )
 
 var (
-	defaultIndexLabels      = []string{"index"}
+	defaultIndexLabels      = []string{"index", "indexPrefix", "indexDate"}
 	defaultIndexLabelValues = func(indexName string) []string {
-		return []string{indexName}
+		indexDate := ""
+		indexFullName := strings.Split(indexName, "-")
+		indexPrefix := indexFullName[0]
+		if len(indexFullName) > 1 {
+			indexDate = indexFullName[1]
+		}
+		return []string{indexName, indexPrefix, indexDate}
 	}
 )
 
