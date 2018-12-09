@@ -36,9 +36,10 @@ type clusterHealthStatusMetric struct {
 
 // ClusterHealth type defines the collector struct
 type ClusterHealth struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger    log.Logger
+	client    *http.Client
+	urls      []*url.URL
+	httpProbe HTTPProbe
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
@@ -48,13 +49,14 @@ type ClusterHealth struct {
 }
 
 // NewClusterHealth returns a new Collector exposing ClusterHealth stats.
-func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
+func NewClusterHealth(logger log.Logger, client *http.Client, urls []*url.URL) *ClusterHealth {
 	subsystem := "cluster_health"
 
 	return &ClusterHealth{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:    logger,
+		client:    client,
+		urls:      urls,
+		httpProbe: NewHTTPProbe(urls, client),
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "up"),
@@ -238,7 +240,11 @@ func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, error) {
 	var chr clusterHealthResponse
 
-	u := *c.url
+	u, err := c.httpProbe.ProbeURL()
+	if err != nil {
+		return chr, fmt.Errorf("failed to get cluster health, %s", err)
+	}
+
 	u.Path = path.Join(u.Path, "/_cluster/health")
 	res, err := c.client.Get(u.String())
 	if err != nil {

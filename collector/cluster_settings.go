@@ -15,9 +15,10 @@ import (
 
 // ClusterSettings information struct
 type ClusterSettings struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger    log.Logger
+	client    *http.Client
+	urls      []*url.URL
+	httpProbe HTTPProbe
 
 	up                              prometheus.Gauge
 	shardAllocationEnabled          prometheus.Gauge
@@ -25,11 +26,12 @@ type ClusterSettings struct {
 }
 
 // NewClusterSettings defines Cluster Settings Prometheus metrics
-func NewClusterSettings(logger log.Logger, client *http.Client, url *url.URL) *ClusterSettings {
+func NewClusterSettings(logger log.Logger, client *http.Client, urls []*url.URL) *ClusterSettings {
 	return &ClusterSettings{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:    logger,
+		client:    client,
+		urls:      urls,
+		httpProbe: NewHTTPProbe(urls, client),
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "up"),
@@ -88,14 +90,19 @@ func (cs *ClusterSettings) getAndParseURL(u *url.URL, data interface{}) error {
 
 func (cs *ClusterSettings) fetchAndDecodeClusterSettingsStats() (ClusterSettingsResponse, error) {
 
-	u := *cs.url
+	var csfr ClusterSettingsFullResponse
+	var csr ClusterSettingsResponse
+
+	u, err := cs.httpProbe.ProbeURL()
+	if err != nil {
+		return csr, fmt.Errorf("failed to fetch and decode cluster settings stats, %s", err)
+	}
+
 	u.Path = path.Join(u.Path, "/_cluster/settings")
 	q := u.Query()
 	q.Set("include_defaults", "true")
 	u.RawPath = q.Encode()
-	var csfr ClusterSettingsFullResponse
-	var csr ClusterSettingsResponse
-	err := cs.getAndParseURL(&u, &csfr)
+	err = cs.getAndParseURL(u, &csfr)
 	if err != nil {
 		return csr, err
 	}

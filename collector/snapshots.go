@@ -39,9 +39,10 @@ var (
 
 // Snapshots information struct
 type Snapshots struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger    log.Logger
+	client    *http.Client
+	urls      []*url.URL
+	httpProbe HTTPProbe
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
@@ -51,11 +52,12 @@ type Snapshots struct {
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapshots {
+func NewSnapshots(logger log.Logger, client *http.Client, urls []*url.URL) *Snapshots {
 	return &Snapshots{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:    logger,
+		client:    client,
+		urls:      urls,
+		httpProbe: NewHTTPProbe(urls, client),
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
@@ -228,18 +230,21 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResponse, error) {
 	mssr := make(map[string]SnapshotStatsResponse)
 
-	u := *s.url
+	u, err := s.httpProbe.ProbeURL()
+	if err != nil {
+		return mssr, fmt.Errorf("failed to get index stats, %s", err)
+	}
+
 	u.Path = path.Join(u.Path, "/_snapshot")
 	var srr SnapshotRepositoriesResponse
-	err := s.getAndParseURL(&u, &srr)
+	err = s.getAndParseURL(u, &srr)
 	if err != nil {
 		return nil, err
 	}
 	for repository := range srr {
-		u := *s.url
 		u.Path = path.Join(u.Path, "/_snapshot", repository, "/_all")
 		var ssr SnapshotStatsResponse
-		err := s.getAndParseURL(&u, &ssr)
+		err := s.getAndParseURL(u, &ssr)
 		if err != nil {
 			continue
 		}

@@ -124,11 +124,12 @@ type filesystemIODeviceMetric struct {
 
 // Nodes information struct
 type Nodes struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	all    bool
-	node   string
+	logger    log.Logger
+	client    *http.Client
+	urls      []*url.URL
+	all       bool
+	node      string
+	httpProbe HTTPProbe
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
@@ -142,13 +143,14 @@ type Nodes struct {
 }
 
 // NewNodes defines Nodes Prometheus metrics
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
+func NewNodes(logger log.Logger, client *http.Client, urls []*url.URL, all bool, node string) *Nodes {
 	return &Nodes{
-		logger: logger,
-		client: client,
-		url:    url,
-		all:    all,
-		node:   node,
+		logger:    logger,
+		client:    client,
+		urls:      urls,
+		all:       all,
+		node:      node,
+		httpProbe: NewHTTPProbe(urls, client),
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
@@ -1517,7 +1519,10 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
-	u := *c.url
+	u, err := c.httpProbe.ProbeURL()
+	if err != nil {
+		return nsr, fmt.Errorf("failed to get cluster health, %s", err)
+	}
 
 	if c.all {
 		u.Path = path.Join(u.Path, "/_nodes/stats")

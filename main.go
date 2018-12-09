@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -19,7 +20,7 @@ func main() {
 		Name                    = "elasticsearch_exporter"
 		listenAddress           = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
 		metricsPath             = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		esURI                   = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
+		esURI                   = flag.String("es.uri", "http://localhost:9200", "HTTP API addresses of Elasticsearch nodes (comma-delimited).")
 		esTimeout               = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
 		esAllNodes              = flag.Bool("es.all", false, "Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.")
 		esNode                  = flag.String("es.node", "_local", "Node's name of which metrics should be exposed.")
@@ -49,13 +50,19 @@ func main() {
 	if ok {
 		*esURI = esURIEnv
 	}
-	esURL, err := url.Parse(*esURI)
-	if err != nil {
-		_ = level.Error(logger).Log(
-			"msg", "failed to parse es.uri",
-			"err", err,
-		)
-		os.Exit(1)
+
+	uris := strings.Split(*esURI, ",")
+	esURLs := make([]*url.URL, 0)
+	for _, uri := range uris {
+		esURL, err := url.Parse(uri)
+		if err != nil {
+			_ = level.Error(logger).Log(
+				"msg", "failed to parse es.uri",
+				"err", err,
+			)
+			os.Exit(1)
+		}
+		esURLs = append(esURLs, esURL)
 	}
 
 	// returns nil if not provided and falls back to simple TCP.
@@ -72,20 +79,20 @@ func main() {
 	// version metric
 	versionMetric := version.NewCollector(Name)
 	prometheus.MustRegister(versionMetric)
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURLs))
+	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURLs, *esAllNodes, *esNode))
 	if *esExportIndices || *esExportShards {
-		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURL, *esExportShards))
+		prometheus.MustRegister(collector.NewIndices(logger, httpClient, esURLs, *esExportShards))
 	}
 	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURLs))
 	}
 	if *esExportClusterSettings {
-		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURLs))
 	}
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err = w.Write([]byte(`<html>
+		_, err := w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>
 			<body>
 			<h1>Elasticsearch Exporter</h1>

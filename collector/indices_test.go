@@ -35,7 +35,10 @@ func TestIndices(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false)
+
+		urls := make([]*url.URL, 0)
+		urls = append(urls, u)
+		i := NewIndices(log.NewNopLogger(), http.DefaultClient, urls, false)
 		stats, err := i.fetchAndDecodeIndexStats()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode indices stats: %s", err)

@@ -37,10 +37,11 @@ type shardMetric struct {
 
 // Indices information struct
 type Indices struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	shards bool
+	logger    log.Logger
+	client    *http.Client
+	urls      []*url.URL
+	shards    bool
+	httpProbe HTTPProbe
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -51,12 +52,13 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, urls []*url.URL, shards bool) *Indices {
 	return &Indices{
-		logger: logger,
-		client: client,
-		url:    url,
-		shards: shards,
+		logger:    logger,
+		client:    client,
+		urls:      urls,
+		shards:    shards,
+		httpProbe: NewHTTPProbe(urls, client),
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
@@ -915,7 +917,11 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
-	u := *i.url
+	u, err := i.httpProbe.ProbeURL()
+	if err != nil {
+		return isr, fmt.Errorf("failed to get index stats, %s", err)
+	}
+
 	u.Path = path.Join(u.Path, "/_all/_stats")
 	if i.shards {
 		u.RawQuery = "level=shards"

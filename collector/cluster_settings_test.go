@@ -30,7 +30,11 @@ func TestClusterSettingsStats(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
+
+			urls := make([]*url.URL, 0)
+			urls = append(urls, u)
+
+			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, urls)
 			nsr, err := c.fetchAndDecodeClusterSettingsStats()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)

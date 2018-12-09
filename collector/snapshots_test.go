@@ -43,7 +43,9 @@ func TestSnapshots(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		s := NewSnapshots(log.NewNopLogger(), http.DefaultClient, u)
+		urls := make([]*url.URL, 0)
+		urls = append(urls, u)
+		s := NewSnapshots(log.NewNopLogger(), http.DefaultClient, urls)
 		stats, err := s.fetchAndDecodeSnapshotsStats()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode snapshots stats: %s", err)
