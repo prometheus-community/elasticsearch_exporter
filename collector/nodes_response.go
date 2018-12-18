@@ -134,6 +134,7 @@ type NodeStatsIndicesResponse struct {
 	Segments     NodeStatsIndicesSegmentsResponse
 	Refresh      NodeStatsIndicesRefreshResponse
 	Translog     NodeStatsIndicesTranslogResponse
+	Completion   NodeStatsIndicesCompletionResponse
 }
 
 // NodeStatsIndicesDocsResponse defines node stats docs information structure for indices
@@ -154,10 +155,21 @@ type NodeStatsIndicesTranslogResponse struct {
 	Size       int64 `json:"size_in_bytes"`
 }
 
+// NodeStatsIndicesCompletionResponse defines node stats completion information structure for indices
+type NodeStatsIndicesCompletionResponse struct {
+	Size int64 `json:"size_in_bytes"`
+}
+
 // NodeStatsIndicesSegmentsResponse defines node stats segments information structure for indices
 type NodeStatsIndicesSegmentsResponse struct {
-	Count  int64 `json:"count"`
-	Memory int64 `json:"memory_in_bytes"`
+	Count              int64 `json:"count"`
+	Memory             int64 `json:"memory_in_bytes"`
+	TermsMemory        int64 `json:"terms_memory_in_bytes"`
+	IndexWriterMemory  int64 `json:"index_writer_memory_in_bytes"`
+	NormsMemory        int64 `json:"norms_memory_in_bytes"`
+	StoredFieldsMemory int64 `json:"stored_fields_memory_in_bytes"`
+	FixedBitSet        int64 `json:"fixed_bit_set_memory_in_bytes"`
+	DocValuesMemory    int64 `json:"doc_values_memory_in_bytes"`
 }
 
 // NodeStatsIndicesStoreResponse defines node stats store information structure for indices
@@ -207,6 +219,8 @@ type NodeStatsIndicesSearchResponse struct {
 	FetchTotal   int64 `json:"fetch_total"`
 	FetchTime    int64 `json:"fetch_time_in_millis"`
 	FetchCurrent int64 `json:"fetch_current"`
+	SuggestTotal int64 `json:"suggest_total"`
+	SuggestTime  int64 `json:"suggest_time_in_millis"`
 }
 
 // NodeStatsIndicesFlushResponse defines node stats flush information structure for indices
