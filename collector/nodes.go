@@ -285,6 +285,18 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "completion_size_in_bytes"),
+					"Completion in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Completion.Size)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "filter_cache_memory_size_bytes"),
@@ -609,6 +621,30 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "search_suggest_total"),
+					"Total number of suggests",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Search.SuggestTotal)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "search_suggest_time_seconds"),
+					"Total suggest time in seconds",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Search.SuggestTime) / 1000
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs"),
@@ -677,6 +713,78 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.Count)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segments_terms_memory_in_bytes"),
+					"Count of terms in memory for this node",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Segments.TermsMemory)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segments_index_writer_memory_in_bytes"),
+					"Count of memory for index writer on this node",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Segments.IndexWriterMemory)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segments_norms_memory_in_bytes"),
+					"Count of memory used by norms",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Segments.NormsMemory)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segments_stored_fields_memory_in_bytes"),
+					"Count of stored fields memory",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Segments.StoredFieldsMemory)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segments_doc_values_memory_in_bytes"),
+					"Count of doc values memory",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Segments.DocValuesMemory)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segments_fixed_bit_set_memory_in_bytes"),
+					"Count of fixed bit set",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Segments.FixedBitSet)
 				},
 				Labels: defaultNodeLabelValues,
 			},
