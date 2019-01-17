@@ -552,7 +552,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_refresh", "time_seconds_total"),
-					"Total refreshes",
+					"Total time spent refreshing in seconds",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
@@ -564,7 +564,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_refresh", "total"),
-					"Total time spent refreshing in seconds",
+					"Total refreshes",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
