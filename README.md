@@ -127,7 +127,7 @@ elasticsearch_exporter --help
 | elasticsearch_indices_search_query_total                   | counter   | 1            | Total number of queries
 | elasticsearch_indices_segments_count                       | gauge     | 1            | Count of index segments on this node
 | elasticsearch_indices_segments_memory_bytes                | gauge     | 1            | Current memory size of segments in bytes
-| elasticsearch_indices_settings_stats_read_only_indices     | counter   | 1            | Count of indices that have read_only_allow_delete=true
+| elasticsearch_indices_settings_stats_read_only_indices     | gauge     | 1            | Count of indices that have read_only_allow_delete=true
 | elasticsearch_indices_shards_docs                          | gauge     | 3            | Count of documents on this shard
 | elasticsearch_indices_shards_docs_deleted                  | gauge     | 3            | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                     | gauge     | 1            | Current size of stored index data in bytes
