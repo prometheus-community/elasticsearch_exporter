@@ -25,6 +25,7 @@ func main() {
 		esNode                  = flag.String("es.node", "_local", "Node's name of which metrics should be exposed.")
 		esExportIndices         = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
 		esExportClusterSettings = flag.Bool("es.cluster_settings", false, "Export stats for cluster settings.")
+		esExportIndicesSettings = flag.Bool("es.indices_settings", false, "Export stats for settings of all indices of the cluster.")
 		esExportShards          = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
 		esExportSnapshots       = flag.Bool("es.snapshots", false, "Export stats for the cluster snapshots.")
 		esCA                    = flag.String("es.ca", "", "Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.")
@@ -82,6 +83,9 @@ func main() {
 	}
 	if *esExportClusterSettings {
 		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
+	}
+	if *esExportIndicesSettings {
+		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
 	}
 	http.Handle(*metricsPath, prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
