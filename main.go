@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -81,10 +79,9 @@ func main() {
 			Default("stdout").Envar("LOG_OUTPUT").String()
 	)
 
-	if *showVersion {
-		fmt.Print(version.Print(Name))
-		os.Exit(0)
-	}
+	kingpin.Version(version.Print(Name))
+	kingpin.CommandLine.HelpFlag.Short('h')
+	kingpin.Parse()
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
@@ -127,12 +124,16 @@ func main() {
 		}
 	}
 
+	if *esExportSnapshots {
+		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+	}
+
 	if *esExportClusterSettings {
 		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
 	}
 
-	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+	if *esExportIndicesSettings {
+		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
 	}
 
 	// create a http server
