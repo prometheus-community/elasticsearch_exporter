@@ -1,48 +1,79 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
 	var (
-		Name                    = "elasticsearch_exporter"
-		listenAddress           = flag.String("web.listen-address", ":9108", "Address to listen on for web interface and telemetry.")
-		metricsPath             = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		esURI                   = flag.String("es.uri", "http://localhost:9200", "HTTP API address of an Elasticsearch node.")
-		esTimeout               = flag.Duration("es.timeout", 5*time.Second, "Timeout for trying to get stats from Elasticsearch.")
-		esAllNodes              = flag.Bool("es.all", false, "Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.")
-		esNode                  = flag.String("es.node", "_local", "Node's name of which metrics should be exposed.")
-		esExportIndices         = flag.Bool("es.indices", false, "Export stats for indices in the cluster.")
-		esExportClusterSettings = flag.Bool("es.cluster_settings", false, "Export stats for cluster settings.")
-		esExportIndicesSettings = flag.Bool("es.indices_settings", false, "Export stats for settings of all indices of the cluster.")
-		esExportShards          = flag.Bool("es.shards", false, "Export stats for shards in the cluster (implies es.indices=true).")
-		esExportSnapshots       = flag.Bool("es.snapshots", false, "Export stats for the cluster snapshots.")
-		esCA                    = flag.String("es.ca", "", "Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.")
-		esClientPrivateKey      = flag.String("es.client-private-key", "", "Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.")
-		esClientCert            = flag.String("es.client-cert", "", "Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.")
-		esInsecureSkipVerify    = flag.Bool("es.ssl-skip-verify", false, "Skip SSL verification when connecting to Elasticsearch.")
-		logLevel                = flag.String("log.level", "info", "Sets the loglevel. Valid levels are debug, info, warn, error")
-		logFormat               = flag.String("log.format", "logfmt", "Sets the log format. Valid formats are json and logfmt")
-		logOutput               = flag.String("log.output", "stdout", "Sets the log output. Valid outputs are stdout and stderr")
-		showVersion             = flag.Bool("version", false, "Show version and exit")
+		Name          = "elasticsearch_exporter"
+		listenAddress = kingpin.Flag("web.listen-address",
+			"Address to listen on for web interface and telemetry.").
+			Default(":9114").String()
+		metricsPath = kingpin.Flag("web.telemetry-path",
+			"Path under which to expose metrics.").
+			Default("/metrics").String()
+		esURI = kingpin.Flag("es.uri",
+			"HTTP API address of an Elasticsearch node.").
+			Default("http://localhost:9200").String()
+		esTimeout = kingpin.Flag("es.timeout",
+			"Timeout for trying to get stats from Elasticsearch.").
+			Default("5s").Duration()
+		esAllNodes = kingpin.Flag("es.all",
+			"Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.").
+			Default("false").Bool()
+		esNode = kingpin.Flag("es.node",
+			"Node's name of which metrics should be exposed.").
+			Default("_local").String()
+		esExportIndices = kingpin.Flag("es.indices",
+			"Export stats for indices in the cluster.").
+			Default("false").Bool()
+		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
+			"Export stats for settings of all indices of the cluster.").
+			Default("false").Bool()
+		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
+			"Export stats for cluster settings.").
+			Default("false").Bool()
+		esExportShards = kingpin.Flag("es.shards",
+			"Export stats for shards in the cluster (implies --es.indices).").
+			Default("false").Bool()
+		esExportSnapshots = kingpin.Flag("es.snapshots",
+			"Export stats for the cluster snapshots.").
+			Default("false").Bool()
+		esCA = kingpin.Flag("es.ca",
+			"Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.").
+			Default("").String()
+		esClientPrivateKey = kingpin.Flag("es.client-private-key",
+			"Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.").
+			Default("").String()
+		esClientCert = kingpin.Flag("es.client-cert",
+			"Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.").
+			Default("").String()
+		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
+			"Skip SSL verification when connecting to Elasticsearch.").
+			Default("false").Bool()
+		logLevel = kingpin.Flag("log.level",
+			"Sets the loglevel. Valid levels are debug, info, warn, error").
+			Default("infor").String()
+		logFormat = kingpin.Flag("log.format",
+			"Sets the log format. Valid formats are json and logfmt").
+			Default("logfmt").String()
+		logOutput = kingpin.Flag("log.output",
+			"Sets the log output. Valid outputs are stdout and stderr").
+			Default("stdout").String()
 	)
-	flag.Parse()
 
-	if *showVersion {
-		fmt.Print(version.Print(Name))
-		os.Exit(0)
-	}
+	kingpin.Version(version.Print(Name))
+	kingpin.CommandLine.HelpFlag.Short('h')
+	kingpin.Parse()
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
