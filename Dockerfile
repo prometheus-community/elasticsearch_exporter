@@ -10,5 +10,5 @@ MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
 
 COPY --from=builder /go/src/github.com/justwatchcom/elasticsearch_exporter/elasticsearch_exporter  /bin/elasticsearch_exporter
 
-EXPOSE      9108
+EXPOSE      9114
 ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
