@@ -52,7 +52,6 @@ type Retriever struct {
 
 // New creates a new Retriever
 func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
-	level.Debug(logger).Log("msg", "initializing clusterinfo retriever", "interval", interval.String())
 	return &Retriever{
 		consumerChannels: make(map[string]*chan *Response),
 		logger:           logger,
