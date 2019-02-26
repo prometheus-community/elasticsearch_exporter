@@ -181,6 +181,7 @@ by replacing `.` with `_` and upper-casing the parameter name.
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
+
 ### Alerts & Recording Rules
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
@@ -206,7 +207,7 @@ Please refer to the [Prometheus SD documentation](https://prometheus.io/docs/ope
 `elasticsearch_exporter` is maintained by the nice folks from [JustWatch](https://www.justwatch.com/)
 and licensed under the terms of the Apache license.
 
-This package was originally created and mainted by [Eric Richardson](https://github.com/ewr),
+This package was originally created and maintained by [Eric Richardson](https://github.com/ewr),
 who transferred this repository to us in January 2017.
 
 Maintainers of this repository:
