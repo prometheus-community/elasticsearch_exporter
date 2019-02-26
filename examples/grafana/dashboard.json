@@ -119,7 +119,7 @@
       "tableColumn": "Value",
       "targets": [
         {
-          "expr": "scalar(elasticsearch_cluster_health_status{color=\"green\"}) + scalar(elasticsearch_cluster_health_status{color=\"yellow\"}) * 2 + scalar(elasticsearch_cluster_health_status{color=\"red\"}) * 3",
+          "expr": "scalar(elasticsearch_cluster_health_status{color=\"green\",cluster=~\"$cluster\"}) + scalar(elasticsearch_cluster_health_status{color=\"yellow\",cluster=~\"$cluster\"}) * 2 + scalar(elasticsearch_cluster_health_status{color=\"red\",cluster=~\"$cluster\"}) * 3",
           "format": "time_series",
           "instant": false,
           "intervalFactor": 1,
