@@ -12,8 +12,70 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+func getRoles(node NodeStatsNodeResponse) map[string]bool {
+	// default settings (2.x) and map, which roles to consider
+	roles := map[string]bool{
+		"master": false,
+		"data":   false,
+		"ingest": false,
+		"client": true,
+	}
+	// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
+	if len(node.Roles) > 0 {
+		for _, role := range node.Roles {
+			// set every absent role to false
+			if _, ok := roles[role]; !ok {
+				roles[role] = false
+			} else {
+				// if present in the roles field, set to true
+				roles[role] = true
+			}
+		}
+	} else {
+		for role, setting := range node.Attributes {
+			if _, ok := roles[role]; ok {
+				if setting == "false" {
+					roles[role] = false
+				} else {
+					roles[role] = true
+				}
+			}
+		}
+	}
+	if len(node.HTTP) == 0 {
+		roles["client"] = false
+	}
+	return roles
+}
+
+func createRoleMetric(role string) *nodeMetric {
+	return &nodeMetric{
+		Type: prometheus.GaugeValue,
+		Desc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "nodes", "roles"),
+			"Node roles",
+			defaultRoleLabels, prometheus.Labels{"role": role},
+		),
+		Value: func(node NodeStatsNodeResponse) float64 {
+			roles := getRoles(node)
+			if roles[role] {
+				return 1.0
+			}
+			return 0.0
+		},
+		Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+			return []string{
+				cluster,
+				node.Host,
+				node.Name,
+			}
+		},
+	}
+}
+
 var (
 	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
+	defaultRoleLabels               = []string{"cluster", "host", "name"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
 	defaultFilesystemDataLabels     = append(defaultNodeLabels, "mount", "path")
@@ -21,38 +83,7 @@ var (
 	defaultCacheLabels              = append(defaultNodeLabels, "cache")
 
 	defaultNodeLabelValues = func(cluster string, node NodeStatsNodeResponse) []string {
-		// default settings (2.x) and map, which roles to consider
-		roles := map[string]bool{
-			"master": false,
-			"data":   false,
-			"ingest": false,
-		}
-		isClientNode := "true"
-		// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
-		if len(node.Roles) > 0 {
-			for _, role := range node.Roles {
-				// set every absent role to false
-				if _, ok := roles[role]; !ok {
-					roles[role] = false
-				} else {
-					// if present in the roles field, set to true
-					roles[role] = true
-				}
-			}
-		} else {
-			for role, setting := range node.Attributes {
-				if _, ok := roles[role]; ok {
-					if setting == "false" {
-						roles[role] = false
-					} else {
-						roles[role] = true
-					}
-				}
-			}
-		}
-		if len(node.HTTP) == 0 {
-			isClientNode = "false"
-		}
+		roles := getRoles(node)
 		return []string{
 			cluster,
 			node.Host,
@@ -60,7 +91,7 @@ var (
 			fmt.Sprintf("%t", roles["master"]),
 			fmt.Sprintf("%t", roles["data"]),
 			fmt.Sprintf("%t", roles["ingest"]),
-			isClientNode,
+			fmt.Sprintf("%t", roles["client"]),
 		}
 	}
 	defaultThreadPoolLabelValues = func(cluster string, node NodeStatsNodeResponse, pool string) []string {
@@ -164,6 +195,10 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 		}),
 
 		nodeMetrics: []*nodeMetric{
+			createRoleMetric("master"),
+			createRoleMetric("data"),
+			createRoleMetric("ingest"),
+			createRoleMetric("client"),
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
