@@ -183,20 +183,6 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, subsystem, "timed_out"),
-					"Number of cluster health checks timed out",
-					defaultClusterHealthLabels, nil,
-				),
-				Value: func(clusterHealth clusterHealthResponse) float64 {
-					if clusterHealth.TimedOut {
-						return 1
-					}
-					return 0
-				},
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, subsystem, "unassigned_shards"),
 					"The number of shards that exist in the cluster state, but cannot be found in the cluster itself.",
 					defaultClusterHealthLabels, nil,
