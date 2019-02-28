@@ -192,13 +192,14 @@ type NodeStatsIndicesIndexingResponse struct {
 
 // NodeStatsIndicesMergesResponse defines node stats merges information structure for indices
 type NodeStatsIndicesMergesResponse struct {
-	Current     int64 `json:"current"`
-	CurrentDocs int64 `json:"current_docs"`
-	CurrentSize int64 `json:"current_size_in_bytes"`
-	Total       int64 `json:"total"`
-	TotalDocs   int64 `json:"total_docs"`
-	TotalSize   int64 `json:"total_size_in_bytes"`
-	TotalTime   int64 `json:"total_time_in_millis"`
+	Current            int64 `json:"current"`
+	CurrentDocs        int64 `json:"current_docs"`
+	CurrentSize        int64 `json:"current_size_in_bytes"`
+	Total              int64 `json:"total"`
+	TotalDocs          int64 `json:"total_docs"`
+	TotalSize          int64 `json:"total_size_in_bytes"`
+	TotalTime          int64 `json:"total_time_in_millis"`
+	TotalThrottledTime int64 `json:"total_throttled_time_in_millis"`
 }
 
 // NodeStatsIndicesGetResponse defines node stats get information structure for indices
