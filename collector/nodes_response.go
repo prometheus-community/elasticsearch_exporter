@@ -223,6 +223,8 @@ type NodeStatsIndicesSearchResponse struct {
 	FetchCurrent int64 `json:"fetch_current"`
 	SuggestTotal int64 `json:"suggest_total"`
 	SuggestTime  int64 `json:"suggest_time_in_millis"`
+	ScrollTotal  int64 `json:"scroll_total"`
+	ScrollTime   int64 `json:"scroll_time_in_millis"`
 }
 
 // NodeStatsIndicesFlushResponse defines node stats flush information structure for indices
