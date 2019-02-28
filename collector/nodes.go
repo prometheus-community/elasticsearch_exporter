@@ -1493,7 +1493,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					defaultBreakerLabels, nil,
 				),
 				Value: func(breakerStats NodeStatsBreakersResponse) float64 {
-					return float64(breakerStats.Overhead)
+					return breakerStats.Overhead
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse, breaker string) []string {
 					return append(defaultNodeLabelValues(cluster, node), breaker)
