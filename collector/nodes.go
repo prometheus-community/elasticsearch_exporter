@@ -57,11 +57,7 @@ func createRoleMetric(role string) *nodeMetric {
 			defaultRoleLabels, prometheus.Labels{"role": role},
 		),
 		Value: func(node NodeStatsNodeResponse) float64 {
-			roles := getRoles(node)
-			if roles[role] {
-				return 1.0
-			}
-			return 0.0
+			return 1.0
 		},
 		Labels: func(cluster string, node NodeStatsNodeResponse) []string {
 			return []string{
@@ -195,10 +191,6 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 		}),
 
 		nodeMetrics: []*nodeMetric{
-			createRoleMetric("master"),
-			createRoleMetric("data"),
-			createRoleMetric("ingest"),
-			createRoleMetric("client"),
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
@@ -1716,6 +1708,21 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	c.up.Set(1)
 
 	for _, node := range nodeStatsResp.Nodes {
+		// Handle the node labels metric
+		roles := getRoles(node)
+
+		for _, role := range []string{"master", "data", "client", "ingest"} {
+			if roles[role] {
+				metric := createRoleMetric(role)
+				ch <- prometheus.MustNewConstMetric(
+					metric.Desc,
+					metric.Type,
+					metric.Value(node),
+					metric.Labels(nodeStatsResp.ClusterName, node)...,
+				)
+			}
+		}
+
 		for _, metric := range c.nodeMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
