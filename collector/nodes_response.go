@@ -186,6 +186,8 @@ type NodeStatsIndicesIndexingResponse struct {
 	DeleteTotal   int64 `json:"delete_total"`
 	DeleteTime    int64 `json:"delete_time_in_millis"`
 	DeleteCurrent int64 `json:"delete_current"`
+	IsThrottled   bool  `json:"is_throttled"`
+	ThrottleTime  int64 `json:"throttle_time_in_millis"`
 }
 
 // NodeStatsIndicesMergesResponse defines node stats merges information structure for indices

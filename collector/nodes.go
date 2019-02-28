@@ -861,6 +861,33 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_indexing", "is_throttled"),
+					"Indexing throttling",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					if node.Indices.Indexing.IsThrottled {
+						return 1
+					}
+					return 0
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_indexing", "throttle_time_seconds_total"),
+					"Cumulative indexing throttling time",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Indexing.ThrottleTime) / 1000
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "total"),
