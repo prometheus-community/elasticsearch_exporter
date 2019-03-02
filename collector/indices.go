@@ -501,6 +501,18 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Labels: indexLabels,
 			},
 			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_current"),
+					"Current search scroll count",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.ScrollCurrent)
+				},
+				Labels: indexLabels,
+			},
+			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_total"),
