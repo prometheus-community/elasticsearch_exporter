@@ -62,7 +62,7 @@ elasticsearch_exporter --help
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`. 
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
-by replacing `.` with `_` and upper-casing the parameter name.
+by replacing `.` and `-` with `_` and upper-casing the parameter name.
  
 ### Metrics
 
