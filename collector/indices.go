@@ -827,6 +827,18 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "query_cache_caches_total"),
+					"Total query cache caches count",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.QueryCache.CacheCount)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_evictions_total"),
 					"Total query cache evictions count",
 					indexLabels.keys(), nil,
