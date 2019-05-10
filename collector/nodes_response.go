@@ -131,6 +131,7 @@ type NodeStatsIndicesResponse struct {
 	QueryCache   NodeStatsIndicesCacheResponse `json:"query_cache"`
 	RequestCache NodeStatsIndicesCacheResponse `json:"request_cache"`
 	Flush        NodeStatsIndicesFlushResponse
+	Warmer       NodeStatsIndicesWarmerResponse
 	Segments     NodeStatsIndicesSegmentsResponse
 	Refresh      NodeStatsIndicesRefreshResponse
 	Translog     NodeStatsIndicesTranslogResponse
@@ -232,6 +233,12 @@ type NodeStatsIndicesSearchResponse struct {
 type NodeStatsIndicesFlushResponse struct {
 	Total int64 `json:"total"`
 	Time  int64 `json:"total_time_in_millis"`
+}
+
+// NodeStatsIndicesWarmerResponse defines node stats warmer information structure for indices
+type NodeStatsIndicesWarmerResponse struct {
+	Total     int64 `json:"total"`
+	TotalTime int64 `json:"total_time_in_millis"`
 }
 
 // NodeStatsIndicesCacheResponse defines node stats cache information structure for indices
