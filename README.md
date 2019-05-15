@@ -115,7 +115,7 @@ by replacing `.` with `_` and upper-casing the parameter name.
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
 | elasticsearch_indices_merges_total_time_seconds_total                 | counter   | 1           | Total time spent merging in seconds
-| elasticsearch_indices_query_cache_cache_count                         | counter   | 1           | Count of query cache
+| elasticsearch_indices_query_cache_cache_total                         | counter   | 1           | Count of query cache
 | elasticsearch_indices_query_cache_cache_size                          | gauge     | 1           | Size of query cache
 | elasticsearch_indices_query_cache_count                               | counter   | 2           | Count of query cache hit/miss
 | elasticsearch_indices_query_cache_evictions                           | counter   | 1           | Evictions from query cache
