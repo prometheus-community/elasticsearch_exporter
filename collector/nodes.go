@@ -398,7 +398,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_count"),
+					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_total"),
 					"Query cache cache count",
 					defaultNodeLabels, nil,
 				),
