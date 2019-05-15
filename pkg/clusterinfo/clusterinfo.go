@@ -125,7 +125,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 	r.versionMetric.WithLabelValues(
 		res.ClusterName,
 		res.ClusterUUID,
-		res.Version.BuildDate.String(),
+		res.Version.BuildDate,
 		res.Version.BuildHash,
 		res.Version.Number.String(),
 		res.Version.LuceneVersion.String(),
