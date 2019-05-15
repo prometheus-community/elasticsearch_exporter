@@ -2,7 +2,6 @@ package clusterinfo
 
 import (
 	"github.com/blang/semver"
-	"time"
 )
 
 // Response is the cluster info retrievable from the / endpoint
@@ -18,7 +17,7 @@ type Response struct {
 type VersionInfo struct {
 	Number        semver.Version `json:"number"`
 	BuildHash     string         `json:"build_hash"`
-	BuildDate     time.Time      `json:"build_date"`
+	BuildDate     string         `json:"build_date"`
 	BuildSnapshot bool           `json:"build_snapshot"`
 	LuceneVersion semver.Version `json:"lucene_version"`
 }
