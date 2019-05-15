@@ -141,7 +141,7 @@ by replacing `.` and `-` with `_` and upper-casing the parameter name.
 | elasticsearch_indices_store_throttle_time_seconds_total               | counter   | 1           | Throttle time for index store in seconds
 | elasticsearch_indices_translog_operations                             | counter   | 1           | Total translog operations
 | elasticsearch_indices_translog_size_in_bytes                          | counter   | 1           | Total translog size in bytes
-| elasticsearch_indices_warmer_time_seconds                             | counter   | 1           | Total warmer time in seconds
+| elasticsearch_indices_warmer_time_seconds_total                       | counter   | 1           | Total warmer time in seconds
 | elasticsearch_indices_warmer_total                                    | counter   | 1           | Total warmer count
 | elasticsearch_jvm_gc_collection_seconds_count                         | counter   | 2           | Count of JVM GC runs
 | elasticsearch_jvm_gc_collection_seconds_sum                           | counter   | 2           | GC run time in seconds
