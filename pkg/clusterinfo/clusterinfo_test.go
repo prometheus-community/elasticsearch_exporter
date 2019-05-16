@@ -127,7 +127,6 @@ func TestRetriever_fetchAndDecodeClusterInfo(t *testing.T) {
 	// these override test package globals
 	versionNumber, _ := semver.Make(versionNumber)
 	luceneVersion, _ := semver.Make(luceneVersion)
-	buildDate, _ := time.Parse(time.RFC3339, buildDate)
 
 	var expected = &Response{
 		Name:        nodeName,
