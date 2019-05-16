@@ -191,6 +191,7 @@ func main() {
 				"msg", "http server quit",
 				"err", err,
 			)
+			os.Exit(1)
 		}
 	}()
 
