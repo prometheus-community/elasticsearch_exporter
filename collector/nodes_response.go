@@ -171,6 +171,9 @@ type NodeStatsIndicesSegmentsResponse struct {
 	StoredFieldsMemory int64 `json:"stored_fields_memory_in_bytes"`
 	FixedBitSet        int64 `json:"fixed_bit_set_memory_in_bytes"`
 	DocValuesMemory    int64 `json:"doc_values_memory_in_bytes"`
+	TermVectorsMemory  int64 `json:"term_vectors_memory_in_bytes"`
+	PointsMemory       int64 `json:"points_memory_in_bytes"`
+	VersionMapMemory   int64 `json:"version_map_memory_in_bytes"`
 }
 
 // NodeStatsIndicesStoreResponse defines node stats store information structure for indices
