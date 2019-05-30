@@ -275,6 +275,30 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_term_vectors_memory_bytes_primary"),
+					"Current size of term vectors with only primary shards on all nodes in bytes",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Segments.TermVectorsMemoryInBytes)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "segment_term_vectors_memory_bytes_total"),
+					"Current size of term vectors with all shards on all nodes in bytes",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Segments.TermVectorsMemoryInBytes)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_primary"),
 					"Current size of norms with only primary shards on all nodes in bytes",
 					indexLabels.keys(), nil,
