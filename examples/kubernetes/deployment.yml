@@ -25,6 +25,7 @@ spec:
         - /bin/elasticsearch_exporter
         - -es.uri=http://elasticsearch:9200
         - -es.all=true
+        - -web.listen-address=:9114
         image: justwatch/elasticsearch_exporter:1.0.2
         securityContext:
           capabilities:
