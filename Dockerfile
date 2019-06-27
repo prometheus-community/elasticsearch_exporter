@@ -6,7 +6,7 @@ ARG arch
 ENV ARCH=$arch
 
 COPY elasticsearch_exporter /bin/elasticsearch_exporter
-COPY qemu-$ARCH-static* /usr/bin/
+COPY qemu-* /usr/bin/
 
 EXPOSE      9114
 ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
