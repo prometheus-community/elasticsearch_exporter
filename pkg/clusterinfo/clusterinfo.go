@@ -114,14 +114,17 @@ func (r *Retriever) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (r *Retriever) updateMetrics(res *Response) {
+	u := *r.url
+	u.User = nil
+	url := u.String()
 	_ = level.Debug(r.logger).Log("msg", "updating cluster info metrics")
 	// scrape failed, response is nil
 	if res == nil {
-		r.up.WithLabelValues(r.url.String()).Set(0.0)
-		r.lastUpstreamErrorTs.WithLabelValues(r.url.String()).Set(float64(time.Now().Unix()))
+		r.up.WithLabelValues(url).Set(0.0)
+		r.lastUpstreamErrorTs.WithLabelValues(url).Set(float64(time.Now().Unix()))
 		return
 	}
-	r.up.WithLabelValues(r.url.String()).Set(1.0)
+	r.up.WithLabelValues(url).Set(1.0)
 	r.versionMetric.WithLabelValues(
 		res.ClusterName,
 		res.ClusterUUID,
@@ -130,7 +133,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 		res.Version.Number.String(),
 		res.Version.LuceneVersion.String(),
 	)
-	r.lastUpstreamSuccessTs.WithLabelValues(r.url.String()).Set(float64(time.Now().Unix()))
+	r.lastUpstreamSuccessTs.WithLabelValues(url).Set(float64(time.Now().Unix()))
 }
 
 // Update triggers an external cluster info label update
