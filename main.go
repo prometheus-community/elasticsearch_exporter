@@ -78,7 +78,8 @@ func main() {
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").Envar("LOG_OUTPUT").String()
-		nodeAttributes = kingpin.Flag("node.attributes", "Node attributes to add as labels").
+		nodeAttributes = kingpin.Flag("node.attributes",
+			"Node attributes to add as labels").
 			Default("").Envar("NODE_ATTRIBUTES").String()
 	)
 
