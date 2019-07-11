@@ -93,9 +93,8 @@ func createAttributeMetric(attr string, attrValue string, present bool) *nodeMet
 		Value: func(node NodeStatsNodeResponse) float64 {
 			if present {
 				return 1.0
-			} else {
-				return 0
 			}
+			return 0
 		},
 		Labels: func(cluster string, node NodeStatsNodeResponse) []string {
 			return []string{
