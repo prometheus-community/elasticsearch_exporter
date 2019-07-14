@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -51,9 +52,10 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 func getAttributesValues(node NodeStatsNodeResponse, attrs []string) []string {
 	attributesValues := []string{}
 	for _, attributeName := range attrs {
+		trimmedAttr := strings.TrimPrefix(attributeName, "es_attr_")
 		// Go over the node attributes and search for the requested attributes
-		if _, ok := node.Attributes[attributeName]; ok {
-			attributesValues = append(attributesValues, node.Attributes[attributeName])
+		if _, ok := node.Attributes[trimmedAttr]; ok {
+			attributesValues = append(attributesValues, node.Attributes[trimmedAttr])
 		} else {
 			attributesValues = append(attributesValues, "")
 		}
