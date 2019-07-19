@@ -52,22 +52,26 @@ type Snapshots struct {
 
 // NewSnapshots defines Snapshots Prometheus metrics
 func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapshots {
+	constLabels := constLabelsFromURL(url)
 	return &Snapshots{
 		logger: logger,
 		client: client,
 		url:    url,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch snapshots endpoint successful.",
+			Name:        prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
+			Help:        "Was the last scrape of the ElasticSearch snapshots endpoint successful.",
+			ConstLabels: constLabels,
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch snapshots scrapes.",
+			Name:        prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
+			Help:        "Current total ElasticSearch snapshots scrapes.",
+			ConstLabels: constLabels,
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
+			Name:        prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),
+			Help:        "Number of errors while parsing JSON.",
+			ConstLabels: constLabels,
 		}),
 		snapshotMetrics: []*snapshotMetric{
 			{
@@ -75,7 +79,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_indices"),
 					"Number of indices in the last snapshot",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(len(snapshotStats.Indices))
@@ -87,7 +91,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_start_time_timestamp"),
 					"Last snapshot start timestamp",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(snapshotStats.StartTimeInMillis / 1000)
@@ -99,7 +103,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_end_time_timestamp"),
 					"Last snapshot end timestamp",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(snapshotStats.EndTimeInMillis / 1000)
@@ -111,7 +115,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_failures"),
 					"Last snapshot number of failures",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(len(snapshotStats.Failures))
@@ -123,7 +127,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_total_shards"),
 					"Last snapshot total shards",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(snapshotStats.Shards.Total)
@@ -135,7 +139,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_failed_shards"),
 					"Last snapshot failed shards",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(snapshotStats.Shards.Failed)
@@ -147,7 +151,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_successful_shards"),
 					"Last snapshot successful shards",
-					defaultSnapshotLabels, nil,
+					defaultSnapshotLabels, constLabels,
 				),
 				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
 					return float64(snapshotStats.Shards.Successful)
@@ -161,7 +165,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "number_of_snapshots"),
 					"Number of snapshots in a repository",
-					defaultSnapshotRepositoryLabels, nil,
+					defaultSnapshotRepositoryLabels, constLabels,
 				),
 				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
 					return float64(len(snapshotsStats.Snapshots))
@@ -173,7 +177,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "oldest_snapshot_timestamp"),
 					"Timestamp of the oldest snapshot",
-					defaultSnapshotRepositoryLabels, nil,
+					defaultSnapshotRepositoryLabels, constLabels,
 				),
 				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
 					if len(snapshotsStats.Snapshots) == 0 {

@@ -51,6 +51,7 @@ type Indices struct {
 
 // NewIndices defines Indices Prometheus metrics
 func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+	constLabels := constLabelsFromURL(url)
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -91,16 +92,19 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		},
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch index endpoint successful.",
+			Name:        prometheus.BuildFQName(namespace, "index_stats", "up"),
+			Help:        "Was the last scrape of the ElasticSearch index endpoint successful.",
+			ConstLabels: constLabels,
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "index_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch index scrapes.",
+			Name:        prometheus.BuildFQName(namespace, "index_stats", "total_scrapes"),
+			Help:        "Current total ElasticSearch index scrapes.",
+			ConstLabels: constLabels,
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
+			Name:        prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),
+			Help:        "Number of errors while parsing JSON.",
+			ConstLabels: constLabels,
 		}),
 
 		indexMetrics: []*indexMetric{
@@ -109,7 +113,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs_primary"),
 					"Count of documents with only primary shards",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Docs.Count)
@@ -121,7 +125,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "deleted_docs_primary"),
 					"Count of deleted documents with only primary shards",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Docs.Deleted)
@@ -133,7 +137,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs_total"),
 					"Total count of documents",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Docs.Count)
@@ -145,7 +149,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "deleted_docs_total"),
 					"Total count of deleted documents",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Docs.Deleted)
@@ -157,7 +161,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_primary"),
 					"Current total size of stored index data in bytes with only primary shards on all nodes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Store.SizeInBytes)
@@ -169,7 +173,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes_total"),
 					"Current total size of stored index data in bytes with all shards on all nodes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Store.SizeInBytes)
@@ -181,7 +185,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_count_primary"),
 					"Current number of segments with only primary shards on all nodes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.Count)
@@ -193,7 +197,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_count_total"),
 					"Current number of segments with all shards on all nodes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.Count)
@@ -205,7 +209,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_primary"),
 					"Current size of segments with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.MemoryInBytes)
@@ -217,7 +221,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_total"),
 					"Current size of segments with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.MemoryInBytes)
@@ -229,7 +233,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_primary"),
 					"Current size of terms with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.TermsMemoryInBytes)
@@ -241,7 +245,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_total"),
 					"Current number of terms with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.TermsMemoryInBytes)
@@ -253,7 +257,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_primary"),
 					"Current size of fields with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.StoredFieldsMemoryInBytes)
@@ -265,7 +269,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_total"),
 					"Current size of fields with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.StoredFieldsMemoryInBytes)
@@ -277,7 +281,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_term_vectors_memory_primary_bytes"),
 					"Current size of term vectors with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.TermVectorsMemoryInBytes)
@@ -289,7 +293,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_term_vectors_memory_total_bytes"),
 					"Current size of term vectors with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.TermVectorsMemoryInBytes)
@@ -301,7 +305,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_primary"),
 					"Current size of norms with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.NormsMemoryInBytes)
@@ -313,7 +317,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_total"),
 					"Current size of norms with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.NormsMemoryInBytes)
@@ -325,7 +329,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_primary"),
 					"Current size of points with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.PointsMemoryInBytes)
@@ -337,7 +341,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_total"),
 					"Current size of points with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.PointsMemoryInBytes)
@@ -349,7 +353,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_primary"),
 					"Current size of doc values with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.DocValuesMemoryInBytes)
@@ -361,7 +365,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_total"),
 					"Current size of doc values with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.DocValuesMemoryInBytes)
@@ -373,7 +377,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_primary"),
 					"Current size of index writer with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.IndexWriterMemoryInBytes)
@@ -385,7 +389,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_total"),
 					"Current size of index writer with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.IndexWriterMemoryInBytes)
@@ -397,7 +401,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_primary"),
 					"Current size of version map with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.VersionMapMemoryInBytes)
@@ -409,7 +413,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_total"),
 					"Current size of version map with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.VersionMapMemoryInBytes)
@@ -421,7 +425,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_primary"),
 					"Current size of fixed bit with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.FixedBitSetMemoryInBytes)
@@ -433,7 +437,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_total"),
 					"Current size of fixed bit with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.FixedBitSetMemoryInBytes)
@@ -445,7 +449,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "completion_bytes_primary"),
 					"Current size of completion with only primary shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Completion.SizeInBytes)
@@ -457,7 +461,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "completion_bytes_total"),
 					"Current size of completion with all shards on all nodes in bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Completion.SizeInBytes)
@@ -469,7 +473,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),
 					"Total search query time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.QueryTimeInMillis) / 1000
@@ -481,7 +485,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_total"),
 					"Total number of queries",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.QueryTotal)
@@ -493,7 +497,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_fetch_time_seconds_total"),
 					"Total search fetch time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.FetchTimeInMillis) / 1000
@@ -505,7 +509,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_fetch_total"),
 					"Total search fetch count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.FetchTotal)
@@ -517,7 +521,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_time_seconds_total"),
 					"Total search scroll time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollTimeInMillis) / 1000
@@ -529,7 +533,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_current"),
 					"Current search scroll count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollCurrent)
@@ -541,7 +545,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_scroll_total"),
 					"Total search scroll count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollTotal)
@@ -553,7 +557,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_suggest_time_seconds_total"),
 					"Total search suggest time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.SuggestTimeInMillis) / 1000
@@ -565,7 +569,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_suggest_total"),
 					"Total search suggest count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.SuggestTotal)
@@ -577,7 +581,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_time_seconds_total"),
 					"Total indexing index time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.IndexTimeInMillis) / 1000
@@ -589,7 +593,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_total"),
 					"Total indexing index count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.IndexTotal)
@@ -601,7 +605,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_time_seconds_total"),
 					"Total indexing delete time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.DeleteTimeInMillis) / 1000
@@ -613,7 +617,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_total"),
 					"Total indexing delete count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.DeleteTotal)
@@ -625,7 +629,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_noop_update_total"),
 					"Total indexing no-op update count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.NoopUpdateTotal)
@@ -637,7 +641,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "indexing_throttle_time_seconds_total"),
 					"Total indexing throttle time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.ThrottleTimeInMillis) / 1000
@@ -649,7 +653,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "get_time_seconds_total"),
 					"Total get time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Get.TimeInMillis) / 1000
@@ -661,7 +665,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "get_total"),
 					"Total get count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Get.Total)
@@ -673,7 +677,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_time_seconds_total"),
 					"Total merge time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalTimeInMillis) / 1000
@@ -685,7 +689,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_total"),
 					"Total merge count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.Total)
@@ -697,7 +701,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_throttle_time_seconds_total"),
 					"Total merge I/O throttle time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalThrottledTimeInMillis) / 1000
@@ -709,7 +713,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_stopped_time_seconds_total"),
 					"Total large merge stopped time in seconds, allowing smaller merges to complete",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalStoppedTimeInMillis) / 1000
@@ -721,7 +725,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "merge_auto_throttle_bytes_total"),
 					"Total bytes that were auto-throttled during merging",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalAutoThrottleInBytes)
@@ -733,7 +737,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "refresh_time_seconds_total"),
 					"Total refresh time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Refresh.TotalTimeInMillis) / 1000
@@ -745,7 +749,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "refresh_total"),
 					"Total refresh count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Refresh.Total)
@@ -757,7 +761,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "flush_time_seconds_total"),
 					"Total flush time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Flush.TotalTimeInMillis) / 1000
@@ -769,7 +773,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "flush_total"),
 					"Total flush count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Flush.Total)
@@ -781,7 +785,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "warmer_time_seconds_total"),
 					"Total warmer time in seconds",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Warmer.TotalTimeInMillis) / 1000
@@ -793,7 +797,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "warmer_total"),
 					"Total warmer count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Warmer.Total)
@@ -805,7 +809,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_memory_bytes_total"),
 					"Total query cache memory bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.MemorySizeInBytes)
@@ -817,7 +821,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_size"),
 					"Total query cache size",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.CacheSize)
@@ -829,7 +833,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_hits_total"),
 					"Total query cache hits count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.HitCount)
@@ -841,7 +845,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_misses_total"),
 					"Total query cache misses count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.MissCount)
@@ -853,7 +857,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_caches_total"),
 					"Total query cache caches count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.CacheCount)
@@ -865,7 +869,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "query_cache_evictions_total"),
 					"Total query cache evictions count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.Evictions)
@@ -877,7 +881,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_memory_bytes_total"),
 					"Total request cache memory bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.MemorySizeInBytes)
@@ -889,7 +893,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_hits_total"),
 					"Total request cache hits count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.HitCount)
@@ -901,7 +905,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_misses_total"),
 					"Total request cache misses count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.MissCount)
@@ -913,7 +917,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "request_cache_evictions_total"),
 					"Total request cache evictions count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.Evictions)
@@ -925,7 +929,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "fielddata_memory_bytes_total"),
 					"Total fielddata memory bytes",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Fielddata.MemorySizeInBytes)
@@ -937,7 +941,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "fielddata_evictions_total"),
 					"Total fielddata evictions count",
-					indexLabels.keys(), nil,
+					indexLabels.keys(), constLabels,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Fielddata.Evictions)
@@ -951,7 +955,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "shared_docs"),
 					"Count of documents on this shard",
-					shardLabels.keys(), nil,
+					shardLabels.keys(), constLabels,
 				),
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Count)
@@ -963,7 +967,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "shards_docs_deleted"),
 					"Count of deleted documents on this shard",
-					shardLabels.keys(), nil,
+					shardLabels.keys(), constLabels,
 				),
 				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
 					return float64(data.Docs.Deleted)

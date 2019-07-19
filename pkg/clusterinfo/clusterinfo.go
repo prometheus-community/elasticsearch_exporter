@@ -52,6 +52,11 @@ type Retriever struct {
 
 // New creates a new Retriever
 func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
+	esURL := *u
+	esURL.User = nil
+	constLabels := map[string]string{
+		"cluster_url": esURL.String(),
+	}
 	return &Retriever{
 		consumerChannels: make(map[string]*chan *Response),
 		logger:           logger,
@@ -61,8 +66,9 @@ func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Durat
 		sync:             make(chan struct{}, 1),
 		versionMetric: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: prometheus.BuildFQName(namespace, subsystem, "version_info"),
-				Help: "Constant metric with ES version information as labels",
+				Name:        prometheus.BuildFQName(namespace, subsystem, "version_info"),
+				Help:        "Constant metric with ES version information as labels",
+				ConstLabels: constLabels,
 			},
 			[]string{
 				"cluster",
@@ -75,22 +81,25 @@ func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Durat
 		),
 		up: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: prometheus.BuildFQName(namespace, subsystem, "up"),
-				Help: "Up metric for the cluster info collector",
+				Name:        prometheus.BuildFQName(namespace, subsystem, "up"),
+				Help:        "Up metric for the cluster info collector",
+				ConstLabels: constLabels,
 			},
 			[]string{"url"},
 		),
 		lastUpstreamSuccessTs: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: prometheus.BuildFQName(namespace, subsystem, "last_retrieval_success_ts"),
-				Help: "Timestamp of the last successful cluster info retrieval",
+				Name:        prometheus.BuildFQName(namespace, subsystem, "last_retrieval_success_ts"),
+				Help:        "Timestamp of the last successful cluster info retrieval",
+				ConstLabels: constLabels,
 			},
 			[]string{"url"},
 		),
 		lastUpstreamErrorTs: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Name: prometheus.BuildFQName(namespace, subsystem, "last_retrieval_failure_ts"),
-				Help: "Timestamp of the last failed cluster info retrieval",
+				Name:        prometheus.BuildFQName(namespace, subsystem, "last_retrieval_failure_ts"),
+				Help:        "Timestamp of the last failed cluster info retrieval",
+				ConstLabels: constLabels,
 			},
 			[]string{"url"},
 		),

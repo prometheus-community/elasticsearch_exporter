@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"context"
@@ -85,13 +86,17 @@ func main() {
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
-	esURL, err := url.Parse(*esURI)
-	if err != nil {
-		_ = level.Error(logger).Log(
-			"msg", "failed to parse es.uri",
-			"err", err,
-		)
-		os.Exit(1)
+	var esURLs []*url.URL
+	for _, esURL := range strings.Split(*esURI, ",") {
+		u, err := url.Parse(esURL)
+		if err != nil {
+			_ = level.Error(logger).Log(
+				"msg", "failed to parse es.uri",
+				"err", err,
+			)
+			os.Exit(1)
+		}
+		esURLs = append(esURLs, u)
 	}
 
 	// returns nil if not provided and falls back to simple TCP.
@@ -109,31 +114,36 @@ func main() {
 	versionMetric := version.NewCollector(Name)
 	prometheus.MustRegister(versionMetric)
 
-	// cluster info retriever
-	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
+	retrievers := make(map[*url.URL]*clusterinfo.Retriever)
+	for _, esURL := range esURLs {
+		// cluster info retriever
+		clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+		retrievers[esURL] = clusterInfoRetriever
 
-	if *esExportIndices || *esExportShards {
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
-		prometheus.MustRegister(iC)
-		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
-			os.Exit(1)
+		prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+
+		if *esExportIndices || *esExportShards {
+			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
+			prometheus.MustRegister(iC)
+			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
+				_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
+				os.Exit(1)
+			}
 		}
-	}
 
-	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
-	}
+		if *esExportSnapshots {
+			prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+		}
 
-	if *esExportClusterSettings {
-		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
-	}
+		if *esExportClusterSettings {
+			prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
+		}
 
-	if *esExportIndicesSettings {
-		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+		if *esExportIndicesSettings {
+			prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+		}
 	}
 
 	// create a http server
@@ -142,34 +152,36 @@ func main() {
 	// create a context that is cancelled on SIGKILL
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// start the cluster info retriever
-	switch runErr := clusterInfoRetriever.Run(ctx); runErr {
-	case nil:
-		_ = level.Info(logger).Log(
-			"msg", "started cluster info retriever",
-			"interval", (*esClusterInfoInterval).String(),
-		)
-	case clusterinfo.ErrInitialCallTimeout:
-		_ = level.Info(logger).Log("msg", "initial cluster info call timed out")
-	default:
-		_ = level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
-		os.Exit(1)
-	}
+	for esURL, retriever := range retrievers {
+		// start the cluster info retriever
+		switch err := retriever.Run(ctx); err {
+		case nil:
+			_ = level.Info(logger).Log(
+				"msg", "started cluster info retriever",
+				"interval", (*esClusterInfoInterval).String(),
+				"url", esURL.String(),
+			)
+		case clusterinfo.ErrInitialCallTimeout:
+			_ = level.Info(logger).Log("msg", "initial cluster info call timed out")
+		default:
+			_ = level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
+			os.Exit(1)
+		}
 
-	// register cluster info retriever as prometheus collector
-	prometheus.MustRegister(clusterInfoRetriever)
+		// register cluster info retriever as prometheus collector
+		prometheus.MustRegister(retriever)
+	}
 
 	mux := http.DefaultServeMux
 	mux.Handle(*metricsPath, prometheus.Handler())
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err = w.Write([]byte(`<html>
+		if _, err := w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>
 			<body>
 			<h1>Elasticsearch Exporter</h1>
 			<p><a href="` + *metricsPath + `">Metrics</a></p>
 			</body>
-			</html>`))
-		if err != nil {
+			</html>`)); err != nil {
 			_ = level.Error(logger).Log(
 				"msg", "failed handling writer",
 				"err", err,

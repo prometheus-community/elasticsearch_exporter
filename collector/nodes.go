@@ -170,6 +170,7 @@ type Nodes struct {
 
 // NewNodes defines Nodes Prometheus metrics
 func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
+	constLabels := constLabelsFromURL(url)
 	return &Nodes{
 		logger: logger,
 		client: client,
@@ -178,16 +179,19 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 		node:   node,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			Name:        prometheus.BuildFQName(namespace, "node_stats", "up"),
+			Help:        "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			ConstLabels: constLabels,
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch node scrapes.",
+			Name:        prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
+			Help:        "Current total ElasticSearch node scrapes.",
+			ConstLabels: constLabels,
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
+			Name:        prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
+			Help:        "Number of errors while parsing JSON.",
+			ConstLabels: constLabels,
 		}),
 
 		nodeMetrics: []*nodeMetric{
@@ -196,7 +200,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "load1"),
 					"Shortterm load average",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return node.OS.CPU.LoadAvg.Load1
@@ -208,7 +212,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "load5"),
 					"Midterm load average",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return node.OS.CPU.LoadAvg.Load5
@@ -220,7 +224,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "load15"),
 					"Longterm load average",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return node.OS.CPU.LoadAvg.Load15
@@ -232,7 +236,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "cpu_percent"),
 					"Percent CPU used by OS",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.OS.CPU.Percent)
@@ -244,7 +248,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "mem_free_bytes"),
 					"Amount of free physical memory in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.OS.Mem.Free)
@@ -256,7 +260,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "mem_used_bytes"),
 					"Amount of used physical memory in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.OS.Mem.Used)
@@ -268,7 +272,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "mem_actual_free_bytes"),
 					"Amount of free physical memory in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.OS.Mem.ActualFree)
@@ -280,7 +284,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "os", "mem_actual_used_bytes"),
 					"Amount of used physical memory in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.OS.Mem.ActualUsed)
@@ -292,7 +296,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "fielddata_memory_size_bytes"),
 					"Field data cache memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.FieldData.MemorySize)
@@ -304,7 +308,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "fielddata_evictions"),
 					"Evictions from field data",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.FieldData.Evictions)
@@ -316,7 +320,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "completion_size_in_bytes"),
 					"Completion in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Completion.Size)
@@ -328,7 +332,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "filter_cache_memory_size_bytes"),
 					"Filter cache memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.FilterCache.MemorySize)
@@ -340,7 +344,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "filter_cache_evictions"),
 					"Evictions from filter cache",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.FilterCache.Evictions)
@@ -352,7 +356,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_cache_memory_size_bytes"),
 					"Query cache memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.MemorySize)
@@ -364,7 +368,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_cache_evictions"),
 					"Evictions from query cache",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.Evictions)
@@ -376,7 +380,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_cache_total"),
 					"Query cache total count",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.TotalCount)
@@ -388,7 +392,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_size"),
 					"Query cache cache size",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.CacheSize)
@@ -400,7 +404,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_cache_cache_total"),
 					"Query cache cache count",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.CacheCount)
@@ -412,7 +416,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_cache_count"),
 					"Query cache count",
-					defaultCacheLabels, nil,
+					defaultCacheLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.HitCount)
@@ -424,7 +428,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "query_miss_count"),
 					"Query miss count",
-					defaultCacheLabels, nil,
+					defaultCacheLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.QueryCache.MissCount)
@@ -436,7 +440,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "request_cache_memory_size_bytes"),
 					"Request cache memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.RequestCache.MemorySize)
@@ -448,7 +452,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "request_cache_evictions"),
 					"Evictions from request cache",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.RequestCache.Evictions)
@@ -460,7 +464,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "request_cache_count"),
 					"Request cache count",
-					defaultCacheLabels, nil,
+					defaultCacheLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.RequestCache.HitCount)
@@ -472,7 +476,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "request_miss_count"),
 					"Request miss count",
-					defaultCacheLabels, nil,
+					defaultCacheLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.RequestCache.MissCount)
@@ -484,7 +488,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "translog_operations"),
 					"Total translog operations",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Translog.Operations)
@@ -496,7 +500,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "translog_size_in_bytes"),
 					"Total translog size in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Translog.Size)
@@ -508,7 +512,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_time_seconds"),
 					"Total get time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Get.Time) / 1000
@@ -520,7 +524,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_total"),
 					"Total get",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Get.Total)
@@ -532,7 +536,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_missing_time_seconds"),
 					"Total time of get missing in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Get.MissingTime) / 1000
@@ -544,7 +548,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_missing_total"),
 					"Total get missing",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Get.MissingTotal)
@@ -556,7 +560,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_exists_time_seconds"),
 					"Total time get exists in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Get.ExistsTime) / 1000
@@ -568,7 +572,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_exists_total"),
 					"Total get exists operations",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Get.ExistsTotal)
@@ -580,7 +584,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_refresh", "time_seconds_total"),
 					"Total time spent refreshing in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Refresh.TotalTime) / 1000
@@ -592,7 +596,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_refresh", "total"),
 					"Total refreshes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Refresh.Total)
@@ -604,7 +608,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_query_time_seconds"),
 					"Total search query time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.QueryTime) / 1000
@@ -616,7 +620,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_query_total"),
 					"Total number of queries",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.QueryTotal)
@@ -628,7 +632,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_fetch_time_seconds"),
 					"Total search fetch time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.FetchTime) / 1000
@@ -640,7 +644,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_fetch_total"),
 					"Total number of fetches",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.FetchTotal)
@@ -652,7 +656,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_suggest_total"),
 					"Total number of suggests",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.SuggestTotal)
@@ -664,7 +668,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_suggest_time_seconds"),
 					"Total suggest time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.SuggestTime) / 1000
@@ -676,7 +680,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_scroll_total"),
 					"Total number of scrolls",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.ScrollTotal)
@@ -688,7 +692,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "search_scroll_time_seconds"),
 					"Total scroll time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Search.ScrollTime) / 1000
@@ -700,7 +704,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs"),
 					"Count of documents on this node",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Docs.Count)
@@ -712,7 +716,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs_deleted"),
 					"Count of deleted documents on this node",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Docs.Deleted)
@@ -724,7 +728,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_size_bytes"),
 					"Current size of stored index data in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Store.Size)
@@ -736,7 +740,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "store_throttle_time_seconds_total"),
 					"Throttle time for index store in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Store.ThrottleTime) / 1000
@@ -748,7 +752,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_memory_bytes"),
 					"Current memory size of segments in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.Memory)
@@ -760,7 +764,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_count"),
 					"Count of index segments on this node",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.Count)
@@ -772,7 +776,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_terms_memory_in_bytes"),
 					"Count of terms in memory for this node",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.TermsMemory)
@@ -784,7 +788,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_index_writer_memory_in_bytes"),
 					"Count of memory for index writer on this node",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.IndexWriterMemory)
@@ -796,7 +800,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_norms_memory_in_bytes"),
 					"Count of memory used by norms",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.NormsMemory)
@@ -808,7 +812,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_stored_fields_memory_in_bytes"),
 					"Count of stored fields memory",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.StoredFieldsMemory)
@@ -820,7 +824,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_doc_values_memory_in_bytes"),
 					"Count of doc values memory",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.DocValuesMemory)
@@ -832,7 +836,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_fixed_bit_set_memory_in_bytes"),
 					"Count of fixed bit set",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.FixedBitSet)
@@ -844,7 +848,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_term_vectors_memory_in_bytes"),
 					"Term vectors memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.TermVectorsMemory)
@@ -856,7 +860,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_points_memory_in_bytes"),
 					"Point values memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.PointsMemory)
@@ -868,7 +872,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "segments_version_map_memory_in_bytes"),
 					"Version map memory usage in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Segments.VersionMapMemory)
@@ -880,7 +884,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "flush_total"),
 					"Total flushes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Flush.Total)
@@ -892,7 +896,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "flush_time_seconds"),
 					"Cumulative flush time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Flush.Time) / 1000
@@ -904,7 +908,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "warmer_total"),
 					"Total warmer count",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Warmer.Total)
@@ -916,7 +920,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "warmer_time_seconds_total"),
 					"Total warmer time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Warmer.TotalTime) / 1000
@@ -928,7 +932,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "index_time_seconds_total"),
 					"Cumulative index time in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Indexing.IndexTime) / 1000
@@ -940,7 +944,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "index_total"),
 					"Total index calls",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Indexing.IndexTotal)
@@ -952,7 +956,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "delete_time_seconds_total"),
 					"Total time indexing delete in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Indexing.DeleteTime) / 1000
@@ -964,7 +968,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "delete_total"),
 					"Total indexing deletes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Indexing.DeleteTotal)
@@ -976,7 +980,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "is_throttled"),
 					"Indexing throttling",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					if node.Indices.Indexing.IsThrottled {
@@ -991,7 +995,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_indexing", "throttle_time_seconds_total"),
 					"Cumulative indexing throttling time",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Indexing.ThrottleTime) / 1000
@@ -1003,7 +1007,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "total"),
 					"Total merges",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.Total)
@@ -1015,7 +1019,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "current"),
 					"Current merges",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.Current)
@@ -1027,7 +1031,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "current_size_in_bytes"),
 					"Size of a current merges in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.CurrentSize)
@@ -1039,7 +1043,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "docs_total"),
 					"Cumulative docs merged",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.TotalDocs)
@@ -1051,7 +1055,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "total_size_bytes_total"),
 					"Total merge size in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.TotalSize)
@@ -1063,7 +1067,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "total_time_seconds_total"),
 					"Total time spent merging in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.TotalTime) / 1000
@@ -1075,7 +1079,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_merges", "total_throttled_time_seconds_total"),
 					"Total throttled time of merges in seconds",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Merges.TotalThrottledTime) / 1000
@@ -1087,7 +1091,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory", "used_bytes"),
 					"JVM memory currently used by area",
-					append(defaultNodeLabels, "area"), nil,
+					append(defaultNodeLabels, "area"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.HeapUsed)
@@ -1101,7 +1105,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory", "used_bytes"),
 					"JVM memory currently used by area",
-					append(defaultNodeLabels, "area"), nil,
+					append(defaultNodeLabels, "area"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.NonHeapUsed)
@@ -1115,7 +1119,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory", "max_bytes"),
 					"JVM memory max",
-					append(defaultNodeLabels, "area"), nil,
+					append(defaultNodeLabels, "area"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.HeapMax)
@@ -1129,7 +1133,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory", "committed_bytes"),
 					"JVM memory currently committed by area",
-					append(defaultNodeLabels, "area"), nil,
+					append(defaultNodeLabels, "area"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.HeapCommitted)
@@ -1143,7 +1147,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory", "committed_bytes"),
 					"JVM memory currently committed by area",
-					append(defaultNodeLabels, "area"), nil,
+					append(defaultNodeLabels, "area"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.NonHeapCommitted)
@@ -1157,7 +1161,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "used_bytes"),
 					"JVM memory currently used by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["young"].Used)
@@ -1171,7 +1175,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "max_bytes"),
 					"JVM memory max by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["young"].Max)
@@ -1185,7 +1189,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "peak_used_bytes"),
 					"JVM memory peak used by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["young"].PeakUsed)
@@ -1199,7 +1203,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "peak_max_bytes"),
 					"JVM memory peak max by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["young"].PeakMax)
@@ -1213,7 +1217,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "used_bytes"),
 					"JVM memory currently used by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["survivor"].Used)
@@ -1227,7 +1231,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "max_bytes"),
 					"JVM memory max by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["survivor"].Max)
@@ -1241,7 +1245,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "peak_used_bytes"),
 					"JVM memory peak used by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["survivor"].PeakUsed)
@@ -1255,7 +1259,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "peak_max_bytes"),
 					"JVM memory peak max by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["survivor"].PeakMax)
@@ -1269,7 +1273,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "used_bytes"),
 					"JVM memory currently used by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["old"].Used)
@@ -1283,7 +1287,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "max_bytes"),
 					"JVM memory max by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["old"].Max)
@@ -1297,7 +1301,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "peak_used_bytes"),
 					"JVM memory peak used by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["old"].PeakUsed)
@@ -1311,7 +1315,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_memory_pool", "peak_max_bytes"),
 					"JVM memory peak max by pool",
-					append(defaultNodeLabels, "pool"), nil,
+					append(defaultNodeLabels, "pool"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.Mem.Pools["old"].PeakMax)
@@ -1325,7 +1329,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_buffer_pool", "used_bytes"),
 					"JVM buffer currently used",
-					append(defaultNodeLabels, "type"), nil,
+					append(defaultNodeLabels, "type"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.BufferPools["direct"].Used)
@@ -1339,7 +1343,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_buffer_pool", "used_bytes"),
 					"JVM buffer currently used",
-					append(defaultNodeLabels, "type"), nil,
+					append(defaultNodeLabels, "type"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.JVM.BufferPools["mapped"].Used)
@@ -1353,7 +1357,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.Percent)
@@ -1365,7 +1369,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "mem_resident_size_bytes"),
 					"Resident memory in use by process in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.Memory.Resident)
@@ -1377,7 +1381,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "mem_share_size_bytes"),
 					"Shared memory in use by process in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.Memory.Share)
@@ -1389,7 +1393,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "mem_virtual_size_bytes"),
 					"Total virtual memory used in bytes",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.Memory.TotalVirtual)
@@ -1401,7 +1405,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "open_files_count"),
 					"Open file descriptors",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.OpenFD)
@@ -1413,7 +1417,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "max_files_descriptors"),
 					"Max file descriptors",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.MaxFD)
@@ -1425,7 +1429,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
 					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
+					append(defaultNodeLabels, "type"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.Total) / 1000
@@ -1439,7 +1443,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
 					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
+					append(defaultNodeLabels, "type"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.Sys) / 1000
@@ -1453,7 +1457,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
 					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
+					append(defaultNodeLabels, "type"), constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.User) / 1000
@@ -1467,7 +1471,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "rx_packets_total"),
 					"Count of packets received",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.RxCount)
@@ -1479,7 +1483,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "rx_size_bytes_total"),
 					"Total number of bytes received",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.RxSize)
@@ -1491,7 +1495,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "tx_packets_total"),
 					"Count of packets sent",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.TxCount)
@@ -1503,7 +1507,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "tx_size_bytes_total"),
 					"Total number of bytes sent",
-					defaultNodeLabels, nil,
+					defaultNodeLabels, constLabels,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.TxSize)
@@ -1517,7 +1521,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_gc", "collection_seconds_count"),
 					"Count of JVM GC runs",
-					append(defaultNodeLabels, "gc"), nil,
+					append(defaultNodeLabels, "gc"), constLabels,
 				),
 				Value: func(gcStats NodeStatsJVMGCCollectorResponse) float64 {
 					return float64(gcStats.CollectionCount)
@@ -1531,7 +1535,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "jvm_gc", "collection_seconds_sum"),
 					"GC run time in seconds",
-					append(defaultNodeLabels, "gc"), nil,
+					append(defaultNodeLabels, "gc"), constLabels,
 				),
 				Value: func(gcStats NodeStatsJVMGCCollectorResponse) float64 {
 					return float64(gcStats.CollectionTime) / 1000
@@ -1547,7 +1551,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "breakers", "estimated_size_bytes"),
 					"Estimated size in bytes of breaker",
-					defaultBreakerLabels, nil,
+					defaultBreakerLabels, constLabels,
 				),
 				Value: func(breakerStats NodeStatsBreakersResponse) float64 {
 					return float64(breakerStats.EstimatedSize)
@@ -1561,7 +1565,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "breakers", "limit_size_bytes"),
 					"Limit size in bytes for breaker",
-					defaultBreakerLabels, nil,
+					defaultBreakerLabels, constLabels,
 				),
 				Value: func(breakerStats NodeStatsBreakersResponse) float64 {
 					return float64(breakerStats.LimitSize)
@@ -1575,7 +1579,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "breakers", "tripped"),
 					"tripped for breaker",
-					defaultBreakerLabels, nil,
+					defaultBreakerLabels, constLabels,
 				),
 				Value: func(breakerStats NodeStatsBreakersResponse) float64 {
 					return float64(breakerStats.Tripped)
@@ -1589,7 +1593,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "breakers", "overhead"),
 					"Overhead of circuit breakers",
-					defaultBreakerLabels, nil,
+					defaultBreakerLabels, constLabels,
 				),
 				Value: func(breakerStats NodeStatsBreakersResponse) float64 {
 					return breakerStats.Overhead
@@ -1605,7 +1609,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "thread_pool", "completed_count"),
 					"Thread Pool operations completed",
-					defaultThreadPoolLabels, nil,
+					defaultThreadPoolLabels, constLabels,
 				),
 				Value: func(threadPoolStats NodeStatsThreadPoolPoolResponse) float64 {
 					return float64(threadPoolStats.Completed)
@@ -1617,7 +1621,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "thread_pool", "rejected_count"),
 					"Thread Pool operations rejected",
-					defaultThreadPoolLabels, nil,
+					defaultThreadPoolLabels, constLabels,
 				),
 				Value: func(threadPoolStats NodeStatsThreadPoolPoolResponse) float64 {
 					return float64(threadPoolStats.Rejected)
@@ -1629,7 +1633,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "thread_pool", "active_count"),
 					"Thread Pool threads active",
-					defaultThreadPoolLabels, nil,
+					defaultThreadPoolLabels, constLabels,
 				),
 				Value: func(threadPoolStats NodeStatsThreadPoolPoolResponse) float64 {
 					return float64(threadPoolStats.Active)
@@ -1641,7 +1645,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "thread_pool", "largest_count"),
 					"Thread Pool largest threads count",
-					defaultThreadPoolLabels, nil,
+					defaultThreadPoolLabels, constLabels,
 				),
 				Value: func(threadPoolStats NodeStatsThreadPoolPoolResponse) float64 {
 					return float64(threadPoolStats.Largest)
@@ -1653,7 +1657,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "thread_pool", "queue_count"),
 					"Thread Pool operations queued",
-					defaultThreadPoolLabels, nil,
+					defaultThreadPoolLabels, constLabels,
 				),
 				Value: func(threadPoolStats NodeStatsThreadPoolPoolResponse) float64 {
 					return float64(threadPoolStats.Queue)
@@ -1665,7 +1669,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "thread_pool", "threads_count"),
 					"Thread Pool current threads count",
-					defaultThreadPoolLabels, nil,
+					defaultThreadPoolLabels, constLabels,
 				),
 				Value: func(threadPoolStats NodeStatsThreadPoolPoolResponse) float64 {
 					return float64(threadPoolStats.Threads)
@@ -1679,7 +1683,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_data", "available_bytes"),
 					"Available space on block device in bytes",
-					defaultFilesystemDataLabels, nil,
+					defaultFilesystemDataLabels, constLabels,
 				),
 				Value: func(fsStats NodeStatsFSDataResponse) float64 {
 					return float64(fsStats.Available)
@@ -1691,7 +1695,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_data", "free_bytes"),
 					"Free space on block device in bytes",
-					defaultFilesystemDataLabels, nil,
+					defaultFilesystemDataLabels, constLabels,
 				),
 				Value: func(fsStats NodeStatsFSDataResponse) float64 {
 					return float64(fsStats.Free)
@@ -1703,7 +1707,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_data", "size_bytes"),
 					"Size of block device in bytes",
-					defaultFilesystemDataLabels, nil,
+					defaultFilesystemDataLabels, constLabels,
 				),
 				Value: func(fsStats NodeStatsFSDataResponse) float64 {
 					return float64(fsStats.Total)
@@ -1717,7 +1721,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "operations_count"),
 					"Count of disk operations",
-					defaultFilesystemIODeviceLabels, nil,
+					defaultFilesystemIODeviceLabels, constLabels,
 				),
 				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
 					return float64(fsIODeviceStats.Operations)
@@ -1729,7 +1733,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "read_operations_count"),
 					"Count of disk read operations",
-					defaultFilesystemIODeviceLabels, nil,
+					defaultFilesystemIODeviceLabels, constLabels,
 				),
 				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
 					return float64(fsIODeviceStats.ReadOperations)
@@ -1741,7 +1745,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "write_operations_count"),
 					"Count of disk write operations",
-					defaultFilesystemIODeviceLabels, nil,
+					defaultFilesystemIODeviceLabels, constLabels,
 				),
 				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
 					return float64(fsIODeviceStats.WriteOperations)
@@ -1753,7 +1757,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "read_size_kilobytes_sum"),
 					"Total kilobytes read from disk",
-					defaultFilesystemIODeviceLabels, nil,
+					defaultFilesystemIODeviceLabels, constLabels,
 				),
 				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
 					return float64(fsIODeviceStats.ReadSize)
@@ -1765,7 +1769,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filesystem_io_stats_device", "write_size_kilobytes_sum"),
 					"Total kilobytes written to disk",
-					defaultFilesystemIODeviceLabels, nil,
+					defaultFilesystemIODeviceLabels, constLabels,
 				),
 				Value: func(fsIODeviceStats NodeStatsFSIOStatsDeviceResponse) float64 {
 					return float64(fsIODeviceStats.WriteSize)

@@ -25,26 +25,31 @@ type IndicesSettings struct {
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
 func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *IndicesSettings {
+	constLabels := constLabelsFromURL(url)
 	return &IndicesSettings{
 		logger: logger,
 		client: client,
 		url:    url,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch Indices Settings endpoint successful.",
+			Name:        prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
+			Help:        "Was the last scrape of the ElasticSearch Indices Settings endpoint successful.",
+			ConstLabels: constLabels,
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch Indices Settings scrapes.",
+			Name:        prometheus.BuildFQName(namespace, "indices_settings_stats", "total_scrapes"),
+			Help:        "Current total ElasticSearch Indices Settings scrapes.",
+			ConstLabels: constLabels,
 		}),
 		readOnlyIndices: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
-			Help: "Current number of read only indices within cluster",
+			Name:        prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
+			Help:        "Current number of read only indices within cluster",
+			ConstLabels: constLabels,
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
+			Name:        prometheus.BuildFQName(namespace, "indices_settings_stats", "json_parse_failures"),
+			Help:        "Number of errors while parsing JSON.",
+			ConstLabels: constLabels,
 		}),
 	}
 }
