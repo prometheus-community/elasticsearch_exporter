@@ -26,89 +26,35 @@ workflows:
                 - master
 
 shared: &shared
-  machine: true
+  working_directory: /home/circleci/project
+  docker:
+    - image: docker:18-git
   steps:
     - checkout
 
+    - setup_remote_docker:
+        docker_layer_caching: true
+
     - run:
         name: Install build dependencies.
-        command: sudo apt update && sudo apt install curl jq
+        command: apk add --no-cache bash curl git jq make perl
 
     - run:
         # Unforunately, there's no easy way to "merge" anchors/references
-        # according to the # YAML 1.2 spec. So, the recommended way to handle
-        # this is to dump your # values into a file and source it at build time.
+        # according to the YAML 1.2 spec. So, the recommended way to handle
+        # this is to dump your values into a file and source it at build time.
         # @see e.g., https://circleci.com/docs/2.0/env-vars/#interpolating-environment-variables
         name: Set up shared environment vars.
         command: |
-          echo 'export GITHUB_REPO=jessestuart/elasticsearch_exporter' >> $BASH_ENV
-          echo 'export GO_REPO=github.com/justwatchcom/elasticsearch_exporter' >> $BASH_ENV
-
-          echo 'export GOPATH=/home/circleci/go' >> $BASH_ENV
-          echo 'export GOROOT=/usr/local/go' >> $BASH_ENV
-          echo 'export PROJECT_PATH=$GOPATH/src/$GO_REPO' >> $BASH_ENV
-
-          echo 'export VERSION=$(curl -s https://api.github.com/repos/justwatchcom/elasticsearch_exporter/releases/latest | jq -r ".tag_name")' >> $BASH_ENV
-          echo 'export REGISTRY=jessestuart' >> $BASH_ENV
-          echo 'export IMAGE=elasticsearch_exporter' >> $BASH_ENV
-          echo 'export IMAGE_ID="${REGISTRY}/${IMAGE}:${VERSION}-${TAG}"' >> $BASH_ENV
-
+          sh -c .circleci/load_env.sh
           source $BASH_ENV
-
-          if [ $VERSION == 'null' ]; then
-            echo "Unable to determine version."
-            exit 1
-          fi
-
-          sudo rm -rf /usr/local/go
-          sudo mkdir /usr/local/go
-          export CI_USER=$(whoami)
-          sudo chown "${CI_USER}:" /usr/local/go
-
-    - restore_cache:
-        keys:
-          - go-1.10
-    - run:
-        name: Update Go version.
-        command: |
-          if ! (go version | grep 1.10.1); then
-            curl -O https://storage.googleapis.com/golang/go1.10.1.linux-amd64.tar.gz
-            tar xzf go1.10.1.linux-amd64.tar.gz
-            sudo mv go/ /usr/local
-          fi
-    - save_cache:
-        key: go-1.10
-        paths:
-          - /usr/local/go
-
-    # - run:
-    #     name: Install promu.
-    #     command: |
-    #       curl -sL https://github.com/prometheus/promu/releases/download/v0.1.0/promu-0.1.0.linux-amd64.tar.gz | tar -xz
-    #       chmod +x promu-0.1.0.linux-amd64/promu
-    #       sudo mv promu-0.1.0.linux-amd64/promu /usr/bin
-
-    - run:
-        name: Clone repo.
-        command: |
-          mkdir -p $PROJECT_PATH
-          git clone https://github.com/${GITHUB_REPO} --depth=1 \
-            $PROJECT_PATH &>/dev/null
-
-    - run:
-        name: Compile architecture-specific binary.
-        command: |
-          cd $PROJECT_PATH
-          go build .
-          ls -alh
+          echo "VERSION: $VERSION"
 
     - run:
         name: Build and push Docker image.
         command: |
-          pwd
-          cp $PROJECT_PATH/$IMAGE .
-          ls -alh
-          .circleci/push-multiarch.sh
+          source $BASH_ENV
+          sh -c .circleci/push-multiarch.sh
 
 jobs:
   build-amd64:
@@ -156,14 +102,14 @@ jobs:
           name: Determine repo version.
           command: |
             apk update && apk add curl jq
-            curl -s https://api.github.com/repos/${GITHUB_REPO}/releases/latest | jq -r ".tag_name" > ~/VERSION
+            sh -c .circleci/load_env.sh
 
       - run:
           name: Install manifest-tool.
           command: |
-            export VERSION=$(cat ~/VERSION)
+            source $BASH_ENV
             echo "Downloading manifest-tool."
-            wget https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64
+            wget https://github.com/estesp/manifest-tool/releases/download/v1.0.0-rc3/manifest-tool-linux-amd64
             mv manifest-tool-linux-amd64 /usr/bin/manifest-tool
             chmod +x /usr/bin/manifest-tool
             manifest-tool --version
@@ -171,7 +117,7 @@ jobs:
       - run:
           name: Push Docker manifest.
           command: |
-            export VERSION=$(cat ~/VERSION)
+            source $BASH_ENV
             echo "Pushing manifest ${REGISTRY}/${IMAGE}:latest"
             echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin;
             manifest-tool push from-args \
@@ -185,6 +131,5 @@ jobs:
       - run:
           name: Verify manifest was persisted remotely.
           command: |
-            export VERSION=$(cat ~/VERSION)
+            source $BASH_ENV
             manifest-tool inspect "$REGISTRY/$IMAGE:$VERSION"
-

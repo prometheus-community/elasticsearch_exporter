@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GO    := GO15VENDOREXPERIMENT=1 go
+GO    := go
 PROMU := $(GOPATH)/bin/promu
 GOLINTER                ?= $(GOPATH)/bin/gometalinter
 pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
@@ -21,6 +21,7 @@ BIN_DIR                 ?= $(shell pwd)
 DOCKER_IMAGE_NAME       ?= elasticsearch-exporter
 DOCKER_IMAGE_TAG        ?= $(subst /,-,$(shell git rev-parse --abbrev-ref HEAD))
 
+GOARCH ?= amd64
 
 all: format build test
 
@@ -62,8 +63,8 @@ docker:
 
 promu:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
-	        GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
-	        $(GO) get -u github.com/prometheus/promu
+		GOARCH=$(GOARCH) \
+		$(GO) get -u github.com/prometheus/promu
 
 gometalinter: $(GOLINTER)
 	@echo ">> linting code"
@@ -72,7 +73,7 @@ gometalinter: $(GOLINTER)
 
 $(GOPATH)/bin/gometalinter lint:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
-		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
+		GOARCH=$(GOARCH) \
 		$(GO) get -u github.com/alecthomas/gometalinter
 
 .PHONY: all style format build test vet tarball docker promu $(GOPATH)/bin/gometalinter lint
