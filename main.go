@@ -177,6 +177,11 @@ func main() {
 		}
 	})
 
+	// health endpoint
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
+	})
+
 	server.Handler = mux
 	server.Addr = *listenAddress
 
