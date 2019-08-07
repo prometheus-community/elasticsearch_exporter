@@ -1,3 +1,59 @@
+## 1.1.0
+
+repeating the breaking changes introduced in 1.1.0rc1:
+* [BREAKING] uses the registered exporter port 9114 instead of 9118. If you need to stick to the old port, you can specify the listen port with --web.listen-address
+* [BREAKING] commandline flags are now POSIX flags with double dashes --
+
+new changes in 1.1.0:
+* [FEATURE] add checksum promu command to Makefile
+* [FEATURE] add healthz handler
+* [BUGFIX] json parse error if the snapshot json contains failures (#269)
+* [BUGFIX] Remove credentials from URL in clusterinfo metrics
+* [FEATURE] Add indices_segment_term_vectors_memory_bytes_{primary,total} metrics
+* [FEATURE] Add indices_segments_{points,term_vectors,version_map}_memory_in_bytes metrics
+* [BUGFIX] Kubernetes yml file fixes
+* [FEATURE] Add index_stats_query_cache_caches_total metric
+* [FEATURE] Rename query_cache_cache_count metric to query_cache_cache_total
+* [BUGFIX] Change type for indices_query_cache_cache_count metric to counter
+* [BUGFIX]/ [BREAKING] Add _total prefix to indices_warmer_time_seconds metric
+* [FEATURE] Add indices_warmer_{time_seconds,total} metrics
+* [BUGFIX] exporter doesn't exit 1 if port is already in use (#241)
+* [BUGFIX] parse clusterinfo.build_date as string, not time.Time
+* [BUGFIX] Various Documentation Fixes
+* [FEATURE] add node_roles metric (#207)
+* [FEATURE] Extend nodes metrics. added indices.merges.current_size
+build fix: remove unnecessary conversion
+* [FEATURE] Extend nodes metrics. added overhead of circuit breakers
+* [BUGFIX] fix nodes metrics name indices.query_cache_miss_count, indices.request_cache_miss_count
+* [FEATURE] Extend nodes search metrics. added scroll_total, scroll_time
+* [FEATURE] Extend indices.indexing nodes metrics. added is_throttled, throttle_time
+* [FEATURE]/ [BUGFIX] #212 remove misleading metric
+
+## 1.1.0rc1
+
+* [BREAKING] uses the registered exporter port 9114 instead of 9118. If you need to stick to the old port, you can specify the listen port with --web.listen-address
+* [BREAKING] commandline flags are now POSIX flags with double dashes --
+* [FEATURE] new collector for snapshot metrics
+* [FEATURE] added os memory stats metrics
+* [FEATURE] enable querying ES via proxy
+* [FEATURE] new collector for cluster settings
+* [FEATURE] new collector for indices settings
+* [FEATURE] cluster info collector. The collector periodically queries the / endpoints and provides the other collectors with a semi up-to-date cluster label
+* 
+* [FEATURE]/ [BUGFIX] grafana dashboard improvements and fixes
+* [BUGFIX] Fixed createTLSConfig function. Return full tls configuration when ca, crt, key and insecure flag are set
+* 
+* [INTERNAL] added code linting to build pipeline
+
+## 1.0.4rc1
+
+* [DOCUMENTATION] documentation updates
+* [FEATURE] add more index metrics
+* [FEATURE] add filesystem metrics
+* [FEATURE] add jvm buffer pool metrics
+* [FEATURE] add support for using the exporter behind reverse proxy (URL-prefixing)
+* [ENHANCEMENT] add linting to build chain and make project lint clean
+
 ## 1.0.3rc1
 
 * [BUGFIX] update prometheus alerting rule example to v2 format
