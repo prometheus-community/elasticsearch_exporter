@@ -54,7 +54,9 @@ tarball: promu
 
 tarballs: promu
 	@echo ">> building release tarballs"
-	@$(PROMU) crossbuild tarballs $(BIN_DIR)
+	@$(PROMU) crossbuild tarballs
+	@echo ">> calculating release checksums"
+	@$(PROMU) checksum $(BIN_DIR)/.tarballs
 
 docker:
 	@echo ">> building docker image"
