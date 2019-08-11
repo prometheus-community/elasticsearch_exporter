@@ -1,7 +1,8 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: p8s-elastic-exporter
+  name: elastic-exporter
 spec:
   replicas: 1
   strategy:
@@ -11,22 +12,18 @@ spec:
     type: RollingUpdate
   selector:
     matchLabels:
-        app: p8s-elastic-exporter
+      app: elastic-exporter
   template:
     metadata:
       labels:
-        app: p8s-elastic-exporter
+        app: elastic-exporter
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
       containers:
       - command:
         - /bin/elasticsearch_exporter
-        - -es.uri=http://elasticsearch:9200
-        - -es.all=true
-        - -web.listen-address=:9114
-        image: justwatch/elasticsearch_exporter:1.0.2
+        - --es.uri=http://elasticsearch:9200
+        - --es.all
+        image: justwatch/elasticsearch_exporter:1.1.0
         securityContext:
           capabilities:
             drop:
@@ -47,16 +44,17 @@ spec:
           readOnlyRootFilesystem: true
         livenessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: 9114
           initialDelaySeconds: 30
           timeoutSeconds: 10
-        name: p8s-elastic-exporter
+        name: elastic-exporter
         ports:
         - containerPort: 9114
+          name: http
         readinessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: 9114
           initialDelaySeconds: 10
           timeoutSeconds: 10
@@ -68,3 +66,8 @@ spec:
             cpu: 25m
             memory: 64Mi
       restartPolicy: Always
+      securityContext:
+        runAsNonRoot: true
+        runAsGroup: 10000
+        runAsUser: 10000
+        fsGroup: 10000
