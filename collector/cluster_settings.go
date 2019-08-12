@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -21,6 +22,7 @@ type ClusterSettings struct {
 
 	up                              prometheus.Gauge
 	shardAllocationEnabled          prometheus.Gauge
+	maxShardsPerNode                prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
 }
 
@@ -43,6 +45,10 @@ func NewClusterSettings(logger log.Logger, client *http.Client, url *url.URL) *C
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "shard_allocation_enabled"),
 			Help: "Current mode of cluster wide shard routing allocation settings.",
 		}),
+		maxShardsPerNode: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "max_shards_per_node"),
+			Help: "Current maximum number of shards per node setting.",
+		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
@@ -55,6 +61,7 @@ func (cs *ClusterSettings) Describe(ch chan<- *prometheus.Desc) {
 	ch <- cs.up.Desc()
 	ch <- cs.totalScrapes.Desc()
 	ch <- cs.shardAllocationEnabled.Desc()
+	ch <- cs.maxShardsPerNode.Desc()
 	ch <- cs.jsonParseFailures.Desc()
 }
 
@@ -121,6 +128,7 @@ func (cs *ClusterSettings) Collect(ch chan<- prometheus.Metric) {
 		ch <- cs.totalScrapes
 		ch <- cs.jsonParseFailures
 		ch <- cs.shardAllocationEnabled
+		ch <- cs.maxShardsPerNode
 	}()
 
 	csr, err := cs.fetchAndDecodeClusterSettingsStats()
@@ -143,4 +151,9 @@ func (cs *ClusterSettings) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	cs.shardAllocationEnabled.Set(float64(shardAllocationMap[csr.Cluster.Routing.Allocation.Enabled]))
+
+	maxShardsPerNode, err := strconv.ParseInt(csr.Cluster.MaxShardsPerNode, 10, 64)
+	if err == nil {
+		cs.maxShardsPerNode.Set(float64(maxShardsPerNode))
+	}
 }
