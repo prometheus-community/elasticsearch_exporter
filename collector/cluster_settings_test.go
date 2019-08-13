@@ -1,8 +1,6 @@
 package collector
 
 import (
-	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,15 +16,12 @@ func TestClusterSettingsStats(t *testing.T) {
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
 	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
 	files := []string{"../fixtures/settings-5.4.2.json", "../fixtures/settings-merge-5.4.2.json"}
-	buf := bytes.NewBuffer(nil)
 	for _, filename := range files {
 		f, _ := os.Open(filename)
-		io.Copy(buf, f)
-		f.Close()
-		out := string(buf.String())
+		defer f.Close()
 		for hn, handler := range map[string]http.Handler{
 			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintln(w, out)
+				io.Copy(w, f)
 			}),
 		} {
 			ts := httptest.NewServer(handler)
@@ -57,15 +52,12 @@ func TestClusterMaxShardsPerNode(t *testing.T) {
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
 	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
 	files := []string{"../fixtures/settings-7.3.0.json"}
-	buf := bytes.NewBuffer(nil)
 	for _, filename := range files {
 		f, _ := os.Open(filename)
-		io.Copy(buf, f)
-		f.Close()
-		out := string(buf.String())
+		defer f.Close()
 		for hn, handler := range map[string]http.Handler{
 			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintln(w, out)
+				io.Copy(w, f)
 			}),
 		} {
 			ts := httptest.NewServer(handler)
