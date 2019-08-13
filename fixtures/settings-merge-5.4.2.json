@@ -1,0 +1,668 @@
+{
+  "persistent": {},
+  "transient": {
+    "cluster": {
+      "routing": {
+        "allocation": {
+          "enable": "ALL"
+        }
+      }
+    }
+  },
+  "defaults": {
+    "cluster": {
+      "routing": {
+        "rebalance": {
+          "enable": "ALL"
+        },
+        "none": {
+          "node_concurrent_incoming_recoveries": "2",
+          "node_initial_primaries_recoveries": "4",
+          "same_shard": {
+            "host": "false"
+          },
+          "total_shards_per_node": "-1",
+          "type": "balanced",
+          "disk": {
+            "threshold_enabled": "true",
+            "watermark": {
+              "low": "85%",
+              "high": "90%"
+            },
+            "include_relocations": "true",
+            "reroute_interval": "60s"
+          },
+          "awareness": {
+            "attributes": ""
+          },
+          "balance": {
+            "index": "0.55",
+            "threshold": "1.0",
+            "shard": "0.45"
+          },
+          "node_concurrent_outgoing_recoveries": "2",
+          "allow_rebalance": "indices_all_active",
+          "cluster_concurrent_rebalance": "2",
+          "node_concurrent_recoveries": "2",
+          "snapshot": {
+            "relocation_enabled": "false"
+          }
+        }
+      },
+      "indices": {
+        "close": {
+          "enable": "true"
+        }
+      },
+      "nodes": {
+        "reconnect_interval": "10s"
+      },
+      "blocks": {
+        "read_only": "false"
+      },
+      "service": {
+        "slow_task_logging_threshold": "30s"
+      },
+      "name": "elasticsearch",
+      "info": {
+        "update": {
+          "interval": "30s",
+          "timeout": "15s"
+        }
+      }
+    },
+    "logger": {
+      "level": "INFO"
+    },
+    "bootstrap": {
+      "ctrlhandler": "true",
+      "memory_lock": "false",
+      "system_call_filter": "true",
+      "seccomp": "true"
+    },
+    "processors": "4",
+    "network": {
+      "host": [
+        "_local_"
+      ],
+      "tcp": {
+        "reuse_address": "true",
+        "connect_timeout": "30s",
+        "blocking": "false",
+        "blocking_server": "false",
+        "no_delay": "true",
+        "blocking_client": "false",
+        "keep_alive": "true",
+        "receive_buffer_size": "-1b",
+        "send_buffer_size": "-1b"
+      },
+      "bind_host": [
+        "_local_"
+      ],
+      "server": "true",
+      "breaker": {
+        "inflight_requests": {
+          "limit": "100%",
+          "overhead": "1.0"
+        }
+      },
+      "publish_host": [
+        "_local_"
+      ]
+    },
+    "pidfile": "",
+    "path": {
+      "conf": "",
+      "scripts": "",
+      "logs": "/usr/share/elasticsearch/logs",
+      "shared_data": "",
+      "home": "/usr/share/elasticsearch"
+    },
+    "default": {
+      "path": {
+        "logs": "",
+        "conf": ""
+      }
+    },
+    "search": {
+      "default_search_timeout": "-1",
+      "highlight": {
+        "term_vector_multi_value": "true"
+      },
+      "low_level_cancellation": "false",
+      "keep_alive_interval": "1m",
+      "remote": {
+        "node": {
+          "attr": ""
+        },
+        "initial_connect_timeout": "30s",
+        "connect": "true",
+        "connections_per_cluster": "3"
+      },
+      "default_keep_alive": "5m"
+    },
+    "security": {
+      "manager": {
+        "filter_bad_defaults": "true"
+      }
+    },
+    "repositories": {
+      "fs": {
+        "compress": "false",
+        "chunk_size": "-1b",
+        "location": ""
+      },
+      "url": {
+        "supported_protocols": [
+          "http",
+          "https",
+          "ftp",
+          "file",
+          "jar"
+        ],
+        "url": "http:"
+      }
+    },
+    "action": {
+      "auto_create_index": "true",
+      "search": {
+        "shard_count": {
+          "limit": "9223372036854775807"
+        }
+      },
+      "destructive_requires_name": "false",
+      "master": {
+        "force_local": "false"
+      }
+    },
+    "client": {
+      "type": "node",
+      "transport": {
+        "ignore_cluster_name": "false",
+        "nodes_sampler_interval": "5s",
+        "sniff": "false",
+        "ping_timeout": "5s"
+      }
+    },
+    "rest": {
+      "action": {
+        "multi": {
+          "allow_explicit_index": "true"
+        }
+      }
+    },
+    "cache": {
+      "recycler": {
+        "page": {
+          "limit": {
+            "heap": "10%"
+          },
+          "type": "CONCURRENT",
+          "weight": {
+            "longs": "1.0",
+            "ints": "1.0",
+            "bytes": "1.0",
+            "objects": "0.1"
+          }
+        }
+      }
+    },
+    "resource": {
+      "reload": {
+        "enabled": "true",
+        "interval": {
+          "low": "60s",
+          "high": "5s",
+          "medium": "30s"
+        }
+      }
+    },
+    "thread_pool": {
+      "force_merge": {
+        "queue_size": "-1",
+        "size": "1"
+      },
+      "fetch_shard_started": {
+        "core": "1",
+        "max": "8",
+        "keep_alive": "5m"
+      },
+      "listener": {
+        "queue_size": "-1",
+        "size": "2"
+      },
+      "index": {
+        "queue_size": "200",
+        "size": "4"
+      },
+      "refresh": {
+        "core": "1",
+        "max": "2",
+        "keep_alive": "5m"
+      },
+      "generic": {
+        "core": "4",
+        "max": "128",
+        "keep_alive": "30s"
+      },
+      "warmer": {
+        "core": "1",
+        "max": "2",
+        "keep_alive": "5m"
+      },
+      "search": {
+        "queue_size": "1000",
+        "size": "7"
+      },
+      "fetch_shard_store": {
+        "core": "1",
+        "max": "8",
+        "keep_alive": "5m"
+      },
+      "flush": {
+        "core": "1",
+        "max": "2",
+        "keep_alive": "5m"
+      },
+      "management": {
+        "core": "1",
+        "max": "5",
+        "keep_alive": "5m"
+      },
+      "get": {
+        "queue_size": "1000",
+        "size": "4"
+      },
+      "bulk": {
+        "queue_size": "200",
+        "size": "4"
+      },
+      "estimated_time_interval": "200ms",
+      "snapshot": {
+        "core": "1",
+        "max": "2",
+        "keep_alive": "5m"
+      }
+    },
+    "index": {
+      "codec": "default",
+      "store": {
+        "type": "",
+        "fs": {
+          "fs_lock": "native"
+        }
+      }
+    },
+    "monitor": {
+      "jvm": {
+        "gc": {
+          "enabled": "true",
+          "overhead": {
+            "warn": "50",
+            "debug": "10",
+            "info": "25"
+          },
+          "refresh_interval": "1s"
+        },
+        "refresh_interval": "1s"
+      },
+      "process": {
+        "refresh_interval": "1s"
+      },
+      "os": {
+        "refresh_interval": "1s"
+      },
+      "fs": {
+        "refresh_interval": "1s"
+      }
+    },
+    "transport": {
+      "tcp": {
+        "reuse_address": "true",
+        "connect_timeout": "30s",
+        "compress": "false",
+        "port": "9300-9400",
+        "blocking_server": "false",
+        "blocking_client": "false",
+        "keep_alive": "true",
+        "receive_buffer_size": "-1b",
+        "send_buffer_size": "-1b"
+      },
+      "ping_schedule": "-1",
+      "publish_port": "-1",
+      "connections_per_node": {
+        "recovery": "2",
+        "state": "1",
+        "bulk": "3",
+        "reg": "6",
+        "ping": "1"
+      },
+      "tcp_no_delay": "true",
+      "tracer": {
+        "exclude": [
+          "internal:discovery/zen/fd*",
+          "cluster:monitor/nodes/liveness"
+        ]
+      },
+      "type": "",
+      "netty": {
+        "max_composite_buffer_components": "-1",
+        "worker_count": "8",
+        "receive_predictor_size": "512kb",
+        "receive_predictor_max": "512kb",
+        "receive_predictor_min": "512kb",
+        "boss_count": "1",
+        "max_cumulation_buffer_capacity": "-1b"
+      },
+      "type.default": "netty4"
+    },
+    "script": {
+      "cache": {
+        "max_size": "100",
+        "expire": "0ms"
+      },
+      "painless": {
+        "regex": {
+          "enabled": "false"
+        }
+      },
+      "legacy": {
+        "default_lang": "groovy"
+      },
+      "max_size_in_bytes": "65535",
+      "update": "false",
+      "max_compilations_per_minute": "15",
+      "ingest": "false",
+      "search": "false",
+      "file": "true",
+      "inline": "false",
+      "auto_reload_enabled": "true",
+      "engine": {
+        "painless": {
+          "file.ingest": "true",
+          "file.update": "true",
+          "file.aggs": "true",
+          "inline.ingest": "true",
+          "file": "true",
+          "inline": "true",
+          "inline.update": "true",
+          "stored.search": "true",
+          "inline.aggs": "true",
+          "file.search": "true",
+          "stored": "true",
+          "stored.ingest": "true",
+          "stored.aggs": "true",
+          "stored.update": "true",
+          "inline.search": "true"
+        },
+        "expression": {
+          "file.ingest": "true",
+          "file.update": "true",
+          "file.aggs": "true",
+          "inline.ingest": "true",
+          "file": "true",
+          "inline": "true",
+          "inline.update": "true",
+          "stored.search": "true",
+          "inline.aggs": "true",
+          "file.search": "true",
+          "stored": "true",
+          "stored.ingest": "true",
+          "stored.aggs": "true",
+          "stored.update": "true",
+          "inline.search": "true"
+        },
+        "groovy": {
+          "file.ingest": "true",
+          "file.update": "true",
+          "file.aggs": "true",
+          "inline.ingest": "false",
+          "file": "true",
+          "inline": "false",
+          "inline.update": "false",
+          "stored.search": "false",
+          "inline.aggs": "false",
+          "file.search": "true",
+          "stored": "false",
+          "stored.ingest": "false",
+          "stored.aggs": "false",
+          "stored.update": "false",
+          "inline.search": "false"
+        },
+        "mustache": {
+          "file.ingest": "true",
+          "file.update": "true",
+          "file.aggs": "true",
+          "inline.ingest": "true",
+          "file": "true",
+          "inline": "true",
+          "inline.update": "true",
+          "stored.search": "true",
+          "inline.aggs": "true",
+          "file.search": "true",
+          "stored": "true",
+          "stored.ingest": "true",
+          "stored.aggs": "true",
+          "stored.update": "true",
+          "inline.search": "true"
+        }
+      },
+      "stored": "false",
+      "aggs": "false"
+    },
+    "node": {
+      "data": "true",
+      "enable_lucene_segment_infos_trace": "false",
+      "local_storage": "true",
+      "max_local_storage_nodes": "1",
+      "name": "DK8-2Lc",
+      "id": {
+        "seed": "0"
+      },
+      "add_lock_id_to_custom_path": "true",
+      "portsfile": "false",
+      "ingest": "true",
+      "master": "true"
+    },
+    "indices": {
+      "cache": {
+        "cleanup_interval": "1m"
+      },
+      "mapping": {
+        "dynamic_timeout": "30s"
+      },
+      "memory": {
+        "interval": "5s",
+        "max_index_buffer_size": "-1b",
+        "shard_inactive_time": "5m",
+        "index_buffer_size": "10%",
+        "min_index_buffer_size": "48mb"
+      },
+      "breaker": {
+        "request": {
+          "limit": "60%",
+          "type": "memory",
+          "overhead": "1.0"
+        },
+        "total": {
+          "limit": "70%"
+        },
+        "fielddata": {
+          "limit": "60%",
+          "type": "memory",
+          "overhead": "1.03"
+        },
+        "type": "hierarchy"
+      },
+      "fielddata": {
+        "cache": {
+          "size": "-1b"
+        }
+      },
+      "query": {
+        "bool": {
+          "max_clause_count": "1024"
+        },
+        "query_string": {
+          "analyze_wildcard": "false",
+          "allowLeadingWildcard": "true"
+        }
+      },
+      "recovery": {
+        "recovery_activity_timeout": "1800000ms",
+        "retry_delay_network": "5s",
+        "internal_action_timeout": "15m",
+        "retry_delay_state_sync": "500ms",
+        "internal_action_long_timeout": "1800000ms",
+        "max_bytes_per_sec": "40mb"
+      },
+      "requests": {
+        "cache": {
+          "size": "1%",
+          "expire": "0ms"
+        }
+      },
+      "store": {
+        "delete": {
+          "shard": {
+            "timeout": "30s"
+          }
+        },
+        "throttle": {
+          "type": "NONE",
+          "max_bytes_per_sec": "0b"
+        }
+      },
+      "analysis": {
+        "hunspell": {
+          "dictionary": {
+            "ignore_case": "false",
+            "lazy": "false"
+          }
+        }
+      },
+      "queries": {
+        "cache": {
+          "count": "10000",
+          "size": "10%",
+          "all_segments": "false"
+        }
+      },
+      "ttl": {
+        "interval": "60s"
+      }
+    },
+    "discovery": {
+      "type": "zen",
+      "zen": {
+        "commit_timeout": "30s",
+        "no_master_block": "write",
+        "join_retry_delay": "100ms",
+        "join_retry_attempts": "3",
+        "ping": {
+          "unicast": {
+            "concurrent_connects": "10",
+            "hosts": {
+              "resolve_timeout": "5s"
+            }
+          }
+        },
+        "master_election": {
+          "ignore_non_master_pings": "false",
+          "wait_for_joins_timeout": "30000ms"
+        },
+        "send_leave_request": "true",
+        "ping_timeout": "3s",
+        "join_timeout": "60000ms",
+        "publish_diff": {
+          "enable": "true"
+        },
+        "minimum_master_nodes": "-1",
+        "hosts_provider": null,
+        "publish_timeout": "30s",
+        "fd": {
+          "connect_on_network_disconnect": "false",
+          "ping_interval": "1s",
+          "ping_retries": "3",
+          "register_connection_listener": "true",
+          "ping_timeout": "30s"
+        },
+        "max_pings_from_another_master": "3"
+      },
+      "initial_state_timeout": "30s"
+    },
+    "tribe": {
+      "name": "",
+      "on_conflict": "any",
+      "blocks": {
+        "write": "false",
+        "metadata": "false"
+      }
+    },
+    "http": {
+      "tcp": {
+        "reuse_address": "true",
+        "keep_alive": "true",
+        "blocking_server": "false",
+        "receive_buffer_size": "-1b",
+        "send_buffer_size": "-1b"
+      },
+      "bind_host": [
+        "0.0.0.0"
+      ],
+      "cors": {
+        "max-age": "1728000",
+        "allow-origin": "",
+        "allow-headers": "X-Requested-With,Content-Type,Content-Length",
+        "allow-credentials": "false",
+        "allow-methods": "OPTIONS,HEAD,GET,POST,PUT,DELETE",
+        "enabled": "false"
+      },
+      "max_chunk_size": "8kb",
+      "compression_level": "3",
+      "reset_cookies": "false",
+      "max_initial_line_length": "4kb",
+      "type": "",
+      "pipelining": "true",
+      "enabled": "true",
+      "type.default": "netty4",
+      "detailed_errors": {
+        "enabled": "true"
+      },
+      "content_type": {
+        "required": "false"
+      },
+      "port": "9200-9300",
+      "host": [
+        "0.0.0.0"
+      ],
+      "publish_port": "-1",
+      "max_header_size": "8kb",
+      "pipelining.max_events": "10000",
+      "tcp_no_delay": "true",
+      "compression": "true",
+      "publish_host": [
+        "0.0.0.0"
+      ],
+      "max_content_length": "100mb",
+      "netty": {
+        "receive_predictor_size": "64kb",
+        "max_composite_buffer_components": "-1",
+        "receive_predictor_max": "64kb",
+        "worker_count": "8",
+        "receive_predictor_min": "64kb",
+        "max_cumulation_buffer_capacity": "-1b"
+      }
+    },
+    "gateway": {
+      "recover_after_master_nodes": "0",
+      "expected_nodes": "-1",
+      "recover_after_data_nodes": "-1",
+      "initial_shards": "quorum",
+      "expected_data_nodes": "-1",
+      "recover_after_time": "0ms",
+      "expected_master_nodes": "-1",
+      "recover_after_nodes": "-1"
+    }
+  }
+}
