@@ -99,6 +99,7 @@ func (cs *ClusterSettings) fetchAndDecodeClusterSettingsStats() (ClusterSettings
 	u.Path = path.Join(u.Path, "/_cluster/settings")
 	q := u.Query()
 	q.Set("include_defaults", "true")
+	u.RawQuery = q.Encode()
 	u.RawPath = q.Encode()
 	var csfr ClusterSettingsFullResponse
 	var csr ClusterSettingsResponse
