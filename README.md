@@ -63,6 +63,24 @@ elasticsearch_exporter --help
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`. 
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
 by replacing `.` and `-` with `_` and upper-casing the parameter name.
+
+#### Elasticsearch 7.x security privileges
+
+ES 7.x supports RBACs. The following security privileges are required for the elasticsearch_exporter.
+
+Setting | Privilege Required | Description
+:---- | :---- | :----
+exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
+es.cluster_settings | `cluster` `monitor` | 
+es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status) 
+es.indices_settings | `indices` `monitor` (per index or `*`) | 
+es.shards | not sure if `indices` or `cluster` `monitor` or both | 
+es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
+
+Further Information
+- [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
+- [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
+- [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
  
 ### Metrics
 
