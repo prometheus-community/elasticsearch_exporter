@@ -22,7 +22,7 @@ Example `docker-compose.yml`:
 elasticsearch_exporter:
     image: justwatch/elasticsearch_exporter:1.1.0
     command:
-     - '-es.uri=http://elasticsearch:9200'
+     - '--es.uri=http://elasticsearch:9200'
     restart: always
     ports:
     - "127.0.0.1:9114:9114"
