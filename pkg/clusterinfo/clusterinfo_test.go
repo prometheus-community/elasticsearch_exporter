@@ -75,7 +75,6 @@ func newMockConsumer(ctx context.Context, name string, t *testing.T) *mockConsum
 				mc.data = d
 				t.Logf("consumer %s received data from channel: %+v\n", mc, mc.data)
 			case <-ctx.Done():
-				t.Logf("shutting down consumer %s", mc)
 				return
 			}
 		}
