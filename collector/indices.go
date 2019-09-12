@@ -14,15 +14,23 @@ import (
 )
 
 var (
-	defaultIndexLabels      = []string{"index", "indexPrefix", "indexDate"}
+	defaultIndexLabels      = []string{"index", "indexPrefix", "indexDate", "indexShrink"}
 	defaultIndexLabelValues = func(indexName string) []string {
+		indexShrink := "false"
 		indexDate := ""
 		indexFullName := strings.Split(indexName, "-")
 		indexPrefix := indexFullName[0]
-		if len(indexFullName) > 1 {
-			indexDate = indexFullName[1]
+		if len(indexFullName) > 2 {
+			indexShrink = "true"
+			indexPrefix = indexFullName[1]
+			indexDate = indexFullName[2]
+		} else {
+			if len(indexFullName) > 1 {
+				indexPrefix = indexFullName[0]
+				indexDate = indexFullName[1]
+			}
 		}
-		return []string{indexName, indexPrefix, indexDate}
+		return []string{indexName, indexPrefix, indexDate, indexShrink}
 	}
 )
 
