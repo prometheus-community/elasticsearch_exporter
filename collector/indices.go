@@ -949,7 +949,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices", "shared_docs"),
+					prometheus.BuildFQName(namespace, "indices", "shards_docs"),
 					"Count of documents on this shard",
 					shardLabels.keys(), nil,
 				),
