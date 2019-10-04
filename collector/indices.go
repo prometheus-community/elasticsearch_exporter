@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -68,7 +69,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 
 	shardLabels := labels{
 		keys: func(...string) []string {
-			return []string{"index", "shard", "node", "cluster"}
+			return []string{"index", "shard", "node", "primary", "cluster"}
 		},
 		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
 			if lastClusterinfo != nil {
@@ -970,6 +971,18 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				},
 				Labels: shardLabels,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "shards_store_size_in_bytes"),
+					"Store size of this shard",
+					shardLabels.keys(), nil,
+				),
+				Value: func(data IndexStatsIndexShardsDetailResponse) float64 {
+					return float64(data.Store.SizeInBytes)
+				},
+				Labels: shardLabels,
+			},
 		},
 	}
 
@@ -1087,7 +1100,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 							metric.Desc,
 							metric.Type,
 							metric.Value(shard),
-							metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node)...,
+							metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node, strconv.FormatBool(shard.Routing.Primary))...,
 						)
 					}
 				}
