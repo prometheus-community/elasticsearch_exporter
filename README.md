@@ -43,7 +43,7 @@ elasticsearch_exporter --help
 
 | Argument                | Introduced in Version | Description | Default     |
 | --------                | --------------------- | ----------- | ----------- |
-| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. | http://localhost:9200 |
+| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in a password need to be encoded before passing as part of the URL. E.G., `@` would need to be `%40`.  | http://localhost:9200 |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
 | es.cluster_settings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
