@@ -53,6 +53,9 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Envar("ES_SNAPSHOTS").Bool()
+		esExportIlm = kingpin.Flag("es.ilm",
+			"Export stats for Index Lifecycle Management").
+			Default("false").Envar("ES_ILM").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
@@ -134,6 +137,10 @@ func main() {
 
 	if *esExportIndicesSettings {
 		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+	}
+
+	if *esExportIlm {
+		prometheus.MustRegister(collector.NewIlm(logger, httpClient, esURL))
 	}
 
 	// create a http server
