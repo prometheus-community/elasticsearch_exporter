@@ -26,9 +26,9 @@ type ClusterSettings struct {
 }
 
 type clusterSettingsMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(clusterSettings ClusterSettingsResponse) (float64, error)
+	Type  prometheus.ValueType
+	Desc  *prometheus.Desc
+	Value func(clusterSettings ClusterSettingsResponse) (float64, error)
 }
 
 var (
@@ -178,7 +178,7 @@ func (cs *ClusterSettings) Collect(ch chan<- prometheus.Metric) {
 	for _, metric := range cs.metrics {
 		theValue, err := metric.Value(csr)
 
-		if (err != nil) {
+		if err != nil {
 			_ = level.Warn(cs.logger).Log(
 				"msg", "error in getting metric value",
 				"err", err,
