@@ -24,7 +24,7 @@ type NodeStatsNodeResponse struct {
 	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
 	JVM              NodeStatsJVMResponse                       `json:"jvm"`
 	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
-	HTTP             map[string]int                             `json:"http"`
+	HTTP             *NodeStatsHTTPResponse                     `json:"http"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
 }
@@ -277,8 +277,9 @@ type NodeStatsOSMemResponse struct {
 
 // NodeStatsOSSwapResponse defines node stats operating system swap usage structure
 type NodeStatsOSSwapResponse struct {
-	Used int64 `json:"used_in_bytes"`
-	Free int64 `json:"free_in_bytes"`
+	Used  int64 `json:"used_in_bytes"`
+	Free  int64 `json:"free_in_bytes"`
+	Total int64 `json:"total_in_bytes"`
 }
 
 // NodeStatsOSCPUResponse defines node stats operating system CPU usage structure
@@ -325,7 +326,7 @@ type NodeStatsProcessCPUResponse struct {
 // NodeStatsHTTPResponse defines node stats HTTP connections structure
 type NodeStatsHTTPResponse struct {
 	CurrentOpen int64 `json:"current_open"`
-	TotalOpen   int64 `json:"total_open"`
+	TotalOpen   int64 `json:"total_opened"`
 }
 
 // NodeStatsFSResponse is a representation of a file system information, data path, free disk space, read/write stats

@@ -161,6 +161,9 @@ Further Information
 | elasticsearch_indices_translog_size_in_bytes                          | counter   | 1           | Total translog size in bytes
 | elasticsearch_indices_warmer_time_seconds_total                       | counter   | 1           | Total warmer time in seconds
 | elasticsearch_indices_warmer_total                                    | counter   | 1           | Total warmer count
+| elasticsearch_indices_recovery_current_as_source                      | gauge     | 1           | Number of ongoing recoveries for which a shard serves as a source
+| elasticsearch_indices_recovery_current_as_target                      | gauge     | 1           | Number of ongoing recoveries for which a shard serves as a target
+| elasticsearch_indices_recovery_throttle_time_seconds_total            | counter   | 1           | Time in seconds recovery operations were delayed due to throttling
 | elasticsearch_jvm_gc_collection_seconds_count                         | counter   | 2           | Count of JVM GC runs
 | elasticsearch_jvm_gc_collection_seconds_sum                           | counter   | 2           | GC run time in seconds
 | elasticsearch_jvm_memory_committed_bytes                              | gauge     | 2           | JVM memory currently committed by area
@@ -174,6 +177,9 @@ Further Information
 | elasticsearch_os_load1                                                | gauge     | 1           | Shortterm load average
 | elasticsearch_os_load5                                                | gauge     | 1           | Midterm load average
 | elasticsearch_os_load15                                               | gauge     | 1           | Longterm load average
+| elasticsearch_os_swap_in_bytes_used                                   | gauge     | 1           | Amount of used swap space in bytes
+| elasticsearch_os_swap_in_bytes_free                                   | gauge     | 1           | Amount of free swap space in bytes
+| elasticsearch_os_swap_in_bytes_total                                  | gauge     | 1           | Total amount of swap space in bytes
 | elasticsearch_process_cpu_percent                                     | gauge     | 1           | Percent CPU used by process
 | elasticsearch_process_cpu_time_seconds_sum                            | counter   | 3           | Process CPU time in seconds
 | elasticsearch_process_mem_resident_size_bytes                         | gauge     | 1           | Resident memory in use by process in bytes
@@ -195,10 +201,13 @@ Further Information
 | elasticsearch_thread_pool_queue_count                                 | gauge     | 14          | Thread Pool operations queued
 | elasticsearch_thread_pool_rejected_count                              | counter   | 14          | Thread Pool operations rejected
 | elasticsearch_thread_pool_threads_count                               | gauge     | 14          | Thread Pool current threads count
+| elasticsearch_transport_tcp_connections_opened_total                  | counter   | 1           | Number of connections opened for cluster communication
 | elasticsearch_transport_rx_packets_total                              | counter   | 1           | Count of packets received
 | elasticsearch_transport_rx_size_bytes_total                           | counter   | 1           | Total number of bytes received
 | elasticsearch_transport_tx_packets_total                              | counter   | 1           | Count of packets sent
 | elasticsearch_transport_tx_size_bytes_total                           | counter   | 1           | Total number of bytes sent
+| elasticsearch_http_connections_opened_current                         | counter   | 1           | Current number of opened connections
+| elasticsearch_http_connections_opened_total                           | counter   | 1           | Total number of opened connections
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
