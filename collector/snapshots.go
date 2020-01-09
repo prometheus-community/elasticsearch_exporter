@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -218,7 +219,13 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(data); err != nil {
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		s.jsonParseFailures.Inc()
+		return err
+	}
+
+	if err := json.Unmarshal(bts, data); err != nil {
 		s.jsonParseFailures.Inc()
 		return err
 	}
