@@ -186,7 +186,7 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "latest_snapshot_timestamp"),
+					prometheus.BuildFQName(namespace, "snapshot_stats", "latest_snapshot_seconds"),
 					"Timestamp of the latest SUCCESS or PARTIAL snapshot",
 					defaultSnapshotRepositoryLabels, nil,
 				),
