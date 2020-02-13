@@ -56,6 +56,9 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Envar("ES_SNAPSHOTS").Bool()
+		esExportNodesStats = kingpin.Flag("es.stats",
+			"Export nodes stats for the cluster").
+			Default("true").Envar("ES_NODES_STATS").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
@@ -116,7 +119,10 @@ func main() {
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode, *esParams))
+
+	if *esExportNodesStats {
+		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode, *esParams))
+	}
 
 	if *esExportIndices || *esExportShards {
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
