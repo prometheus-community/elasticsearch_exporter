@@ -13,6 +13,7 @@ import (
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -38,6 +39,9 @@ func main() {
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
 			Default("_local").Envar("ES_NODE").String()
+		esParams = kingpin.Flag("es.stats.params",
+			"Path parameters limits the information returned to the specific metrics").
+			Default("").Envar("ES_NODES_STATS_PARAMS").String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Envar("ES_INDICES").Bool()
@@ -53,6 +57,12 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Envar("ES_SNAPSHOTS").Bool()
+		esExportNodesStats = kingpin.Flag("es.stats",
+			"Export nodes stats for the cluster").
+			Default("true").Envar("ES_NODES_STATS").Bool()
+		esExportClusterHealth = kingpin.Flag("es.health",
+			"Export cluster health for the cluster").
+			Default("true").Envar("ES_CLUSTER_HEALTH").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
@@ -112,8 +122,13 @@ func main() {
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+	if *esExportClusterHealth {
+		prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+	}
+
+	if *esExportNodesStats {
+		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode, *esParams))
+	}
 
 	if *esExportIndices || *esExportShards {
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
@@ -160,7 +175,7 @@ func main() {
 	prometheus.MustRegister(clusterInfoRetriever)
 
 	mux := http.DefaultServeMux
-	mux.Handle(*metricsPath, prometheus.Handler())
+	mux.Handle(*metricsPath, promhttp.Handler())
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>
