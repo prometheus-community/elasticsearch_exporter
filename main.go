@@ -38,6 +38,9 @@ func main() {
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
 			Default("_local").Envar("ES_NODE").String()
+		esParams = kingpin.Flag("es.stats.params",
+			"Path parameters limits the information returned to the specific metrics").
+			Default("").Envar("ES_NODES_STATS_PARAMS").String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Envar("ES_INDICES").Bool()
@@ -113,7 +116,7 @@ func main() {
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode, *esParams))
 
 	if *esExportIndices || *esExportShards {
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
