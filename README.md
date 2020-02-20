@@ -161,7 +161,7 @@ Further Information
 | elasticsearch_indices_translog_size_in_bytes                          | counter   | 1           | Total translog size in bytes
 | elasticsearch_indices_warmer_time_seconds_total                       | counter   | 1           | Total warmer time in seconds
 | elasticsearch_indices_warmer_total                                    | counter   | 1           | Total warmer count
-| elasticsearch_jvm_gc_collection_seconds_count                         | counter   | 2           | Count of JVM GC runs
+| elasticsearch_jvm_gc_collection_count                                 | counter   | 2           | Count of JVM GC runs
 | elasticsearch_jvm_gc_collection_seconds_sum                           | counter   | 2           | GC run time in seconds
 | elasticsearch_jvm_memory_committed_bytes                              | gauge     | 2           | JVM memory currently committed by area
 | elasticsearch_jvm_memory_max_bytes                                    | gauge     | 1           | JVM memory max
