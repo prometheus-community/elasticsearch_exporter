@@ -244,3 +244,9 @@ Pull Requests for any proposed changes.
 
 Please note that we will not merge any changes that encourage insecure
 behaviour. If in doubt please open an Issue first to discuss your proposal.
+
+## Docker Image
+
+```
+make DOCKER_IMAGE_NAME=infonova/elasticsearch-exporter DOCKER_IMAGE_TAG=<version> docker
+```

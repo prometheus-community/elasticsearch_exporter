@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 	"net/url"
 	"os"
@@ -53,6 +54,9 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Envar("ES_SNAPSHOTS").Bool()
+		esExportIlm = kingpin.Flag("es.ilm",
+			"Export stats for Index Lifecycle Management").
+			Default("false").Envar("ES_ILM").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
@@ -136,6 +140,10 @@ func main() {
 		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
 	}
 
+	if *esExportIlm {
+		prometheus.MustRegister(collector.NewIlm(logger, httpClient, esURL))
+	}
+
 	// create a http server
 	server := &http.Server{}
 
@@ -160,7 +168,7 @@ func main() {
 	prometheus.MustRegister(clusterInfoRetriever)
 
 	mux := http.DefaultServeMux
-	mux.Handle(*metricsPath, prometheus.Handler())
+	mux.Handle(*metricsPath, promhttp.Handler())
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>
