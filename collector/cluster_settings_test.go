@@ -1,80 +1,57 @@
 package collector
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/kit/log"
 )
 
 func TestClusterSettingsStats(t *testing.T) {
-	// Testcases created using:
-	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
-	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	files := []string{"../fixtures/settings-5.4.2.json", "../fixtures/settings-merge-5.4.2.json"}
-	for _, filename := range files {
-		f, _ := os.Open(filename)
-		defer f.Close()
-		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				io.Copy(w, f)
-			}),
-		} {
-			ts := httptest.NewServer(handler)
-			defer ts.Close()
+	for _, ver := range testElasticsearchVersions {
+		for _, fpart := range []string{"", "-updated"} {
+			name := fmt.Sprintf("%s%s", ver, fpart)
+			t.Run(name, func(t *testing.T) {
+				filename := fmt.Sprintf("../fixtures/clustersettings/%s.json", name)
+				f, _ := os.Open(filename)
+				defer f.Close()
+				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					io.Copy(w, f)
+				}))
+				defer ts.Close()
 
-			u, err := url.Parse(ts.URL)
-			if err != nil {
-				t.Fatalf("Failed to parse URL: %s", err)
-			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
-			nsr, err := c.fetchAndDecodeClusterSettingsStats()
-			if err != nil {
-				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)
-			}
-			t.Logf("[%s/%s] Cluster Settings Stats Response: %+v", hn, filename, nsr)
-			if nsr.Cluster.Routing.Allocation.Enabled != "ALL" {
-				t.Errorf("Wrong setting for cluster routing allocation enabled")
-			}
-			if nsr.Cluster.MaxShardsPerNode != "" {
-				t.Errorf("MaxShardsPerNode should be empty on older releases")
-			}
-		}
-	}
-}
+				u, err := url.Parse(ts.URL)
+				if err != nil {
+					t.Fatalf("Failed to parse URL: %s", err)
+				}
+				c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
+				nsr, err := c.fetchAndDecodeClusterSettingsStats()
+				if err != nil {
+					t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)
+				}
+				t.Logf("Cluster Settings Stats Response: %+v", nsr)
 
-func TestClusterMaxShardsPerNode(t *testing.T) {
-	// Testcases created using:
-	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
-	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	files := []string{"../fixtures/settings-7.3.0.json"}
-	for _, filename := range files {
-		f, _ := os.Open(filename)
-		defer f.Close()
-		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				io.Copy(w, f)
-			}),
-		} {
-			ts := httptest.NewServer(handler)
-			defer ts.Close()
-			u, err := url.Parse(ts.URL)
-			if err != nil {
-				t.Fatalf("Failed to parse URL: %s", err)
-			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
-			nsr, err := c.fetchAndDecodeClusterSettingsStats()
-			if err != nil {
-				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)
-			}
-			t.Logf("[%s/%s] Cluster Settings Stats Response: %+v", hn, filename, nsr)
-			if nsr.Cluster.MaxShardsPerNode != "1000" {
-				t.Errorf("Wrong value for MaxShardsPerNode")
-			}
+				// Version 6.X+ will use the lowercase result when responding
+				if strings.ToLower(nsr.Cluster.Routing.Allocation.Enabled) != "all" {
+					t.Errorf("Wrong setting for cluster routing allocation enabled, expected ALL, got %v", nsr.Cluster.Routing.Allocation.Enabled)
+				}
+				if strings.Split(ver, ".")[0] == "5" {
+					if nsr.Cluster.MaxShardsPerNode != "" {
+						t.Errorf("MaxShardsPerNode should be empty on older releases")
+					}
+				} else {
+					if nsr.Cluster.MaxShardsPerNode != "1000" {
+						t.Errorf("Wrong value for MaxShardsPerNode")
+					}
+				}
+			})
+
 		}
 	}
 }
