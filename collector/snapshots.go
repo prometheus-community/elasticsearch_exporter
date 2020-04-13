@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -43,6 +44,11 @@ type Snapshots struct {
 	client *http.Client
 	url    *url.URL
 
+	updateInterval time.Duration
+	lastResponse   map[string]SnapshotStatsResponse
+	lastError      error
+	lastFetchAt    time.Time
+
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
 
@@ -51,11 +57,12 @@ type Snapshots struct {
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapshots {
+func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL, interval time.Duration) *Snapshots {
 	return &Snapshots{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:         logger,
+		client:         client,
+		url:            url,
+		updateInterval: interval,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
@@ -276,20 +283,28 @@ func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
 		ch <- s.jsonParseFailures
 	}()
 
-	// indices
-	snapshotsStatsResp, err := s.fetchAndDecodeSnapshotsStats()
-	if err != nil {
+	if s.updateInterval == 0 {
+		_ = level.Debug(s.logger).Log("msg", "getting snapshots metrics", "block", "true")
+		s.lastResponse, s.lastError = s.fetchAndDecodeSnapshotsStats()
+	} else if s.lastFetchAt.Add(s.updateInterval).Before(time.Now()) {
+		go func() {
+			_ = level.Debug(s.logger).Log("msg", "getting snapshots metrics", "block", "false")
+			s.lastFetchAt = time.Now()
+			s.lastResponse, s.lastError = s.fetchAndDecodeSnapshotsStats()
+		}()
+	}
+
+	if s.lastError != nil {
 		s.up.Set(0)
 		_ = level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode snapshot stats",
-			"err", err,
+			"err", s.lastError,
 		)
-		return
 	}
 	s.up.Set(1)
 
 	// Snapshots stats
-	for repositoryName, snapshotStats := range snapshotsStatsResp {
+	for repositoryName, snapshotStats := range s.lastResponse {
 		for _, metric := range s.repositoryMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
