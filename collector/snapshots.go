@@ -249,6 +249,10 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 		}
 	}()
 
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
+
 	if err := json.NewDecoder(res.Body).Decode(data); err != nil {
 		s.jsonParseFailures.Inc()
 		return err
@@ -270,10 +274,7 @@ func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResp
 		u := *s.url
 		u.Path = path.Join(u.Path, "/_snapshot", repository, "/_all")
 		var ssr SnapshotStatsResponse
-		err := s.getAndParseURL(&u, &ssr)
-		if err != nil {
-			continue
-		}
+		_ = s.getAndParseURL(&u, &ssr)
 		mssr[repository] = ssr
 	}
 
