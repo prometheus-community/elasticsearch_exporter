@@ -14,11 +14,9 @@ func TestSnapshots(t *testing.T) {
 	// Testcases created using $REPO/hack/snapshots_test_setup.sh
 
 	tcs := map[string][]string{
-		"7.5.2": {
-			`{"succeed":{"type":"fs","settings":{"location":"/tmp/succeed"}},"fail":{"type":"fs","settings":{"location":"/tmp/fail"}}}`,
-			`{"snapshots":[{"snapshot":"visible","uuid":"3IKCfpc1THyLr2AuMy1eng","version_id":7050299,"version":"7.5.2","indices":["foo_1","foo_2"],"include_global_state":true,"state":"SUCCESS","start_time":"2020-04-23T10:20:25.125Z","start_time_in_millis":1587637225125,"end_time":"2020-04-23T10:20:25.525Z","end_time_in_millis":1587637225525,"duration_in_millis":400,"failures":[],"shards":{"total":2,"failed":0,"successful":2}}]}`,
-			`{"error":{"root_cause":[{"type":"repository_exception","reason":"[fail] Could not determine repository generation from root blobs"}],"type":"repository_exception","reason":"[fail] Could not determine repository generation from root blobs","caused_by":{"type":"access_denied_exception","reason":"/tmp/fail"}},"status":500}`,
-		},
+		"5.6.16": {`{"succeed":{"type":"fs","settings":{"location":"/tmp/succeed"}},"fail":{"type":"fs","settings":{"location":"/tmp/fail"}}}`, `{"snapshots":[{"snapshot":"visible","uuid":"A1oKg_8PQBKzuRkQOOMG-w","version_id":5061699,"version":"5.6.16","indices":["foo_1","foo_2"],"state":"SUCCESS","start_time":"2020-04-23T12:18:26.872Z","start_time_in_millis":1587644306872,"end_time":"2020-04-23T12:18:27.052Z","end_time_in_millis":1587644307052,"duration_in_millis":180,"failures":[],"shards":{"total":2,"failed":0,"successful":2}}]}`, `{"error":{"root_cause":[{"type":"repository_exception","reason":"[fail] could not read repository data from index blob"}],"type":"repository_exception","reason":"[fail] could not read repository data from index blob","caused_by":{"type":"access_denied_exception","reason":"/tmp/fail"}},"status":500}`},
+		"6.8.8":  {`{"succeed":{"type":"fs","settings":{"location":"/tmp/succeed"}},"fail":{"type":"fs","settings":{"location":"/tmp/fail"}}}`, `{"snapshots":[{"snapshot":"visible","uuid":"-fCjIUhqTZG9GVlBZPEI3A","version_id":6080899,"version":"6.8.8","indices":["foo_1","foo_2"],"include_global_state":true,"state":"SUCCESS","start_time":"2020-04-23T12:18:35.681Z","start_time_in_millis":1587644315681,"end_time":"2020-04-23T12:18:35.925Z","end_time_in_millis":1587644315925,"duration_in_millis":244,"failures":[],"shards":{"total":2,"failed":0,"successful":2}}]}`, `{"error":{"root_cause":[{"type":"repository_exception","reason":"[fail] could not read repository data from index blob"}],"type":"repository_exception","reason":"[fail] could not read repository data from index blob","caused_by":{"type":"access_denied_exception","reason":"/tmp/fail"}},"status":500}`},
+		"7.6.2":  {`{"succeed":{"type":"fs","settings":{"location":"/tmp/succeed"}},"fail":{"type":"fs","settings":{"location":"/tmp/fail"}}}`, `{"snapshots":[{"snapshot":"visible","uuid":"ON95BFtaRjaQPaHEnhYdnA","version_id":7050299,"version":"7.5.2","indices":["foo_1","foo_2"],"include_global_state":true,"state":"SUCCESS","start_time":"2020-04-23T12:18:46.550Z","start_time_in_millis":1587644326550,"end_time":"2020-04-23T12:18:46.950Z","end_time_in_millis":1587644326950,"duration_in_millis":400,"failures":[],"shards":{"total":2,"failed":0,"successful":2}}]}`, `{"error":{"root_cause":[{"type":"repository_exception","reason":"[fail] Could not determine repository generation from root blobs"}],"type":"repository_exception","reason":"[fail] Could not determine repository generation from root blobs","caused_by":{"type":"access_denied_exception","reason":"/tmp/fail"}},"status":500}`},
 	}
 	for ver, out := range tcs {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +47,7 @@ func TestSnapshots(t *testing.T) {
 
 		for repo, snapshotResponse := range stats {
 			if repo == "fail" {
-				if snapshotResponse.Snapshots != nil{
+				if snapshotResponse.Snapshots != nil {
 					t.Errorf("Returning non-nil Snapshots response for inaccessible repo")
 				}
 				continue
