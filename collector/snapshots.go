@@ -176,22 +176,6 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "repository_up"),
-					"Whether or not the repo scrape was successful",
-					defaultSnapshotRepositoryLabels, nil,
-				),
-				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
-					if snapshotsStats.Snapshots != nil {
-						return 1
-					} else {
-						return 0
-					}
-				},
-				Labels: defaultSnapshotRepositoryLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "snapshot_stats", "number_of_snapshots"),
 					"Number of snapshots in a repository",
 					defaultSnapshotRepositoryLabels, nil,

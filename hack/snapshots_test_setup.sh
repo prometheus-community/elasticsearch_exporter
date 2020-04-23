@@ -11,7 +11,7 @@ function get_test_case {
     sleep 2
   done
 
-  # Create indices (made these explicit since defaults have changed since 5.4.2
+  # Create indices (made these explicit since defaults have changed since 5.4.2)
   curl -s -H 'Content-Type: application/json' -XPUT "http://localhost:9200/foo_1" -d '{"settings" : {"number_of_shards" : 1, "number_of_replicas" : 1}}' >/dev/null
   curl -s -H 'Content-Type: application/json' -XPUT "http://localhost:9200/foo_2" -d '{"settings" : {"number_of_shards" : 1, "number_of_replicas" : 1}}' >/dev/null
 
@@ -35,12 +35,12 @@ function get_test_case {
 
   # Echo out test case responses
   # shellcheck disable=SC2016
-  echo "\"$es_version\": " '{`'"$(curl -s http://localhost:9200/_snapshot)"'`, `'"$(curl -s http://localhost:9200/_snapshot/succeed/_all)"'`, `'"$(curl -s http://localhost:9200/_snapshot/fail/_all)"'`},'
+  #echo "\"$es_version\": " '{`'"$(curl -s http://localhost:9200/_snapshot)"'`, `'"$(curl -s http://localhost:9200/_snapshot/succeed/_all)"'`, `'"$(curl -s http://localhost:9200/_snapshot/fail/_all)"'`},'
 
   # Kill docker container
-  docker kill "$containerID" >/dev/null
+  #docker kill "$containerID" >/dev/null
 }
 
-get_test_case 5.6.16 "$(docker run -d --rm -p 9200:9200 -e xpack.security.enabled=false -e discovery.type=single-node -e path.repo=/tmp docker.elastic.co/elasticsearch/elasticsearch:5.6.16)" "type1"
-get_test_case 6.8.8 "$(docker run -d --rm -p 9200:9200 -e xpack.security.enabled=false -e discovery.type=single-node -e path.repo=/tmp docker.elastic.co/elasticsearch/elasticsearch:6.8.8)" "type1"
+#get_test_case 5.6.16 "$(docker run -d --rm -p 9200:9200 -e xpack.security.enabled=false -e discovery.type=single-node -e path.repo=/tmp docker.elastic.co/elasticsearch/elasticsearch:5.6.16)" "type1"
+#get_test_case 6.8.8 "$(docker run -d --rm -p 9200:9200 -e xpack.security.enabled=false -e discovery.type=single-node -e path.repo=/tmp docker.elastic.co/elasticsearch/elasticsearch:6.8.8)" "type1"
 get_test_case 7.6.2 "$(docker run -d --rm -p 9200:9200 -e discovery.type=single-node -e path.repo=/tmp docker.elastic.co/elasticsearch/elasticsearch:7.5.2)" "_doc"
