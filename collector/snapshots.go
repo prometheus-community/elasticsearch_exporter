@@ -47,6 +47,7 @@ type Snapshots struct {
 	totalScrapes, jsonParseFailures prometheus.Counter
 
 	snapshotMetrics   []*snapshotMetric
+	repositoryUp      repositoryMetric
 	repositoryMetrics []*repositoryMetric
 }
 
@@ -154,6 +155,22 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				},
 				Labels: defaultSnapshotLabelValues,
 			},
+		},
+		repositoryUp: repositoryMetric{
+			Type: prometheus.GaugeValue,
+			Desc: prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, "snapshot_stats", "repository_up"),
+				"Whether or not the repo scrape was successful",
+				defaultSnapshotRepositoryLabels, nil,
+			),
+			Value: func(snapshotsStats SnapshotStatsResponse) float64 {
+				if snapshotsStats.Snapshots != nil {
+					return 1
+				} else {
+					return 0
+				}
+			},
+			Labels: defaultSnapshotRepositoryLabelValues,
 		},
 		repositoryMetrics: []*repositoryMetric{
 			{
@@ -302,6 +319,15 @@ func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
 
 	// Snapshots stats
 	for repositoryName, snapshotStats := range snapshotsStatsResp {
+		ch <- prometheus.MustNewConstMetric(
+			s.repositoryUp.Desc,
+			s.repositoryUp.Type,
+			s.repositoryUp.Value(snapshotStats),
+			s.repositoryUp.Labels(repositoryName)...,
+		)
+		if snapshotStats.Snapshots == nil {
+			continue
+		}
 		for _, metric := range s.repositoryMetrics {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
