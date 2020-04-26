@@ -70,6 +70,7 @@ type NodeStatsJVMMemResponse struct {
 	NonHeapCommitted int64                                  `json:"non_heap_committed_in_bytes"`
 	NonHeapUsed      int64                                  `json:"non_heap_used_in_bytes"`
 	Pools            map[string]NodeStatsJVMMemPoolResponse `json:"pools"`
+	HeapPercent	 int64					`json:"heap_used_percent"`
 }
 
 // NodeStatsJVMMemPoolResponse defines node stats JVM memory pool information structure
@@ -78,6 +79,7 @@ type NodeStatsJVMMemPoolResponse struct {
 	Max      int64 `json:"max_in_bytes"`
 	PeakUsed int64 `json:"peak_used_in_bytes"`
 	PeakMax  int64 `json:"peak_max_in_bytes"`
+        Percent  int64 `json:"heap_used_percent"`
 }
 
 // NodeStatsNetworkResponse defines node stats network information structure
