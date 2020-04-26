@@ -79,7 +79,6 @@ type NodeStatsJVMMemPoolResponse struct {
 	Max      int64 `json:"max_in_bytes"`
 	PeakUsed int64 `json:"peak_used_in_bytes"`
 	PeakMax  int64 `json:"peak_max_in_bytes"`
-        Percent  int64 `json:"heap_used_percent"`
 }
 
 // NodeStatsNetworkResponse defines node stats network information structure
