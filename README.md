@@ -49,7 +49,7 @@ elasticsearch_exporter --help
 | es.indices               | 1.0.2                 | If true, query stats for indices in the cluster, based on es.indices-list. | false |
 | es.indices-list          | 1.1.1                 | Comma separated list or wildcard expression of index names in the cluster, for which stats should be exported. | * |
 | es.indices_settings      | 1.0.4rc1              | If true, query settings stats for indices in the cluster, based on es.indices_settings-list. | false |
-| es.indices_settings-list | 1.0.4rc1              | Comma separated list or wildcard expression of index names in the cluster, for which settings should be exported. | * |
+| es.indices_settings-list | 1.1.1                 | Comma separated list or wildcard expression of index names in the cluster, for which settings should be exported. | * |
 | es.shards                | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots             | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
 | es.timeout               | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
