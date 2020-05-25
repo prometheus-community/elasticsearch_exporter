@@ -7,6 +7,10 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
+
+	"github.com/justwatchcom/elasticsearch_exporter/pkg/roundtripper"
+
 	"context"
 
 	"github.com/go-kit/kit/log/level"
@@ -69,6 +73,10 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
+		esAWS = kingpin.Flag("es.aws", "AWS cloud provider being used").
+			Default("false").Envar("ES_AWS").Bool()
+		esAWSRegion = kingpin.Flag("es.aws-region", "Sets the AWS region").
+				Default("").Envar("ES_AWS_REGION").String()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
 			Default("info").Envar("LOG_LEVEL").String()
@@ -98,12 +106,22 @@ func main() {
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
+	defaultTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		Proxy:           http.ProxyFromEnvironment,
+	}
+
 	httpClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
-		},
+		Timeout:   *esTimeout,
+		Transport: defaultTransport,
+	}
+
+	if esAWS != nil {
+		httpClient.Transport = &roundtripper.AWSSigningTransport{
+			DefaultTransport: defaultTransport,
+			Credentials:      credentials.NewChainCredentials([]credentials.Provider{&credentials.EnvProvider{}, &credentials.SharedCredentialsProvider{}}),
+			Region:           *esAWSRegion,
+		}
 	}
 
 	// version metric
