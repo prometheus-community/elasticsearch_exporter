@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/singleflight"
 )
 
 type snapshotMetric struct {
@@ -48,6 +50,8 @@ type Snapshots struct {
 	lastResponse   map[string]SnapshotStatsResponse
 	lastError      error
 	lastFetchAt    time.Time
+	lock           sync.RWMutex
+	group          singleflight.Group
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
@@ -251,6 +255,15 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 }
 
 func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResponse, error) {
+	resp, err, shared := s.group.Do("snapshots", func() (interface{}, error) {
+		_ = level.Debug(s.logger).Log("msg", "getting snapshots metrics")
+		return s.doFetchAndDecodeSnapshotsStats()
+	})
+	_ = level.Debug(s.logger).Log("msg", "got snapshots metrics", "shared", shared)
+	return resp.(map[string]SnapshotStatsResponse), err
+}
+
+func (s *Snapshots) doFetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResponse, error) {
 	mssr := make(map[string]SnapshotStatsResponse)
 
 	u := *s.url
@@ -276,6 +289,9 @@ func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResp
 
 // Collect gets Snapshots metric values
 func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
 	s.totalScrapes.Inc()
 	defer func() {
 		ch <- s.up
@@ -283,14 +299,13 @@ func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
 		ch <- s.jsonParseFailures
 	}()
 
-	if s.updateInterval == 0 {
-		_ = level.Debug(s.logger).Log("msg", "getting snapshots metrics", "block", "true")
-		s.lastResponse, s.lastError = s.fetchAndDecodeSnapshotsStats()
-	} else if s.lastFetchAt.Add(s.updateInterval).Before(time.Now()) {
+	if s.lastFetchAt.Add(s.updateInterval).Before(time.Now()) {
 		go func() {
-			_ = level.Debug(s.logger).Log("msg", "getting snapshots metrics", "block", "false")
+			resp, err := s.fetchAndDecodeSnapshotsStats()
+			s.lock.Lock()
+			defer s.lock.Unlock()
+			s.lastResponse, s.lastError = resp, err
 			s.lastFetchAt = time.Now()
-			s.lastResponse, s.lastError = s.fetchAndDecodeSnapshotsStats()
 		}()
 	}
 
