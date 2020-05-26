@@ -11,9 +11,8 @@ require (
 	github.com/imdario/mergo v0.3.9
 	github.com/prometheus/client_golang v1.6.0
 	github.com/prometheus/common v0.10.0
-	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2 // indirect
-	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299 // indirect
+	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
