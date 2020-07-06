@@ -12,9 +12,9 @@
 # limitations under the License.
 
 GO    := GO111MODULE=on go
-PROMU := $(GOPATH)/bin/promu
-GOLINTER                ?= $(GOPATH)/bin/gometalinter
-pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
+PROMU := $(shell $(GO) env GOPATH)/bin/promu
+GOLINTER                ?= $(shell $(GO) env GOPATH)/bin/gometalinter
+pkgs   = $(shell $(GO) list ./...)
 
 PREFIX                  ?= $(shell pwd)
 BIN_DIR                 ?= $(shell pwd)
@@ -26,7 +26,7 @@ all: format build test
 
 style:
 	@echo ">> checking code style"
-	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
+	@! gofmt -d $(shell find . -name '*.go' -print) | grep '^'
 
 test:
 	@echo ">> running tests"
