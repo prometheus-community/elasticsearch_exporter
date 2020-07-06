@@ -20,7 +20,7 @@ type NodeHTTPStatsNodeDetails struct {
 	TotalOpened int `json:"total_opened"`
 }
 
-var _ Roler = NodeHTTPStatsNode{}
+var _ RoleDetailer = NodeHTTPStatsNode{}
 
 // NodeHTTPStatsNode node http stats
 type NodeHTTPStatsNode struct {
@@ -50,7 +50,7 @@ type nodeStatsResponse struct {
 	Nodes       map[string]NodeStatsNodeResponse
 }
 
-var _ Roler = NodeStatsNodeResponse{}
+var _ RoleDetailer = NodeStatsNodeResponse{}
 
 // NodeStatsNodeResponse defines node stats information structure for nodes
 type NodeStatsNodeResponse struct {
