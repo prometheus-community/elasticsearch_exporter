@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -1830,7 +1831,13 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		c.jsonParseFailures.Inc()
+		return nsr, err
+	}
+
+	if err := json.Unmarshal(bts, &nsr); err != nil {
 		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
