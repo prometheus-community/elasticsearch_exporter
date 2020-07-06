@@ -1,18 +1,18 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"time"
 
-	"context"
-
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/collector"
 	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -167,7 +167,7 @@ func main() {
 	prometheus.MustRegister(clusterInfoRetriever)
 
 	mux := http.DefaultServeMux
-	mux.Handle(*metricsPath, prometheus.Handler())
+	mux.Handle(*metricsPath, promhttp.Handler())
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>

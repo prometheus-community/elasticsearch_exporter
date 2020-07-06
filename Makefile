@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GO    := GO15VENDOREXPERIMENT=1 go
+GO    := GO111MODULE=on go
 PROMU := $(GOPATH)/bin/promu
 GOLINTER                ?= $(GOPATH)/bin/gometalinter
 pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
