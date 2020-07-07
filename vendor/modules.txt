@@ -1,0 +1,53 @@
+# github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
+## explicit
+github.com/alecthomas/template
+github.com/alecthomas/template/parse
+# github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
+## explicit
+github.com/alecthomas/units
+# github.com/beorn7/perks v0.0.0-20160229213445-3ac7bf7a47d1
+## explicit
+github.com/beorn7/perks/quantile
+# github.com/blang/semver v3.5.2-0.20180723201105-3c1074078d32+incompatible
+## explicit
+github.com/blang/semver
+# github.com/go-kit/kit v0.5.1-0.20170620080629-0c52d4024a04
+## explicit
+github.com/go-kit/kit/log
+github.com/go-kit/kit/log/level
+# github.com/go-logfmt/logfmt v0.3.0
+## explicit
+github.com/go-logfmt/logfmt
+# github.com/go-stack/stack v1.5.3
+## explicit
+github.com/go-stack/stack
+# github.com/golang/protobuf v0.0.0-20160425215824-7cc19b78d562
+## explicit
+github.com/golang/protobuf/proto
+# github.com/imdario/mergo v0.3.7-0.20181107191138-ca3dcc1022ba
+## explicit
+github.com/imdario/mergo
+# github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
+## explicit
+github.com/kr/logfmt
+# github.com/matttproud/golang_protobuf_extensions v1.0.1
+## explicit
+github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/prometheus/client_golang v0.0.0-20160711222238-28be15864ef9
+## explicit
+github.com/prometheus/client_golang/prometheus
+# github.com/prometheus/client_model v0.0.0-20150212101744-fa8ad6fec335
+## explicit
+github.com/prometheus/client_model/go
+# github.com/prometheus/common v0.0.0-20170830190555-bc8b88226a12
+## explicit
+github.com/prometheus/common/expfmt
+github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
+github.com/prometheus/common/model
+github.com/prometheus/common/version
+# github.com/prometheus/procfs v0.0.0-20160411190841-abf152e5f3e9
+## explicit
+github.com/prometheus/procfs
+# gopkg.in/alecthomas/kingpin.v2 v2.2.6
+## explicit
+gopkg.in/alecthomas/kingpin.v2
