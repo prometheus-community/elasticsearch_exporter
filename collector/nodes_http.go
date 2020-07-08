@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -42,6 +43,7 @@ type NodesHTTP struct {
 	url               *url.URL
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
+	totalScrapeTime   prometheus.Counter
 	jsonParseFailures prometheus.Counter
 	metrics           []*nodeHTTPMetric
 }
@@ -55,11 +57,15 @@ func NewNodesHTTP(logger log.Logger, client *http.Client, url *url.URL) *NodesHT
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats_http", "up"),
-			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			Help: "Was the last scrape of the ElasticSearch nodes http endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats_http", "total_scrapes"),
-			Help: "Current total ElasticSearch node scrapes.",
+			Help: "Current total ElasticSearch node http scrapes.",
+		}),
+		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, "node_stats_http", "total_scrape_time_seconds"),
+			Help: "Current total time spent in ElasticSearch node http scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats_http", "json_parse_failures"),
@@ -102,6 +108,7 @@ func (c *NodesHTTP) Describe(ch chan<- *prometheus.Desc) {
 	}
 	ch <- c.up.Desc()
 	ch <- c.totalScrapes.Desc()
+	ch <- c.totalScrapeTime.Desc()
 	ch <- c.jsonParseFailures.Desc()
 }
 
@@ -146,11 +153,14 @@ func (c *NodesHTTP) fetchAndDecodeNodeStats() (nodeHTTPStatsResponse, error) {
 
 // Collect gets nodes metric values
 func (c *NodesHTTP) Collect(ch chan<- prometheus.Metric) {
+	var now = time.Now()
 	c.totalScrapes.Inc()
 	defer func() {
+		c.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
 		ch <- c.up
 		ch <- c.totalScrapes
 		ch <- c.jsonParseFailures
+		ch <- c.totalScrapeTime
 	}()
 
 	nodeStatsResp, err := c.fetchAndDecodeNodeStats()

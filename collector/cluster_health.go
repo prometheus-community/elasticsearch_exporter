@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -41,8 +42,10 @@ type ClusterHealth struct {
 	client *http.Client
 	url    *url.URL
 
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
+	up                prometheus.Gauge
+	totalScrapes      prometheus.Counter
+	totalScrapeTime   prometheus.Counter
+	jsonParseFailures prometheus.Counter
 
 	metrics      []*clusterHealthMetric
 	statusMetric *clusterHealthStatusMetric
@@ -64,6 +67,10 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "total_scrapes"),
 			Help: "Current total ElasticSearch cluster health scrapes.",
+		}),
+		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, subsystem, "total_scrape_time_seconds"),
+			Help: "Current total time spent in ElasticSearch cluster health scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures"),
@@ -218,6 +225,7 @@ func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.statusMetric.Desc
 
 	ch <- c.up.Desc()
+	ch <- c.totalScrapeTime.Desc()
 	ch <- c.totalScrapes.Desc()
 	ch <- c.jsonParseFailures.Desc()
 }
@@ -263,10 +271,13 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 
 // Collect collects ClusterHealth metrics.
 func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
+	var now = time.Now()
 	var err error
 	c.totalScrapes.Inc()
 	defer func() {
+		c.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
 		ch <- c.up
+		ch <- c.totalScrapeTime
 		ch <- c.totalScrapes
 		ch <- c.jsonParseFailures
 	}()
