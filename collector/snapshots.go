@@ -54,8 +54,10 @@ type Snapshots struct {
 	lock           sync.RWMutex
 	group          singleflight.Group
 
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
+	up                prometheus.Gauge
+	totalScrapes      prometheus.Counter
+	totalScrapeTime   prometheus.Counter
+	jsonParseFailures prometheus.Counter
 
 	snapshotMetrics   []*snapshotMetric
 	repositoryMetrics []*repositoryMetric
@@ -76,6 +78,10 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL, interval
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
 			Help: "Current total ElasticSearch snapshots scrapes.",
+		}),
+		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrape_time_seconds"),
+			Help: "Current total time spent in ElasticSearch snapshots scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),
@@ -223,6 +229,7 @@ func (s *Snapshots) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.Desc
 	}
 	ch <- s.up.Desc()
+	ch <- s.totalScrapeTime.Desc()
 	ch <- s.totalScrapes.Desc()
 	ch <- s.jsonParseFailures.Desc()
 }
@@ -296,13 +303,16 @@ func (s *Snapshots) doFetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsRe
 
 // Collect gets Snapshots metric values
 func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
+	var now = time.Now()
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	s.totalScrapes.Inc()
 	defer func() {
+		s.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
 		ch <- s.up
 		ch <- s.totalScrapes
+		ch <- s.totalScrapeTime
 		ch <- s.jsonParseFailures
 	}()
 

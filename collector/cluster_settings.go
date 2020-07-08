@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -21,10 +22,12 @@ type ClusterSettings struct {
 	client *http.Client
 	url    *url.URL
 
-	up                              prometheus.Gauge
-	shardAllocationEnabled          prometheus.Gauge
-	maxShardsPerNode                prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
+	up                     prometheus.Gauge
+	totalScrapes           prometheus.Counter
+	totalScrapeTime        prometheus.Counter
+	jsonParseFailures      prometheus.Counter
+	shardAllocationEnabled prometheus.Gauge
+	maxShardsPerNode       prometheus.Gauge
 }
 
 // NewClusterSettings defines Cluster Settings Prometheus metrics
@@ -41,6 +44,10 @@ func NewClusterSettings(logger log.Logger, client *http.Client, url *url.URL) *C
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "total_scrapes"),
 			Help: "Current total ElasticSearch cluster settings scrapes.",
+		}),
+		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "total_scrape_time_seconds"),
+			Help: "Current total time spent in ElasticSearch settings scrapes.",
 		}),
 		shardAllocationEnabled: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "shard_allocation_enabled"),
@@ -60,6 +67,7 @@ func NewClusterSettings(logger log.Logger, client *http.Client, url *url.URL) *C
 // Describe add Snapshots metrics descriptions
 func (cs *ClusterSettings) Describe(ch chan<- *prometheus.Desc) {
 	ch <- cs.up.Desc()
+	ch <- cs.totalScrapeTime.Desc()
 	ch <- cs.totalScrapes.Desc()
 	ch <- cs.shardAllocationEnabled.Desc()
 	ch <- cs.maxShardsPerNode.Desc()
@@ -130,11 +138,13 @@ func (cs *ClusterSettings) fetchAndDecodeClusterSettingsStats() (ClusterSettings
 
 // Collect gets cluster settings  metric values
 func (cs *ClusterSettings) Collect(ch chan<- prometheus.Metric) {
-
+	var now = time.Now()
 	cs.totalScrapes.Inc()
 	defer func() {
+		cs.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
 		ch <- cs.up
 		ch <- cs.totalScrapes
+		ch <- cs.totalScrapeTime
 		ch <- cs.jsonParseFailures
 		ch <- cs.shardAllocationEnabled
 		ch <- cs.maxShardsPerNode

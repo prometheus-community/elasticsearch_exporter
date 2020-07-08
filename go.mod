@@ -11,6 +11,7 @@ require (
 	github.com/prometheus/client_golang v1.6.0
 	github.com/prometheus/common v0.10.0
 	github.com/stretchr/testify v1.5.1 // indirect
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v2 v2.3.0 // indirect
