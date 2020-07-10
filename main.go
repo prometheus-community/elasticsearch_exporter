@@ -44,6 +44,9 @@ func main() {
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
 			Default("false").Envar("ES_INDICES_SETTINGS").Bool()
+		esExportRemoteInfo = kingpin.Flag("es.remote_info",
+			"Export remote info for Cross Cluster.").
+			Default("false").Envar("ES_REMOTE_INFO").Bool()
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
 			"Export stats for cluster settings.").
 			Default("false").Envar("ES_CLUSTER_SETTINGS").Bool()
@@ -122,6 +125,11 @@ func main() {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
 			os.Exit(1)
 		}
+	}
+
+	if *esExportRemoteInfo {
+		// Create Remote info Collector
+		prometheus.MustRegister(collector.NewRemoteInfo(logger, httpClient, esURL))
 	}
 
 	if *esExportSnapshots {
