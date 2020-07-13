@@ -72,6 +72,17 @@ func NewRemoteInfo(logger log.Logger, client *http.Client, url *url.URL) *Remote
 				},
 				Labels: defaultRemoteInfoLabelValues,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "remote_info", "max_connections_per_cluster"),
+					"Max connections per cluster", defaulRemoteInfoLabels, nil,
+				),
+				Value: func(remoteStats RemoteCluster) float64 {
+					return float64(remoteStats.MaxConnectionsPerCluster)
+				},
+				Labels: defaultRemoteInfoLabelValues,
+			},
 		},
 	}
 }
