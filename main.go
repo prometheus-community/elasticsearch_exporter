@@ -111,6 +111,17 @@ func main() {
 		},
 	}
 
+	httpSnapshotsClient := &http.Client{
+		Timeout: *esTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+			Proxy:           http.ProxyFromEnvironment,
+		},
+	}
+	if *esSnapshotsInterval != 0 {
+		httpSnapshotsClient.Timeout = *esSnapshotsInterval
+	}
+
 	// version metric
 	versionMetric := version.NewCollector(Name)
 	prometheus.MustRegister(versionMetric)
@@ -135,7 +146,7 @@ func main() {
 	}
 
 	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL, *esSnapshotsInterval))
+		prometheus.MustRegister(collector.NewSnapshots(logger, httpSnapshotsClient, esURL, *esSnapshotsInterval))
 	}
 
 	if *esExportClusterSettings {
