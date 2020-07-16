@@ -1077,7 +1077,8 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
 	i.totalScrapes.Inc()
 	defer func() {
-		i.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
+		_ = level.Debug(i.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
+		i.totalScrapeTime.Add(time.Since(now).Seconds())
 		ch <- i.up
 		ch <- i.totalScrapes
 		ch <- i.totalScrapeTime

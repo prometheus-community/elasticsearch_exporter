@@ -156,7 +156,8 @@ func (c *NodesHTTP) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
 	c.totalScrapes.Inc()
 	defer func() {
-		c.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
+		_ = level.Debug(c.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
+		c.totalScrapeTime.Add(time.Since(now).Seconds())
 		ch <- c.up
 		ch <- c.totalScrapes
 		ch <- c.jsonParseFailures

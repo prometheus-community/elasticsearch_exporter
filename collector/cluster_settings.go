@@ -141,7 +141,8 @@ func (cs *ClusterSettings) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
 	cs.totalScrapes.Inc()
 	defer func() {
-		cs.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
+		_ = level.Debug(cs.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
+		cs.totalScrapeTime.Add(time.Since(now).Seconds())
 		ch <- cs.up
 		ch <- cs.totalScrapes
 		ch <- cs.totalScrapeTime

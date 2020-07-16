@@ -309,7 +309,8 @@ func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
 
 	s.totalScrapes.Inc()
 	defer func() {
-		s.totalScrapeTime.Add(time.Now().Sub(now).Seconds())
+		_ = level.Debug(s.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
+		s.totalScrapeTime.Add(time.Since(now).Seconds())
 		ch <- s.up
 		ch <- s.totalScrapes
 		ch <- s.totalScrapeTime
