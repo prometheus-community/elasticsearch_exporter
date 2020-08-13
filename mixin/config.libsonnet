@@ -1,11 +1,15 @@
 {
-  alerts+:: {
+  alert+:: {
+    selector: 'job=~"elasticsearch.*"',
+    esDiskLowWaterMark: 0.85,
+    esDiskHighWaterMark: 0.9,
+    esClusterHealthStatusRED: '2m',
+    esClusterHealthStatusYELLOW: '20m',
+  },
+  rule+:: {
     selector: 'job=~"elasticsearch.*"',
   },
-  rules+:: {
-    selector: 'job=~"elasticsearch.*"',
-  },
-  dashboards+:: {
+  dashboard+:: {
     selector: 'job=~"elasticsearch.*"',
   },
 }
