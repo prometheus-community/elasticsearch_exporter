@@ -1,5 +1,5 @@
 {
-  // Using AVG for alerts, because running multiple exporters in cluster would distort values
+  // Using max() for alerts, because running multiple exporters in cluster would distort values
   local custom = self,
   alert+:: {
     selector: error 'must provide selector for Elasticsearch alerts',
@@ -13,7 +13,7 @@
           {
             alert: 'ElasticsearchNodeDiskWatermarkReached',
             expr: |||
-              sum by (cluster, instance, node) (
+              max by (cluster, instance, node) (
                 elasticsearch_filesystem_data_free_bytes{%(selector)s} / elasticsearch_filesystem_data_size_bytes{%(selector)s}
               ) > %(esDiskLowWaterMark)s
             ||| % custom.alert,
@@ -29,13 +29,13 @@
           {
             alert: 'ElasticsearchNodeDiskWatermarkReached',
             expr: |||
-              sum by (cluster, instance, node) (
+              max by (cluster, instance, node) (
                 elasticsearch_filesystem_data_free_bytes{%(selector)s} / elasticsearch_filesystem_data_size_bytes{%(selector)s}
               ) > %(esDiskHighWaterMark)s
             ||| % custom.alert,
             'for': '5m',
             labels: {
-              severity: 'high',
+              severity: 'critical',
             },
             annotations: {
               summary: 'Disk High Watermark Reached - disk saturation is {{ $value | humanizePercentage }}%',
@@ -50,7 +50,7 @@
           {
             alert: 'ElasticsearchClusterStatusRed',
             expr: |||
-              avg by (cluster) (elasticsearch_cluster_health_status{color="red", %(selector)s} == 1)
+              max by (cluster) (elasticsearch_cluster_health_status{color="red", %(selector)s} == 1)
             ||| % custom.alert,
             'for': '%(esClusterHealthStatusRED)s' % custom.alert,
             labels: {
@@ -64,7 +64,7 @@
           {
             alert: 'ElasticsearchClusterStatusYellow',
             expr: |||
-              avg by (cluster) (elasticsearch_cluster_health_status{color="yellow", %(selector)s} == 1)
+              max by (cluster) (elasticsearch_cluster_health_status{color="yellow", %(selector)s} == 1)
             ||| % custom.alert,
             'for': '%(esClusterHealthStatusYELLOW)s' % custom.alert,
             labels: {
