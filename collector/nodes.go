@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/singleflight"
 )
 
 func getRoles(node RoleDetailer) map[string]bool {
@@ -160,6 +162,13 @@ type Nodes struct {
 	all    bool
 	node   string
 
+	updateInterval time.Duration
+	lastResponse   nodeStatsResponse
+	lastError      error
+	lastFetchAt    time.Time
+	lock           sync.RWMutex
+	group          singleflight.Group
+
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
 	totalScrapeTime   prometheus.Counter
@@ -174,13 +183,14 @@ type Nodes struct {
 }
 
 // NewNodes defines Nodes Prometheus metrics
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
+func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string, interval time.Duration) *Nodes {
 	return &Nodes{
-		logger: logger,
-		client: client,
-		url:    url,
-		all:    all,
-		node:   node,
+		logger:         logger,
+		client:         client,
+		url:            url,
+		all:            all,
+		node:           node,
+		updateInterval: interval,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
@@ -1809,6 +1819,15 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
+	resp, err, shared := c.group.Do("nodes", func() (interface{}, error) {
+		_ = level.Debug(c.logger).Log("msg", "getting node stats metrics")
+		return c.doFetchAndDecodeNodeStats()
+	})
+	_ = level.Debug(c.logger).Log("msg", "got node stats metrics", "shared", shared)
+	return resp.(nodeStatsResponse), err
+}
+
+func (c *Nodes) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
 	u := *c.url
@@ -1855,6 +1874,8 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 // Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	c.totalScrapes.Inc()
 	defer func() {
 		_ = level.Debug(c.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
@@ -1865,17 +1886,26 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
-	if err != nil {
+	if c.lastFetchAt.Add(c.updateInterval).Before(time.Now()) {
+		go func() {
+			resp, err := c.fetchAndDecodeNodeStats()
+			c.lock.Lock()
+			defer c.lock.Unlock()
+			c.lastResponse, c.lastError = resp, err
+			c.lastFetchAt = time.Now()
+		}()
+	}
+
+	if c.lastError != nil {
 		c.up.Set(0)
 		_ = level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
-			"err", err,
+			"err", c.lastError,
 		)
-		return
 	}
 	c.up.Set(1)
 
+	var nodeStatsResp = c.lastResponse
 	for _, node := range nodeStatsResp.Nodes {
 		// Handle the node labels metric
 		roles := getRoles(node)

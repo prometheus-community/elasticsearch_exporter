@@ -38,12 +38,18 @@ func main() {
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
 			Default("_local").Envar("ES_NODE").String()
+		esNodesInterval = kingpin.Flag("es.nodes.interval",
+			"Node stats metrics update interval").
+			Default("0s").Envar("ES_NODES_INTERVAL").Duration()
 		esExportNodesHTTP = kingpin.Flag("es.nodehttp",
 			"Export stats for node HTTP in the cluster.").
 			Default("false").Envar("ES_NODE_HTTP").Bool()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Envar("ES_INDICES").Bool()
+		esIndicesInterval = kingpin.Flag("es.indices.interval",
+			"Node stats metrics update interval").
+			Default("0s").Envar("ES_INDICES_INTERVAL").Duration()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
 			Default("false").Envar("ES_INDICES_SETTINGS").Bool()
@@ -102,24 +108,13 @@ func main() {
 
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
-
+	httpTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		Proxy:           http.ProxyFromEnvironment,
+	}
 	httpClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
-
-	httpSnapshotsClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
-		},
-	}
-	if *esSnapshotsInterval != 0 {
-		httpSnapshotsClient.Timeout = *esSnapshotsInterval
+		Timeout:   *esTimeout,
+		Transport: httpTransport,
 	}
 
 	// version metric
@@ -130,14 +125,15 @@ func main() {
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+	prometheus.MustRegister(collector.NewNodes(logger, createClient(httpTransport, *esTimeout, *esNodesInterval), esURL, *esAllNodes, *esNode, *esNodesInterval))
 
 	if *esExportNodesHTTP {
 		prometheus.MustRegister(collector.NewNodesHTTP(logger, httpClient, esURL))
 	}
 
 	if *esExportIndices || *esExportShards {
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
+		client := createClient(httpTransport, *esTimeout, *esIndicesInterval)
+		iC := collector.NewIndices(logger, client, esURL, *esExportShards, *esIndicesInterval)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
@@ -146,7 +142,8 @@ func main() {
 	}
 
 	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpSnapshotsClient, esURL, *esSnapshotsInterval))
+		client := createClient(httpTransport, *esTimeout, *esSnapshotsInterval)
+		prometheus.MustRegister(collector.NewSnapshots(logger, client, esURL, *esSnapshotsInterval))
 	}
 
 	if *esExportClusterSettings {
@@ -231,4 +228,15 @@ func main() {
 	_ = level.Info(logger).Log("msg", "shutting down")
 	_ = server.Shutdown(srvCtx)
 	cancel()
+}
+
+func createClient(t *http.Transport, gtm, tm time.Duration) *http.Client {
+	var c = &http.Client{
+		Timeout:   gtm,
+		Transport: t,
+	}
+	if tm != 0 {
+		c.Timeout = tm
+	}
+	return c
 }

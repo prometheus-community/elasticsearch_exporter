@@ -8,12 +8,14 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/singleflight"
 )
 
 type labels struct {
@@ -44,6 +46,13 @@ type Indices struct {
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
 
+	updateInterval time.Duration
+	lastResponse   indexStatsResponse
+	lastError      error
+	lastFetchAt    time.Time
+	lock           sync.RWMutex
+	group          singleflight.Group
+
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
 	totalScrapeTime   prometheus.Counter
@@ -54,7 +63,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, interval time.Duration) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -85,11 +94,12 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	}
 
 	indices := &Indices{
-		logger:        logger,
-		client:        client,
-		url:           url,
-		shards:        shards,
-		clusterInfoCh: make(chan *clusterinfo.Response),
+		logger:         logger,
+		client:         client,
+		url:            url,
+		shards:         shards,
+		updateInterval: interval,
+		clusterInfoCh:  make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
 		},
@@ -1030,6 +1040,15 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
+	resp, err, shared := i.group.Do("indices", func() (interface{}, error) {
+		_ = level.Debug(i.logger).Log("msg", "getting indices metrics")
+		return i.doFetchAndDecodeIndexStats()
+	})
+	_ = level.Debug(i.logger).Log("msg", "got indices metrics", "shared", shared)
+	return resp.(indexStatsResponse), err
+}
+
+func (i *Indices) doFetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
@@ -1075,6 +1094,8 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 // Collect gets Indices metric values
 func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
+	i.lock.RLock()
+	defer i.lock.RUnlock()
 	i.totalScrapes.Inc()
 	defer func() {
 		_ = level.Debug(i.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
@@ -1086,19 +1107,27 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	}()
 
 	// indices
-	indexStatsResp, err := i.fetchAndDecodeIndexStats()
-	if err != nil {
+	if i.lastFetchAt.Add(i.updateInterval).Before(time.Now()) {
+		go func() {
+			resp, err := i.fetchAndDecodeIndexStats()
+			i.lock.Lock()
+			defer i.lock.Unlock()
+			i.lastResponse, i.lastError = resp, err
+			i.lastFetchAt = time.Now()
+		}()
+	}
+
+	if i.lastError != nil {
 		i.up.Set(0)
 		_ = level.Warn(i.logger).Log(
 			"msg", "failed to fetch and decode index stats",
-			"err", err,
+			"err", i.lastError,
 		)
-		return
 	}
-	i.totalScrapes.Inc()
 	i.up.Set(1)
 
 	// Index stats
+	var indexStatsResp = i.lastResponse
 	for indexName, indexStats := range indexStatsResp.Indices {
 		for _, metric := range i.indexMetrics {
 			ch <- prometheus.MustNewConstMetric(
