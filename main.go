@@ -97,6 +97,9 @@ func main() {
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
+	// create a context that is cancelled on SIGKILL
+	ctx, cancel := context.WithCancel(context.Background())
+
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
 		_ = level.Error(logger).Log(
@@ -125,7 +128,7 @@ func main() {
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, createClient(httpTransport, *esTimeout, *esNodesInterval*2), esURL, *esAllNodes, *esNode, *esNodesInterval))
+	prometheus.MustRegister(collector.NewNodes(ctx, logger, createClient(httpTransport, *esTimeout, *esNodesInterval*2), esURL, *esAllNodes, *esNode, *esNodesInterval))
 
 	if *esExportNodesHTTP {
 		prometheus.MustRegister(collector.NewNodesHTTP(logger, httpClient, esURL))
@@ -156,9 +159,6 @@ func main() {
 
 	// create a http server
 	server := &http.Server{}
-
-	// create a context that is cancelled on SIGKILL
-	ctx, cancel := context.WithCancel(context.Background())
 
 	// start the cluster info retriever
 	switch runErr := clusterInfoRetriever.Run(ctx); runErr {

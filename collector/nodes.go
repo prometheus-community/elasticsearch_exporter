@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -157,17 +158,8 @@ type filesystemIODeviceMetric struct {
 // Nodes information struct
 type Nodes struct {
 	logger log.Logger
-	client *http.Client
-	url    *url.URL
-	all    bool
-	node   string
 
-	updateInterval time.Duration
-	lastResponse   nodeStatsResponse
-	lastError      error
-	lastFetchAt    time.Time
-	lock           sync.RWMutex
-	group          singleflight.Group
+	updater *nodeStatsUpdater
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -183,14 +175,18 @@ type Nodes struct {
 }
 
 // NewNodes defines Nodes Prometheus metrics
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string, interval time.Duration) *Nodes {
-	return &Nodes{
-		logger:         logger,
-		client:         client,
-		url:            url,
-		all:            all,
-		node:           node,
-		updateInterval: interval,
+func NewNodes(ctx context.Context, logger log.Logger, client *http.Client, url *url.URL, all bool, node string, interval time.Duration) *Nodes {
+	var nodes = &Nodes{
+		logger: logger,
+		updater: &nodeStatsUpdater{
+			logger:         logger,
+			client:         client,
+			url:            url,
+			all:            all,
+			node:           node,
+			updateInterval: interval,
+			sync:           make(chan struct{}, 1),
+		},
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
@@ -1793,6 +1789,8 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			},
 		},
 	}
+	nodes.updater.Run(ctx)
+	return nodes
 }
 
 // Describe add metrics descriptions
@@ -1818,27 +1816,84 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.jsonParseFailures.Desc()
 }
 
-func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
-	resp, err, shared := c.group.Do("nodes", func() (interface{}, error) {
-		_ = level.Debug(c.logger).Log("msg", "getting node stats metrics")
-		return c.doFetchAndDecodeNodeStats()
+type nodeStatsUpdater struct {
+	logger log.Logger
+	sync   chan struct{}
+
+	updateInterval time.Duration
+	lastResponse   nodeStatsResponse
+	lastError      error
+	lastFetchAt    time.Time
+	lock           sync.RWMutex
+	group          singleflight.Group
+
+	client *http.Client
+	url    *url.URL
+	all    bool
+	node   string
+}
+
+func (upt *nodeStatsUpdater) Run(ctx context.Context) {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(upt.logger).Log(
+					"msg", "context cancelled, exiting cluster info update loop",
+					"err", ctx.Err(),
+				)
+				return
+			case <-upt.sync:
+				upt.lastResponse, upt.lastError = upt.fetchAndDecodeNodeStats()
+				continue
+			}
+		}
+	}(ctx)
+
+	_ = level.Info(upt.logger).Log("msg", "triggering initial node stats call")
+	upt.sync <- struct{}{}
+
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(upt.updateInterval)
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(upt.logger).Log(
+					"msg", "context cancelled, exiting node stats trigger loop",
+					"err", ctx.Err(),
+				)
+				return
+			case <-ticker.C:
+				_ = level.Debug(upt.logger).Log(
+					"msg", "triggering periodic update",
+				)
+				upt.sync <- struct{}{}
+			}
+		}
+	}(ctx)
+}
+
+func (upt *nodeStatsUpdater) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
+	resp, err, shared := upt.group.Do("nodes", func() (interface{}, error) {
+		_ = level.Debug(upt.logger).Log("msg", "getting node stats metrics")
+		return upt.doFetchAndDecodeNodeStats()
 	})
-	_ = level.Debug(c.logger).Log("msg", "got node stats metrics", "shared", shared)
+	_ = level.Debug(upt.logger).Log("msg", "got node stats metrics", "shared", shared)
 	return resp.(nodeStatsResponse), err
 }
 
-func (c *Nodes) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
+func (upt *nodeStatsUpdater) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
-	u := *c.url
+	u := *upt.url
 
-	if c.all {
+	if upt.all {
 		u.Path = path.Join(u.Path, "/_nodes/stats")
 	} else {
-		u.Path = path.Join(u.Path, "_nodes", c.node, "stats")
+		u.Path = path.Join(u.Path, "_nodes", upt.node, "stats")
 	}
 
-	res, err := c.client.Get(u.String())
+	res, err := upt.client.Get(u.String())
 	if err != nil {
 		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
@@ -1847,7 +1902,7 @@ func (c *Nodes) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(c.logger).Log(
+			_ = level.Warn(upt.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -1860,12 +1915,10 @@ func (c *Nodes) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 
 	bts, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
 
 	if err := json.Unmarshal(bts, &nsr); err != nil {
-		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
 	return nsr, nil
@@ -1874,8 +1927,6 @@ func (c *Nodes) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 // Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
-	c.lock.RLock()
-	defer c.lock.RUnlock()
 	c.totalScrapes.Inc()
 	defer func() {
 		_ = level.Debug(c.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
@@ -1886,26 +1937,19 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		ch <- c.jsonParseFailures
 	}()
 
-	if c.lastFetchAt.Add(c.updateInterval).Before(time.Now()) {
-		go func() {
-			resp, err := c.fetchAndDecodeNodeStats()
-			c.lock.Lock()
-			defer c.lock.Unlock()
-			c.lastResponse, c.lastError = resp, err
-			c.lastFetchAt = time.Now()
-		}()
-	}
-
-	if c.lastError != nil {
+	if c.updater.lastError != nil {
 		c.up.Set(0)
+		if _, ok := c.updater.lastError.(*json.MarshalerError); ok {
+			c.jsonParseFailures.Inc()
+		}
 		_ = level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
-			"err", c.lastError,
+			"err", c.updater.lastError,
 		)
 	}
 	c.up.Set(1)
 
-	var nodeStatsResp = c.lastResponse
+	var nodeStatsResp = c.updater.lastResponse
 	for _, node := range nodeStatsResp.Nodes {
 		// Handle the node labels metric
 		roles := getRoles(node)
