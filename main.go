@@ -40,7 +40,7 @@ func main() {
 			Default("_local").Envar("ES_NODE").String()
 		esNodesInterval = kingpin.Flag("es.nodes.interval",
 			"Node stats metrics update interval").
-			Default("0s").Envar("ES_NODES_INTERVAL").Duration()
+			Default("30s").Envar("ES_NODES_INTERVAL").Duration()
 		esExportNodesHTTP = kingpin.Flag("es.nodehttp",
 			"Export stats for node HTTP in the cluster.").
 			Default("false").Envar("ES_NODE_HTTP").Bool()
@@ -49,7 +49,7 @@ func main() {
 			Default("false").Envar("ES_INDICES").Bool()
 		esIndicesInterval = kingpin.Flag("es.indices.interval",
 			"Node stats metrics update interval").
-			Default("0s").Envar("ES_INDICES_INTERVAL").Duration()
+			Default("30s").Envar("ES_INDICES_INTERVAL").Duration()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
 			Default("false").Envar("ES_INDICES_SETTINGS").Bool()
@@ -136,7 +136,7 @@ func main() {
 
 	if *esExportIndices || *esExportShards {
 		client := createClient(httpTransport, *esTimeout, *esIndicesInterval*2)
-		iC := collector.NewIndices(logger, client, esURL, *esExportShards, *esIndicesInterval)
+		iC := collector.NewIndices(ctx, logger, client, esURL, *esExportShards, *esIndicesInterval)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
