@@ -146,7 +146,7 @@ func main() {
 
 	if *esExportSnapshots {
 		client := createClient(httpTransport, *esTimeout, *esSnapshotsInterval)
-		prometheus.MustRegister(collector.NewSnapshots(logger, client, esURL, *esSnapshotsInterval))
+		prometheus.MustRegister(collector.NewSnapshots(ctx, logger, client, esURL, *esSnapshotsInterval))
 	}
 
 	if *esExportClusterSettings {

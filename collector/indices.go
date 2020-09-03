@@ -9,14 +9,12 @@ import (
 	"net/url"
 	"path"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/sync/singleflight"
 )
 
 type labels struct {
@@ -41,10 +39,9 @@ type shardMetric struct {
 // Indices information struct
 type Indices struct {
 	logger          log.Logger
+	updater         *indicesUpdater
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
-
-	updater *indicesUpdater
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -89,12 +86,12 @@ func NewIndices(ctx context.Context, logger log.Logger, client *http.Client, url
 	indices := &Indices{
 		logger: logger,
 		updater: &indicesUpdater{
-			logger:         logger,
-			client:         client,
-			url:            url,
-			shards:         shards,
-			updateInterval: interval,
-			sync:           make(chan struct{}, 1),
+			logger:   logger,
+			client:   client,
+			url:      url,
+			shards:   shards,
+			interval: interval,
+			sync:     make(chan struct{}, 1),
 		},
 		clusterInfoCh: make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
@@ -1038,112 +1035,6 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.jsonParseFailures.Desc()
 }
 
-type indicesUpdater struct {
-	logger log.Logger
-	sync   chan struct{}
-
-	updateInterval time.Duration
-	lastResponse   indexStatsResponse
-	lastError      error
-	lastFetchAt    time.Time
-	lock           sync.RWMutex
-	group          singleflight.Group
-
-	client *http.Client
-	url    *url.URL
-	shards bool
-}
-
-func (upt *indicesUpdater) Run(ctx context.Context) {
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				_ = level.Info(upt.logger).Log(
-					"msg", "context cancelled, exiting indices update loop",
-					"err", ctx.Err(),
-				)
-				return
-			case <-upt.sync:
-				upt.lastResponse, upt.lastError = upt.fetchAndDecodeIndexStats()
-				continue
-			}
-		}
-	}(ctx)
-
-	_ = level.Info(upt.logger).Log("msg", "triggering initial indices call")
-	upt.sync <- struct{}{}
-
-	go func(ctx context.Context) {
-		ticker := time.NewTicker(upt.updateInterval)
-		for {
-			select {
-			case <-ctx.Done():
-				_ = level.Info(upt.logger).Log(
-					"msg", "context cancelled, exiting indices trigger loop",
-					"err", ctx.Err(),
-				)
-				return
-			case <-ticker.C:
-				_ = level.Debug(upt.logger).Log(
-					"msg", "triggering periodic indices update",
-				)
-				upt.sync <- struct{}{}
-			}
-		}
-	}(ctx)
-}
-
-func (upt *indicesUpdater) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
-	resp, err, shared := upt.group.Do("indices", func() (interface{}, error) {
-		_ = level.Debug(upt.logger).Log("msg", "getting indices metrics")
-		return upt.doFetchAndDecodeIndexStats()
-	})
-	_ = level.Debug(upt.logger).Log("msg", "got indices metrics", "shared", shared)
-	return resp.(indexStatsResponse), err
-}
-
-func (upt *indicesUpdater) doFetchAndDecodeIndexStats() (indexStatsResponse, error) {
-	var isr indexStatsResponse
-
-	u := *upt.url
-	u.Path = path.Join(u.Path, "/_all/_stats")
-	if upt.shards {
-		u.RawQuery = "level=shards"
-	}
-
-	res, err := upt.client.Get(u.String())
-	if err != nil {
-		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			_ = level.Warn(upt.logger).Log(
-				"msg", "failed to close http.Client",
-				"err", err,
-			)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	bts, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return isr, err
-	}
-
-	if err := json.Unmarshal(bts, &isr); err != nil {
-		return isr, err
-	}
-
-	return isr, nil
-}
-
 // Collect gets Indices metric values
 func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
@@ -1198,4 +1089,97 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+}
+
+type indicesUpdater struct {
+	logger       log.Logger
+	client       *http.Client
+	url          *url.URL
+	shards       bool
+	sync         chan struct{}
+	interval     time.Duration
+	lastResponse indexStatsResponse
+	lastError    error
+}
+
+func (upt *indicesUpdater) Run(ctx context.Context) {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(upt.logger).Log(
+					"msg", "context cancelled, exiting indices update loop",
+					"err", ctx.Err(),
+				)
+				return
+			case <-upt.sync:
+				upt.lastResponse, upt.lastError = upt.fetchAndDecodeIndexStats()
+				continue
+			}
+		}
+	}(ctx)
+
+	_ = level.Info(upt.logger).Log("msg", "triggering initial indices call")
+	upt.sync <- struct{}{}
+
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(upt.interval)
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(upt.logger).Log(
+					"msg", "context cancelled, exiting indices trigger loop",
+					"err", ctx.Err(),
+				)
+				return
+			case <-ticker.C:
+				_ = level.Debug(upt.logger).Log(
+					"msg", "triggering periodic indices update",
+				)
+				upt.sync <- struct{}{}
+			}
+		}
+	}(ctx)
+}
+
+func (upt *indicesUpdater) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
+	_ = level.Debug(upt.logger).Log("msg", "getting fresh indices metrics")
+	var isr indexStatsResponse
+
+	u := *upt.url
+	u.Path = path.Join(u.Path, "/_all/_stats")
+	if upt.shards {
+		u.RawQuery = "level=shards"
+	}
+
+	res, err := upt.client.Get(u.String())
+	if err != nil {
+		return isr, fmt.Errorf("failed to get index stats from %s://%s:%s%s: %s",
+			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+	}
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(upt.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
+
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return isr, err
+	}
+
+	if err := json.Unmarshal(bts, &isr); err != nil {
+		return isr, err
+	}
+
+	return isr, nil
 }

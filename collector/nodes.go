@@ -8,13 +8,11 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/sync/singleflight"
 )
 
 func getRoles(node RoleDetailer) map[string]bool {
@@ -157,8 +155,7 @@ type filesystemIODeviceMetric struct {
 
 // Nodes information struct
 type Nodes struct {
-	logger log.Logger
-
+	logger  log.Logger
 	updater *nodeStatsUpdater
 
 	up                prometheus.Gauge
@@ -179,15 +176,14 @@ func NewNodes(ctx context.Context, logger log.Logger, client *http.Client, url *
 	var nodes = &Nodes{
 		logger: logger,
 		updater: &nodeStatsUpdater{
-			logger:         logger,
-			client:         client,
-			url:            url,
-			all:            all,
-			node:           node,
-			updateInterval: interval,
-			sync:           make(chan struct{}, 1),
+			logger:   logger,
+			client:   client,
+			url:      url,
+			all:      all,
+			node:     node,
+			interval: interval,
+			sync:     make(chan struct{}, 1),
 		},
-
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
 			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
@@ -1816,114 +1812,6 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.jsonParseFailures.Desc()
 }
 
-type nodeStatsUpdater struct {
-	logger log.Logger
-	sync   chan struct{}
-
-	updateInterval time.Duration
-	lastResponse   nodeStatsResponse
-	lastError      error
-	lastFetchAt    time.Time
-	lock           sync.RWMutex
-	group          singleflight.Group
-
-	client *http.Client
-	url    *url.URL
-	all    bool
-	node   string
-}
-
-func (upt *nodeStatsUpdater) Run(ctx context.Context) {
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				_ = level.Info(upt.logger).Log(
-					"msg", "context cancelled, exiting cluster info update loop",
-					"err", ctx.Err(),
-				)
-				return
-			case <-upt.sync:
-				upt.lastResponse, upt.lastError = upt.fetchAndDecodeNodeStats()
-				continue
-			}
-		}
-	}(ctx)
-
-	_ = level.Info(upt.logger).Log("msg", "triggering initial node stats call")
-	upt.sync <- struct{}{}
-
-	go func(ctx context.Context) {
-		ticker := time.NewTicker(upt.updateInterval)
-		for {
-			select {
-			case <-ctx.Done():
-				_ = level.Info(upt.logger).Log(
-					"msg", "context cancelled, exiting node stats trigger loop",
-					"err", ctx.Err(),
-				)
-				return
-			case <-ticker.C:
-				_ = level.Debug(upt.logger).Log(
-					"msg", "triggering periodic update",
-				)
-				upt.sync <- struct{}{}
-			}
-		}
-	}(ctx)
-}
-
-func (upt *nodeStatsUpdater) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
-	resp, err, shared := upt.group.Do("nodes", func() (interface{}, error) {
-		_ = level.Debug(upt.logger).Log("msg", "getting node stats metrics")
-		return upt.doFetchAndDecodeNodeStats()
-	})
-	_ = level.Debug(upt.logger).Log("msg", "got node stats metrics", "shared", shared)
-	return resp.(nodeStatsResponse), err
-}
-
-func (upt *nodeStatsUpdater) doFetchAndDecodeNodeStats() (nodeStatsResponse, error) {
-	var nsr nodeStatsResponse
-
-	u := *upt.url
-
-	if upt.all {
-		u.Path = path.Join(u.Path, "/_nodes/stats")
-	} else {
-		u.Path = path.Join(u.Path, "_nodes", upt.node, "stats")
-	}
-
-	res, err := upt.client.Get(u.String())
-	if err != nil {
-		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			_ = level.Warn(upt.logger).Log(
-				"msg", "failed to close http.Client",
-				"err", err,
-			)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	bts, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nsr, err
-	}
-
-	if err := json.Unmarshal(bts, &nsr); err != nil {
-		return nsr, err
-	}
-	return nsr, nil
-}
-
 // Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	var now = time.Now()
@@ -2036,4 +1924,99 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		}
 
 	}
+}
+
+type nodeStatsUpdater struct {
+	logger       log.Logger
+	client       *http.Client
+	url          *url.URL
+	all          bool
+	node         string
+	sync         chan struct{}
+	interval     time.Duration
+	lastResponse nodeStatsResponse
+	lastError    error
+}
+
+func (upt *nodeStatsUpdater) Run(ctx context.Context) {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(upt.logger).Log(
+					"msg", "context cancelled, exiting node stats update loop",
+					"err", ctx.Err(),
+				)
+				return
+			case <-upt.sync:
+				upt.lastResponse, upt.lastError = upt.fetchAndDecodeNodeStats()
+				continue
+			}
+		}
+	}(ctx)
+
+	_ = level.Info(upt.logger).Log("msg", "triggering initial node stats call")
+	upt.sync <- struct{}{}
+
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(upt.interval)
+		for {
+			select {
+			case <-ctx.Done():
+				_ = level.Info(upt.logger).Log(
+					"msg", "context cancelled, exiting node stats trigger loop",
+					"err", ctx.Err(),
+				)
+				return
+			case <-ticker.C:
+				_ = level.Debug(upt.logger).Log(
+					"msg", "triggering periodic node stats update",
+				)
+				upt.sync <- struct{}{}
+			}
+		}
+	}(ctx)
+}
+
+func (upt *nodeStatsUpdater) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
+	_ = level.Debug(upt.logger).Log("msg", "getting fresh node stats metrics")
+	var nsr nodeStatsResponse
+
+	u := *upt.url
+
+	if upt.all {
+		u.Path = path.Join(u.Path, "/_nodes/stats")
+	} else {
+		u.Path = path.Join(u.Path, "_nodes", upt.node, "stats")
+	}
+
+	res, err := upt.client.Get(u.String())
+	if err != nil {
+		return nsr, fmt.Errorf("failed to get cluster health from %s://%s:%s%s: %s",
+			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+	}
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(upt.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
+
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nsr, err
+	}
+
+	if err := json.Unmarshal(bts, &nsr); err != nil {
+		return nsr, err
+	}
+	return nsr, nil
 }
