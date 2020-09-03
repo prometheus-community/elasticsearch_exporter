@@ -125,14 +125,14 @@ func main() {
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, createClient(httpTransport, *esTimeout, *esNodesInterval), esURL, *esAllNodes, *esNode, *esNodesInterval))
+	prometheus.MustRegister(collector.NewNodes(logger, createClient(httpTransport, *esTimeout, *esNodesInterval*2), esURL, *esAllNodes, *esNode, *esNodesInterval))
 
 	if *esExportNodesHTTP {
 		prometheus.MustRegister(collector.NewNodesHTTP(logger, httpClient, esURL))
 	}
 
 	if *esExportIndices || *esExportShards {
-		client := createClient(httpTransport, *esTimeout, *esIndicesInterval)
+		client := createClient(httpTransport, *esTimeout, *esIndicesInterval*2)
 		iC := collector.NewIndices(logger, client, esURL, *esExportShards, *esIndicesInterval)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
@@ -230,13 +230,13 @@ func main() {
 	cancel()
 }
 
-func createClient(t *http.Transport, gtm, tm time.Duration) *http.Client {
+func createClient(transport *http.Transport, globalTimeout, timeout time.Duration) *http.Client {
 	var c = &http.Client{
-		Timeout:   gtm,
-		Transport: t,
+		Timeout:   globalTimeout,
+		Transport: transport,
 	}
-	if tm != 0 {
-		c.Timeout = tm
+	if timeout != 0 {
+		c.Timeout = timeout
 	}
 	return c
 }
