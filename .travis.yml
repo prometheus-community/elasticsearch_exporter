@@ -1,7 +1,7 @@
 language: go
 
 go:
-  - 1.12.x
+  - 1.15.x
   - tip
 
 script:
@@ -10,7 +10,4 @@ script:
   - make gometalinter
   - make build
   - make test
-
-matrix:
-  allow_failures:
-    - go: tip
+q
