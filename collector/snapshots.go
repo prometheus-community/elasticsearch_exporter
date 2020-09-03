@@ -336,7 +336,7 @@ func (upt *snapshotsUpdater) Run(ctx context.Context) {
 func (upt *snapshotsUpdater) getAndParseURL(u *url.URL, data interface{}) error {
 	res, err := upt.client.Get(u.String())
 	if err != nil {
-		return fmt.Errorf("failed to get from %upt://%upt:%upt%upt: %upt",
+		return fmt.Errorf("failed to get from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 

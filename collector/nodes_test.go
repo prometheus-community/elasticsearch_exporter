@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/kit/log"
 )
@@ -44,8 +46,8 @@ func TestNodesStats(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 			u.User = url.UserPassword("elastic", "changeme")
-			c := NewNodes(log.NewNopLogger(), http.DefaultClient, u, true, "_local", 0)
-			nsr, err := c.fetchAndDecodeNodeStats()
+			c := NewNodes(context.Background(), log.NewNopLogger(), http.DefaultClient, u, true, "_local", time.Nanosecond)
+			nsr, err := c.updater.fetchAndDecodeNodeStats()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode node stats: %s", err)
 			}

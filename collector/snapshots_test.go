@@ -1,11 +1,13 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/go-kit/kit/log"
 )
@@ -44,8 +46,8 @@ func TestSnapshots(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		s := NewSnapshots(log.NewNopLogger(), http.DefaultClient, u, 0)
-		stats, err := s.fetchAndDecodeSnapshotsStats()
+		s := NewSnapshots(context.Background(), log.NewNopLogger(), http.DefaultClient, u, time.Nanosecond)
+		stats, err := s.updater.fetchAndDecodeSnapshotsStats()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode snapshots stats: %s", err)
 		}
