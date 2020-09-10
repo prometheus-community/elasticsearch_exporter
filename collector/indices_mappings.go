@@ -34,7 +34,7 @@ type IndicesMappings struct {
 	metrics []*indicesMappingsMetric
 }
 
-// NewIndicesMappings defines Indices Mappings Prometheus metrics
+// NewIndicesMappings defines Indices IndexMappings Prometheus metrics
 func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *IndicesMappings {
 	subsystem := "indices_mappings_stats"
 
@@ -59,7 +59,7 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, subsystem, "number_of_fields"),
+					prometheus.BuildFQName(namespace, subsystem, "field_count"),
 					"Current number fields within cluster.",
 					defaultIndicesMappingsLabels, nil,
 				),
@@ -71,7 +71,7 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 	}
 }
 
-func countFieldsRecursive(properties Properties, fieldCounter float64) float64 {
+func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float64) float64 {
 	// iterate over all properties
 	for _, property := range properties {
 		if property.Type != nil {
@@ -107,10 +107,10 @@ func (im *IndicesMappings) Describe(ch chan<- *prometheus.Desc) {
 	ch <- im.jsonParseFailures.Desc()
 }
 
-func (im *IndicesMappings) getAndParseURL(u *url.URL, data interface{}) error {
+func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse, error) {
 	res, err := im.client.Get(u.String())
 	if err != nil {
-		return fmt.Errorf("failed to get from %s://%s:%s%s: %s",
+		return nil, fmt.Errorf("failed to get from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 
@@ -125,27 +125,22 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL, data interface{}) error {
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(data); err != nil {
+	var imr IndicesMappingsResponse
+	if err := json.NewDecoder(res.Body).Decode(&imr); err != nil {
 		im.jsonParseFailures.Inc()
-		return err
+		return nil, err
 	}
-	return nil
+
+	return &imr, nil
 }
 
-func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (IndicesMappingsResponse, error) {
-
+func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (*IndicesMappingsResponse, error) {
 	u := *im.url
 	u.Path = path.Join(u.Path, "/_all/_mappings")
-	var imr IndicesMappingsResponse
-	err := im.getAndParseURL(&u, &imr)
-	if err != nil {
-		return imr, err
-	}
-
-	return imr, err
+	return im.getAndParseURL(&u)
 }
 
 // Collect gets all indices mappings metric values
@@ -170,7 +165,7 @@ func (im *IndicesMappings) Collect(ch chan<- prometheus.Metric) {
 	im.up.Set(1)
 
 	for _, metric := range im.metrics {
-		for indexName, mappings := range indicesMappingsResponse {
+		for indexName, mappings := range *indicesMappingsResponse {
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
 				metric.Type,

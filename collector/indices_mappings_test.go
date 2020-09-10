@@ -118,27 +118,28 @@ func TestMapping(t *testing.T) {
 			}
 			t.Logf("[%s/%s] All Indices Mappings Response: %+v", hn, ver, imr)
 
-			if *imr["facebook"].Mappings.Properties["contact"].Properties["phone"].Type != "text" {
+			response := *imr
+			if *response["facebook"].Mappings.Properties["contact"].Properties["phone"].Type != "text" {
 				t.Errorf("Marshalling error at facebook.contact.phone")
 			}
 
-			if *imr["facebook"].Mappings.Properties["contact"].Properties["email"].Fields["raw"].Type != "keyword" {
+			if *response["facebook"].Mappings.Properties["contact"].Properties["email"].Fields["raw"].Type != "keyword" {
 				t.Errorf("Marshalling error at facebook.contact.email.raw")
 			}
 
-			if *imr["facebook"].Mappings.Properties["name"].Type != "text" {
+			if *response["facebook"].Mappings.Properties["name"].Type != "text" {
 				t.Errorf("Marshalling error at facebook.name")
 			}
 
-			if *imr["facebook"].Mappings.Properties["name"].Fields["raw"].Type != "keyword" {
+			if *response["facebook"].Mappings.Properties["name"].Fields["raw"].Type != "keyword" {
 				t.Errorf("Marshalling error at facebook.name.raw")
 			}
 
-			if *imr["twitter"].Mappings.Properties["email"].Type != "keyword" {
+			if *response["twitter"].Mappings.Properties["email"].Type != "keyword" {
 				t.Errorf("Marshalling error at twitter.email")
 			}
 
-			if *imr["twitter"].Mappings.Properties["phone"].Type != "keyword" {
+			if *response["twitter"].Mappings.Properties["phone"].Type != "keyword" {
 				t.Errorf("Marshalling error at twitter.phone")
 			}
 

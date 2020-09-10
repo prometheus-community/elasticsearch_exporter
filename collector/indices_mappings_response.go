@@ -5,30 +5,30 @@ type IndicesMappingsResponse map[string]IndexMapping
 
 // IndexMapping defines the struct of the tree for the mappings of each index
 type IndexMapping struct {
-	Mappings Mappings `json:"mappings"`
+	Mappings IndexMappings `json:"mappings"`
 }
 
-// Mappings defines all index mappings
-type Mappings struct {
-	Properties Properties `json:"properties"`
+// IndexMappings defines all index mappings
+type IndexMappings struct {
+	Properties IndexMappingProperties `json:"properties"`
 }
 
-// Properties defines all the properties of the current mapping
-type Properties map[string]*Property
+// IndexMappingProperties defines all the properties of the current mapping
+type IndexMappingProperties map[string]*IndexMappingProperty
 
-// Fields defines all the fields of the current mapping
-type Fields map[string]*Field
+// IndexMappingFields defines all the fields of the current mapping
+type IndexMappingFields map[string]*IndexMappingField
 
-// Property defines a single property of the current index properties
-type Property struct {
-	Type *string `json:"type"`
-	Properties Properties `json:"properties"`
-	Fields Fields `json:"fields"`
+// IndexMappingProperty defines a single property of the current index properties
+type IndexMappingProperty struct {
+	Type       *string                `json:"type"`
+	Properties IndexMappingProperties `json:"properties"`
+	Fields     IndexMappingFields     `json:"fields"`
 }
 
-// Field defines a single property of the current index field
-type Field struct {
-	Type *string `json:"type"`
-	Properties Properties `json:"properties"`
-	Fields Fields `json:"fields"`
+// IndexMappingField defines a single property of the current index field
+type IndexMappingField struct {
+	Type       *string                `json:"type"`
+	Properties IndexMappingProperties `json:"properties"`
+	Fields     IndexMappingFields     `json:"fields"`
 }
