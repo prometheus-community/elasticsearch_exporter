@@ -291,7 +291,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "fielddata_memory_size_bytes"),
-					"IndexMappingField data cache memory usage in bytes",
+					"Field data cache memory usage in bytes",
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
