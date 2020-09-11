@@ -118,7 +118,7 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 		err = res.Body.Close()
 		if err != nil {
 			_ = level.Warn(im.logger).Log(
-				"msg", "failed to close http.Client",
+				"msg", "failed to close response body",
 				"err", err,
 			)
 		}
