@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -114,19 +115,24 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			_ = level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
-		}
-	}()
-
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		_ = level.Warn(im.logger).Log("msg", "failed to read response body", "err", err)
+		return nil, err
+	}
+
+	err = res.Body.Close()
+	if err != nil {
+		_ = level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
+		return nil, err
+	}
+
 	var imr IndicesMappingsResponse
-	if err := json.NewDecoder(res.Body).Decode(&imr); err != nil {
+	if err := json.Unmarshal(body, &imr); err != nil {
 		im.jsonParseFailures.Inc()
 		return nil, err
 	}
