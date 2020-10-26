@@ -79,15 +79,7 @@
             alert: 'ElasticsearchThreadPoolUtilisationWarning',
             // Total threadpool utilisation exceeds CPU count
             expr: |||
-              sum by (cluster) (
-                :elasticsearch_threadpool_utilisation:sum_rate{%(selector)s}
-              )
-              /
-              sum by (cluster) (
-                sum without (host, name) (
-                  elasticsearch_thread_pool_threads_count{type="write", %(selector)s}
-                )
-              ) > %(esClusterThreadpoolRatio)s
+              :elasticsearch_cluster_threadpool_utilisation:ratio{%(selector)s} > %(esClusterThreadpoolRatio)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolTime)s' % custom.alert,
             labels: {
