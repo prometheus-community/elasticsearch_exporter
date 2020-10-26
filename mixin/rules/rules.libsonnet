@@ -6,7 +6,7 @@
   prometheusRules+:: {
     groups+: [
       {
-        name: 'elasticsearch.application.rules'
+        name: 'elasticsearch.application.rules',
         rules: [
           {
             // Default configuration, is write threads to match the number of CPU cores available
