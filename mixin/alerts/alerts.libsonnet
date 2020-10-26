@@ -75,6 +75,29 @@
               message: 'Cluster {{ $labels.cluster }} health status has been YELLOW for at least %(esClusterHealthStatusYELLOW)s. Some shard replicas are not allocated.' % custom.alert,
             },
           },
+          {
+            alert: 'ElasticsearchThreadPoolUtilisationWarning',
+            // Total threadpool utilisation exceeds CPU count
+            expr: |||
+              sum by (cluster) (
+                :elasticsearch_threadpool_utilisation:sum_rate{%(selector)s}
+              )
+              /
+              sum by (cluster) (
+                sum without (host, name) (
+                  elasticsearch_thread_pool_threads_count{type="write", %(selector)s}
+                )
+              ) > %(esClusterThreadpoolRatio)s
+            ||| % custom.alert,
+            'for': '%(esClusterThreadpoolTime)s' % custom.alert,
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              summary: 'High threadpool utilisation',
+              message: 'Cluster {{ $labels.cluster }} threadpool utilisation > %(esClusterThreadpoolRatio)s for %(esClusterThreadpoolTime)s' % custom.alert,
+            },
+          },
           //{
           //  alert: 'ElasticsearchBulkRequestsRejectionJumps',
           //  expr: |||
@@ -91,8 +114,6 @@
           //},
         ],
       },
-
-
     ],
   },
 }
