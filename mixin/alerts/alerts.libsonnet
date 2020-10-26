@@ -95,7 +95,7 @@
             },
             annotations: {
               summary: 'High threadpool utilisation',
-              message: 'Cluster {{ $labels.cluster }} threadpool utilisation > %(esClusterThreadpoolRatio)s for  %(esClusterThreadpoolTime)s' % custom.alert,
+              message: 'Cluster {{ $labels.cluster }} threadpool utilisation > %(esClusterThreadpoolRatio)s for %(esClusterThreadpoolTime)s' % custom.alert,
             },
           },
           //{
