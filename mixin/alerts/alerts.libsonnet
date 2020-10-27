@@ -76,34 +76,37 @@
             },
           },
           {
-            alert: 'ElasticsearchThreadPoolUtilisationWarning',
-            // Total threadpool utilisation exceeds CPU count
+            alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              :elasticsearch_cluster_threadpool_utilisation:ratio{%(selector)s} > %(esClusterThreadpoolRatio)s
+              sum without (host, name, instance, es_master_node, es_data_node, es_ingest_node, es_client_node)(
+                increase(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])
+              ) >  %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
-            'for': '%(esClusterThreadpoolTime)s' % custom.alert,
+            'for': '%(esClusterThreadpoolWarningTime)s' % custom.alert,
             labels: {
               severity: 'warning',
             },
             annotations: {
-              summary: 'High threadpool utilisation',
-              message: 'Cluster {{ $labels.cluster }} threadpool utilisation > %(esClusterThreadpoolRatio)s for %(esClusterThreadpoolTime)s' % custom.alert,
+              summary: '[Elasticsearch] High rejection rate for {{ $labels.type }} threadpool',
+              message: '[{{ $labels.cluster }}] threadpool rejection over %(esClusterThreadpoolWarningTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
             },
           },
-          //{
-          //  alert: 'ElasticsearchBulkRequestsRejectionJumps',
-          //  expr: |||
-          //    round( bulk:reject_ratio:rate2m * 100, 0.001 ) > %(esBulkPctIncrease)s
-          //  ||| % $._config,
-          //  'for': '10m',
-          //  labels: {
-          //    severity: 'warning',
-          //  },
-          //  annotations: {
-          //    summary: 'High Bulk Rejection Ratio - {{ $value }}%',
-          //    message: 'High Bulk Rejection Ratio at {{ $labels.node }} node in {{ $labels.cluster }} cluster. This node may not be keeping up with the indexing speed.',
-          //  },
-          //},
+          {
+            alert: 'ElasticsearchThreadPoolRejectionError',
+            expr: |||
+              sum without (host, name, instance, es_master_node, es_data_node, es_ingest_node, es_client_node)(
+                increase(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])
+              ) >  %(esClusterThreadpoolErrorThreshold)s
+            ||| % custom.alert,
+            'for': '%(esClusterThreadpoolCriticalTime)s' % custom.alert,
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              summary: '[Elasticsearch] High rejection rate for {{ $labels.type }} threadpool',
+              message: '[{{ $labels.cluster }}] threadpool rejection over %(esClusterThreadpoolCriticalTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
+            },
+          },
         ],
       },
     ],
