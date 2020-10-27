@@ -5,8 +5,10 @@
     esDiskHighWaterMark: 0.9,
     esClusterHealthStatusRED: '2m',
     esClusterHealthStatusYELLOW: '20m',
-    esClusterThreadpoolRatio: 1,
-    esClusterThreadpoolTime: '20m',
+    esClusterThreadpoolErrorThreshold: 100,
+    esClusterThreadpoolEvalTime: '5m',
+    esClusterThreadpoolWarningTime: '10m',
+    esClusterThreadpoolCriticalTime: '1h',
   },
   rule+:: {
     selector: 'job=~"elasticsearch.*"',
