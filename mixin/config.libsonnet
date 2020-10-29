@@ -9,6 +9,8 @@
     esClusterThreadpoolEvalTime: '5m',
     esClusterThreadpoolWarningTime: '10m',
     esClusterThreadpoolCriticalTime: '1h',
+    esClusterSnapshotFailureTime: '8h',
+    esClusterSnapshotStatsUpTime: '1h',
   },
   rule+:: {
     selector: 'job=~"elasticsearch.*"',

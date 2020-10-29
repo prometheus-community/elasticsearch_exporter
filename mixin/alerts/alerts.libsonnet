@@ -107,6 +107,34 @@
               message: '[{{ $labels.cluster }}] threadpool rejection over %(esClusterThreadpoolCriticalTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
             },
           },
+          {
+            alert: 'ElasticsearchSnapshotFailure',
+            expr: |||
+              elasticsearch_snapshot_stats_snapshot_number_of_failures{%(selector)s} >  0
+            ||| % custom.alert,
+            'for': '%(esClusterSnapshotFailureTime)s' % custom.alert,
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              summary: '[Elasticsearch] Snapshot failure',
+              message: '[{{ $labels.cluster }}] Last snapshot failed.',
+            },
+          },
+          {
+            alert: 'ElasticsearchSnapshotMetricsUnavailable',
+            expr: |||
+              elasticsearch_snapshot_stats_up{%(selector)s} ==  0
+            ||| % custom.alert,
+            'for': '%(esClusterSnapshotStatsUpTime)s' % custom.alert,
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              summary: '[Elasticsearch] Snapshot metrics API is broken',
+              message: '[{{ $labels.cluster }}] No data for cluster backup status.',
+            },
+          },
         ],
       },
     ],
