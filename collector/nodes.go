@@ -42,7 +42,7 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 			}
 		}
 	}
-	if len(node.HTTP) == 0 {
+	if node.HTTP == (NodeStatsHTTPResponse{}) {
 		roles["client"] = false
 	}
 	return roles
@@ -1351,6 +1351,20 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm_uptime", "seconds_total"),
+					"JVM uptime in seconds",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Uptime) / 1000
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return defaultNodeLabelValues(cluster, node)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
 					defaultNodeLabels, nil,
@@ -1507,6 +1521,18 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.TxSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "http", "open_connections"),
+					"Number of currently open HTTP connections",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.HTTP.CurrentOpen)
 				},
 				Labels: defaultNodeLabelValues,
 			},

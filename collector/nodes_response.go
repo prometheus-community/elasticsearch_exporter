@@ -24,7 +24,7 @@ type NodeStatsNodeResponse struct {
 	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
 	JVM              NodeStatsJVMResponse                       `json:"jvm"`
 	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
-	HTTP             map[string]int                             `json:"http"`
+	HTTP             NodeStatsHTTPResponse                      `json:"http"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
 }
@@ -42,6 +42,7 @@ type NodeStatsJVMResponse struct {
 	BufferPools map[string]NodeStatsJVMBufferPoolResponse `json:"buffer_pools"`
 	GC          NodeStatsJVMGCResponse                    `json:"gc"`
 	Mem         NodeStatsJVMMemResponse                   `json:"mem"`
+	Uptime      int64                                     `json:"uptime_in_millis"`
 }
 
 // NodeStatsJVMGCResponse defines node stats JVM garbage collector information structure

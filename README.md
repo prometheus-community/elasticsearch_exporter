@@ -170,6 +170,7 @@ Further Information
 | elasticsearch_jvm_memory_pool_max_bytes                               | counter   | 3           | JVM memory max by pool
 | elasticsearch_jvm_memory_pool_peak_used_bytes                         | counter   | 3           | JVM memory peak used by pool
 | elasticsearch_jvm_memory_pool_peak_max_bytes                          | counter   | 3           | JVM memory peak max by pool
+| elasticsearch_jvm_uptime_millis_total                                 | gauge     | 1           | JVM uptime in milliseconds
 | elasticsearch_os_cpu_percent                                          | gauge     | 1           | Percent CPU used by the OS
 | elasticsearch_os_load1                                                | gauge     | 1           | Shortterm load average
 | elasticsearch_os_load5                                                | gauge     | 1           | Midterm load average
@@ -199,6 +200,7 @@ Further Information
 | elasticsearch_transport_rx_size_bytes_total                           | counter   | 1           | Total number of bytes received
 | elasticsearch_transport_tx_packets_total                              | counter   | 1           | Count of packets sent
 | elasticsearch_transport_tx_size_bytes_total                           | counter   | 1           | Total number of bytes sent
+| elasticsearch_http_open_connections                                   | gauge     | 1           | Current number of open connections
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
