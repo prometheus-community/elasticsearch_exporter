@@ -95,7 +95,7 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Skipf("internal test error: %s", err)
 	}
-	r := New(log.NewNopLogger(), http.DefaultClient, u, 0)
+	r := New(log.NewNopLogger(), http.DefaultClient, u, 0, "elasticsearch")
 	if r.url != u {
 		t.Errorf("new Retriever mal-constructed")
 	}
@@ -107,7 +107,7 @@ func TestRetriever_RegisterConsumer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("internal test error: %s", err)
 	}
-	retriever := New(log.NewNopLogger(), mockES.Client(), u, 0)
+	retriever := New(log.NewNopLogger(), mockES.Client(), u, 0, "elasticsearch")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	consumerNames := []string{"consumer-1", "consumer-2"}
@@ -146,7 +146,7 @@ func TestRetriever_fetchAndDecodeClusterInfo(t *testing.T) {
 	if err != nil {
 		t.Skipf("internal test error: %s", err)
 	}
-	retriever := New(log.NewNopLogger(), mockES.Client(), u, 0)
+	retriever := New(log.NewNopLogger(), mockES.Client(), u, 0, "elasticsearch")
 	ci, err := retriever.fetchAndDecodeClusterInfo()
 	if err != nil {
 		t.Fatalf("failed to retrieve cluster info: %s", err)
@@ -166,7 +166,7 @@ func TestRetriever_Run(t *testing.T) {
 	}
 
 	// setup cluster info retriever
-	retriever := New(log.NewLogfmtLogger(os.Stdout), mockES.Client(), u, 0)
+	retriever := New(log.NewLogfmtLogger(os.Stdout), mockES.Client(), u, 0, "elasticsearch")
 
 	// setup mock consumer
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

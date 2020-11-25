@@ -45,14 +45,14 @@ type Indices struct {
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
 	jsonParseFailures prometheus.Counter
+	namespace         string
 
 	indexMetrics []*indexMetric
 	shardMetrics []*shardMetric
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
-
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, namespace string) *Indices {
 	indexLabels := labels{
 		keys: func(...string) []string {
 			return []string{"index", "cluster"}
@@ -984,6 +984,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Labels: shardLabels,
 			},
 		},
+		namespace: namespace,
 	}
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
@@ -1008,7 +1009,7 @@ func (i *Indices) ClusterLabelUpdates() *chan *clusterinfo.Response {
 
 // String implements the stringer interface. It is part of the clusterinfo.consumer interface
 func (i *Indices) String() string {
-	return namespace + "indices"
+	return i.namespace + "indices"
 }
 
 // Describe add Indices metrics descriptions

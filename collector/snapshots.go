@@ -51,7 +51,7 @@ type Snapshots struct {
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapshots {
+func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL, namespace string) *Snapshots {
 	return &Snapshots{
 		logger: logger,
 		client: client,

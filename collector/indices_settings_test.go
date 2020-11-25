@@ -52,7 +52,7 @@ func TestIndicesSettings(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
-			c := NewIndicesSettings(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewIndicesSettings(log.NewNopLogger(), http.DefaultClient, u, "elasticsearch")
 			nsr, err := c.fetchAndDecodeIndicesSettings()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode indices settings: %s", err)

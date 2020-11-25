@@ -12,10 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	namespace = "elasticsearch"
-)
-
 var (
 	colors                     = []string{"green", "yellow", "red"}
 	defaultClusterHealthLabels = []string{"cluster"}
@@ -48,7 +44,7 @@ type ClusterHealth struct {
 }
 
 // NewClusterHealth returns a new Collector exposing ClusterHealth stats.
-func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *ClusterHealth {
+func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL, namespace string) *ClusterHealth {
 	subsystem := "cluster_health"
 
 	return &ClusterHealth{

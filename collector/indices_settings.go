@@ -24,7 +24,7 @@ type IndicesSettings struct {
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
-func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *IndicesSettings {
+func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL, namespace string) *IndicesSettings {
 	return &IndicesSettings{
 		logger: logger,
 		client: client,

@@ -68,6 +68,9 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
+		promNamespace = kingpin.Flag("prom.namespace",
+			"Prometheus metrics namespace.").
+			Default("elasticsearch").Envar("PROM_NAMESPACE").String()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
 			Default("info").Envar("LOG_LEVEL").String()
@@ -110,13 +113,13 @@ func main() {
 	prometheus.MustRegister(versionMetric)
 
 	// cluster info retriever
-	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
+	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval, *promNamespace)
 
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL, *promNamespace))
+	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode, *promNamespace))
 
 	if *esExportIndices || *esExportShards {
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
+		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *promNamespace)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
@@ -125,15 +128,15 @@ func main() {
 	}
 
 	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL, *promNamespace))
 	}
 
 	if *esExportClusterSettings {
-		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL, *promNamespace))
 	}
 
 	if *esExportIndicesSettings {
-		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL, *promNamespace))
 	}
 
 	// create a http server

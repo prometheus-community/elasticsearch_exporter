@@ -30,7 +30,7 @@ func TestClusterHealth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		c := NewClusterHealth(log.NewNopLogger(), http.DefaultClient, u)
+		c := NewClusterHealth(log.NewNopLogger(), http.DefaultClient, u, "elasticsearch")
 		chr, err := c.fetchAndDecodeClusterHealth()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode cluster health: %s", err)

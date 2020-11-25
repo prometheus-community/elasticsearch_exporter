@@ -31,7 +31,7 @@ func TestClusterSettingsStats(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u, "elasticsearch")
 			nsr, err := c.fetchAndDecodeClusterSettingsStats()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)
@@ -66,7 +66,7 @@ func TestClusterMaxShardsPerNode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u, "elasticsearch")
 			nsr, err := c.fetchAndDecodeClusterSettingsStats()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)

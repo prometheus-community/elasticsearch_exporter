@@ -48,7 +48,7 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	return roles
 }
 
-func createRoleMetric(role string) *nodeMetric {
+func createRoleMetric(role, namespace string) *nodeMetric {
 	return &nodeMetric{
 		Type: prometheus.GaugeValue,
 		Desc: prometheus.NewDesc(
@@ -159,6 +159,7 @@ type Nodes struct {
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
+	namespace                       string
 
 	nodeMetrics               []*nodeMetric
 	gcCollectionMetrics       []*gcCollectionMetric
@@ -169,7 +170,7 @@ type Nodes struct {
 }
 
 // NewNodes defines Nodes Prometheus metrics
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
+func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node, namespace string) *Nodes {
 	return &Nodes{
 		logger: logger,
 		client: client,
@@ -189,6 +190,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
 		}),
+		namespace: namespace,
 
 		nodeMetrics: []*nodeMetric{
 			{
@@ -1862,7 +1864,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 
 		for _, role := range []string{"master", "data", "client", "ingest"} {
 			if roles[role] {
-				metric := createRoleMetric(role)
+				metric := createRoleMetric(role, c.namespace)
 				ch <- prometheus.MustNewConstMetric(
 					metric.Desc,
 					metric.Type,

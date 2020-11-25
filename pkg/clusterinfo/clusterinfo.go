@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	namespace = "elasticsearch"
 	subsystem = "clusterinfo"
 )
 
@@ -51,7 +50,7 @@ type Retriever struct {
 }
 
 // New creates a new Retriever
-func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
+func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration, namespace string) *Retriever {
 	return &Retriever{
 		consumerChannels: make(map[string]*chan *Response),
 		logger:           logger,
