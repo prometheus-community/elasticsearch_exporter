@@ -466,6 +466,54 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Labels: indexLabels,
 			},
 			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "docs_total"),
+					"Total count of documents within index",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Docs.Count)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "docs_primary"),
+					"Count of documents within primary index",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Docs.Count)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "store_size_bytes_total"),
+					"Current total size of stored data within index in bytes on all nodes",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Store.SizeInBytes)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "store_size_bytes_primary"),
+					"Current total size of stored data within index in bytes with only primary shards on all nodes",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Primaries.Store.SizeInBytes)
+				},
+				Labels: indexLabels,
+			},
+			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),

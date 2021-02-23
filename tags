@@ -1,0 +1,15 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+-go_out	vendor/github.com/golang/protobuf/proto/Makefile	/^	protoc --go_out=Mtestdata\/test.proto=github.com\/golang\/protobuf\/proto\/testdata,Mgoogle\/protobuf\/any.proto=github.com\/golang\/protobuf\/ptypes\/any:. proto3_proto\/proto3.proto$/;"	m
+BIN_DIR	Makefile	/^BIN_DIR                 ?= $(shell pwd)$/;"	m
+DOCKER_IMAGE_NAME	Makefile	/^DOCKER_IMAGE_NAME       ?= elasticsearch-exporter$/;"	m
+DOCKER_IMAGE_TAG	Makefile	/^DOCKER_IMAGE_TAG        ?= $(subst \/,-,$(shell git rev-parse --abbrev-ref HEAD))$/;"	m
+GO	Makefile	/^GO    := GO15VENDOREXPERIMENT=1 go$/;"	m
+GOLINTER	Makefile	/^GOLINTER                ?= $(GOPATH)\/bin\/gometalinter$/;"	m
+PREFIX	Makefile	/^PREFIX                  ?= $(shell pwd)$/;"	m
+PROMU	Makefile	/^PROMU := $(GOPATH)\/bin\/promu$/;"	m
+pkgs	Makefile	/^pkgs   = $(shell $(GO) list .\/... | grep -v \/vendor\/)$/;"	m
