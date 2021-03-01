@@ -183,6 +183,24 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 				},
 				Labels: defaultSnapshotRepositoryLabelValues,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "snapshot_stats", "latest_snapshot_timestamp_seconds"),
+					"Timestamp of the latest SUCCESS or PARTIAL snapshot",
+					defaultSnapshotRepositoryLabels, nil,
+				),
+				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
+					for i := len(snapshotsStats.Snapshots) - 1; i >= 0; i-- {
+						var snap = snapshotsStats.Snapshots[i]
+						if snap.State == "SUCCESS" || snap.State == "PARTIAL" {
+							return float64(snap.StartTimeInMillis / 1000)
+						}
+					}
+					return 0
+				},
+				Labels: defaultSnapshotRepositoryLabelValues,
+			},
 		},
 	}
 }
