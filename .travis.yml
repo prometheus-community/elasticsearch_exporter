@@ -1,13 +1,13 @@
 language: go
 
 go:
-  - 1.12.x
+  - 1.16.x
   - tip
 
 script:
   - make style
   - make vet
-  - make gometalinter
+  - make golangci
   - make build
   - make test
 

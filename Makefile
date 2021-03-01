@@ -13,7 +13,7 @@
 
 GO    := GO15VENDOREXPERIMENT=1 go
 PROMU := $(GOPATH)/bin/promu
-GOLINTER                ?= $(GOPATH)/bin/gometalinter
+GOLANGCI                ?= $(GOPATH)/bin/golangci-lint
 pkgs   = $(shell $(GO) list ./... | grep -v /vendor/)
 
 PREFIX                  ?= $(shell pwd)
@@ -67,14 +67,13 @@ promu:
 	        GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
 	        $(GO) get -u github.com/prometheus/promu
 
-gometalinter: $(GOLINTER)
+golangci: $(GOLANGCI)
 	@echo ">> linting code"
-	@$(GOLINTER) --install > /dev/null
-	@$(GOLINTER) --config=./.gometalinter.json ./...
+	@$(GOLANGCI) run
 
-$(GOPATH)/bin/gometalinter lint:
+$(GOPATH)/bin/golangci-lint run:
 	@GOOS=$(shell uname -s | tr A-Z a-z) \
 		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
-		$(GO) get -u github.com/alecthomas/gometalinter
+		$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.37.1
 
-.PHONY: all style format build test vet tarball docker promu $(GOPATH)/bin/gometalinter lint
+.PHONY: all style format build test vet tarball docker promu $(GOPATH)/bin/golangci-lint run

@@ -20,9 +20,9 @@ type ilmMetric struct {
 }
 
 type Ilm struct {
-	logger          log.Logger
-	client          *http.Client
-	url             *url.URL
+	logger log.Logger
+	client *http.Client
+	url    *url.URL
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
@@ -35,7 +35,7 @@ func NewIlm(logger log.Logger, client *http.Client, url *url.URL) *Ilm {
 	return &Ilm{
 		logger: logger,
 		client: client,
-		url: url,
+		url:    url,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "ilm", "up"),
@@ -55,7 +55,7 @@ func NewIlm(logger log.Logger, client *http.Client, url *url.URL) *Ilm {
 				prometheus.BuildFQName(namespace, "ilm", "index_status"),
 				"Status of ILM policy for index",
 				[]string{"index", "phase", "action", "step"}, nil),
-			Value: func (val int) float64 {
+			Value: func(val int) float64 {
 				return float64(val)
 			},
 			Labels: func(ilmIndex string, ilmPhase string, ilmAction string, ilmStep string) []string {

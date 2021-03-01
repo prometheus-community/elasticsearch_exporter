@@ -1026,8 +1026,9 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 	u := *i.url
 	u.Path = path.Join(u.Path, "/_all/_stats")
+	u.RawQuery = "ignore_unavailable=true"
 	if i.shards {
-		u.RawQuery = "level=shards"
+		u.RawQuery = u.RawQuery + "&level=shards"
 	}
 
 	res, err := i.client.Get(u.String())
