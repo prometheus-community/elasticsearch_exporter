@@ -1,7 +1,7 @@
 go:
     cgo: false
 repository:
-    path: github.com/justwatchcom/elasticsearch_exporter
+    path: github.com/mokrinsky/elasticsearch_exporter
 build:
     flags: -a -tags netgo
     ldflags: |

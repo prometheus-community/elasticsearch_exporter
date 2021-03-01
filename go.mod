@@ -1,4 +1,4 @@
-module github.com/justwatchcom/elasticsearch_exporter
+module github.com/mokrinsky/elasticsearch_exporter
 
 go 1.16
 

@@ -10,8 +10,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log/level"
-	"github.com/justwatchcom/elasticsearch_exporter/collector"
-	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/mokrinsky/elasticsearch_exporter/collector"
+	"github.com/mokrinsky/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
