@@ -1,6 +1,6 @@
-# Elasticsearch Exporter [![Build Status](https://travis-ci.org/justwatchcom/elasticsearch_exporter.svg?branch=master)](https://travis-ci.org/justwatchcom/elasticsearch_exporter)
+# Elasticsearch Exporter [![Build Status](https://travis-ci.org/mokrinsky/elasticsearch_exporter.svg?branch=master)](https://travis-ci.org/mokrinsky/elasticsearch_exporter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/justwatch/elasticsearch_exporter.svg?maxAge=604800)](https://hub.docker.com/r/justwatch/elasticsearch_exporter)
-[![Go Report Card](https://goreportcard.com/badge/github.com/justwatchcom/elasticsearch_exporter)](https://goreportcard.com/report/github.com/justwatchcom/elasticsearch_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mokrinsky/elasticsearch_exporter)](https://goreportcard.com/report/github.com/mokrinsky/elasticsearch_exporter)
 
 Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
@@ -50,6 +50,7 @@ elasticsearch_exporter --help
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster. | false |
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
+| es.ilm                  | 1.1.0-u1              | If true, query stats for the indices covered by index lifecycle management policies. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -76,6 +77,7 @@ es.indices | `indices` `monitor` (per index or `*`) | All actions that are requi
 es.indices_settings | `indices` `monitor` (per index or `*`) | 
 es.shards | not sure if `indices` or `cluster` `monitor` or both | 
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
+es.ilm | `read_ilm` |
 
 Further Information
 - [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
@@ -110,6 +112,7 @@ Further Information
 | elasticsearch_filesystem_io_stats_device_write_operations_count       | gauge     | 1           | Count of disk write operations
 | elasticsearch_filesystem_io_stats_device_read_size_kilobytes_sum      | gauge     | 1           | Total kilobytes read from disk
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum     | gauge     | 1           | Total kilobytes written to disk
+| elasticsearch_ilm_index_status                                        | gauge     | 1           | Boolean identifier of ILM status. Contains phase, step and action in tags.
 | elasticsearch_indices_docs                                            | gauge     | 1           | Count of documents on this node
 | elasticsearch_indices_docs_deleted                                    | gauge     | 1           | Count of deleted documents on this node
 | elasticsearch_indices_docs_primary                                    | gauge     |             | Count of documents with only primary shards on all nodes

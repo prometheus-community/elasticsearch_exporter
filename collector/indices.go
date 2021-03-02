@@ -990,10 +990,11 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	go func() {
 		_ = level.Debug(logger).Log("msg", "starting cluster info receive loop")
 		for ci := range indices.clusterInfoCh {
-			_ = level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
-			if ci != nil {
-				indices.lastClusterInfo = ci
+			if ci == nil {
+				continue
 			}
+			_ = level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
+			indices.lastClusterInfo = ci
 		}
 		_ = level.Debug(logger).Log("msg", "exiting cluster info receive loop")
 	}()

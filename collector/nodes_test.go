@@ -154,7 +154,10 @@ func (h *basicAuth) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.checkAuth(w, r) {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"ES\"")
 		w.WriteHeader(401)
-		w.Write([]byte("401 Unauthorized\n"))
+		_, err := w.Write([]byte("401 Unauthorized\n"))
+		if err != nil {
+			return
+		}
 		return
 	}
 

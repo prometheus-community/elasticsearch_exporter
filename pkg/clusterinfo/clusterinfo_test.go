@@ -177,7 +177,10 @@ func TestRetriever_Run(t *testing.T) {
 	}
 
 	// start retriever
-	retriever.Run(ctx)
+	err = retriever.Run(ctx)
+	if err != nil {
+		t.Fatal("retriever didn't start")
+	}
 
 	// trigger update
 	retriever.Update()

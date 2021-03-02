@@ -19,6 +19,7 @@ type ilmMetric struct {
 	Labels func(ilmIndex string, ilmPhase string, ilmAction string, ilmStep string) []string
 }
 
+// Index Lifecycle Management information object
 type Ilm struct {
 	logger log.Logger
 	client *http.Client
@@ -31,6 +32,7 @@ type Ilm struct {
 	ilmMetric ilmMetric
 }
 
+// NewIlm defines Index Lifecycle Management Prometheus metrics
 func NewIlm(logger log.Logger, client *http.Client, url *url.URL) *Ilm {
 	return &Ilm{
 		logger: logger,
@@ -65,6 +67,7 @@ func NewIlm(logger log.Logger, client *http.Client, url *url.URL) *Ilm {
 	}
 }
 
+// Describe adds metrics description
 func (i *Ilm) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.ilmMetric.Desc
 	ch <- i.up.Desc()
@@ -72,6 +75,7 @@ func (i *Ilm) Describe(ch chan<- *prometheus.Desc) {
 	ch <- i.jsonParseFailures.Desc()
 }
 
+// Bool2int translates boolean variable to its integer alternative
 func (i *Ilm) Bool2int(managed bool) int {
 	if managed {
 		return 1
@@ -114,6 +118,7 @@ func (i *Ilm) fetchAndDecodeIlm() (IlmResponse, error) {
 	return ir, nil
 }
 
+// Collect pulls metric values from Elasticsearch
 func (i *Ilm) Collect(ch chan<- prometheus.Metric) {
 	defer func() {
 		ch <- i.up
