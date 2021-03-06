@@ -1077,7 +1077,6 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 		)
 		return
 	}
-	i.totalScrapes.Inc()
 	i.up.Set(1)
 
 	// Index stats
