@@ -3,6 +3,7 @@ FROM quay.io/prometheus/golang-builder as builder
 ADD .   /go/src/github.com/justwatchcom/elasticsearch_exporter
 WORKDIR /go/src/github.com/justwatchcom/elasticsearch_exporter
 
+RUN go mod init
 RUN make
 
 FROM        quay.io/prometheus/busybox:latest
