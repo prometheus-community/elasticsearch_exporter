@@ -1,9 +1,8 @@
-FROM quay.io/prometheus/golang-builder as builder
+FROM quay.io/prometheus/golang-builder:1.14-main as builder
 
 ADD .   /go/src/github.com/justwatchcom/elasticsearch_exporter
 WORKDIR /go/src/github.com/justwatchcom/elasticsearch_exporter
 
-RUN go mod init
 RUN make
 
 FROM        quay.io/prometheus/busybox:latest
