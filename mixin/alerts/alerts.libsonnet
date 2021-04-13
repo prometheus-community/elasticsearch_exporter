@@ -78,9 +78,7 @@
           {
             alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              sum without (host, name, instance, es_master_node, es_data_node, es_ingest_node, es_client_node)(
-                increase(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])
-              ) >  %(esClusterThreadpoolErrorThreshold)s
+              max by (cluster, name, type) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolWarningTime)s' % custom.alert,
             labels: {
@@ -94,9 +92,7 @@
           {
             alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              sum without (host, name, instance, es_master_node, es_data_node, es_ingest_node, es_client_node)(
-                increase(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])
-              ) >  %(esClusterThreadpoolErrorThreshold)s
+              max by (cluster, name, type) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolCriticalTime)s' % custom.alert,
             labels: {
