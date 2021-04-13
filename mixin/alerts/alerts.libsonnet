@@ -86,7 +86,7 @@
             },
             annotations: {
               summary: '[Elasticsearch] High rejection rate for {{ $labels.type }} threadpool',
-              message: '[{{ $labels.cluster }}] threadpool rejection over %(esClusterThreadpoolWarningTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
+              message: '[{{ $labels.cluster }}][{{ $labels.name }}] threadpool rejection over %(esClusterThreadpoolWarningTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
             },
           },
           {
@@ -100,7 +100,7 @@
             },
             annotations: {
               summary: '[Elasticsearch] High rejection rate for {{ $labels.type }} threadpool',
-              message: '[{{ $labels.cluster }}] threadpool rejection over %(esClusterThreadpoolCriticalTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
+              message: '[{{ $labels.cluster }}][{{ $labels.name }}] threadpool rejection over %(esClusterThreadpoolCriticalTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
             },
           },
           {
