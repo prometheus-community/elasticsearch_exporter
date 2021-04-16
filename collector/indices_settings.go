@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -31,9 +32,22 @@ type IndicesSettings struct {
 	client *http.Client
 	url    *url.URL
 
-	up                              prometheus.Gauge
-	readOnlyIndices                 prometheus.Gauge
+	up              prometheus.Gauge
+	readOnlyIndices prometheus.Gauge
+
 	totalScrapes, jsonParseFailures prometheus.Counter
+	metrics                         []*indicesSettingsMetric
+}
+
+var (
+	defaultIndicesTotalFieldsLabels = []string{"index"}
+	defaultTotalFieldsValue         = 1000 //es default configuration for total fields
+)
+
+type indicesSettingsMetric struct {
+	Type  prometheus.ValueType
+	Desc  *prometheus.Desc
+	Value func(indexSettings Settings) float64
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
@@ -59,6 +73,23 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
 		}),
+		metrics: []*indicesSettingsMetric{
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings_stats", "total_fields"),
+					"Mappig setting for total_fields",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 10)
+					if err != nil {
+						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
+		},
 	}
 }
 
@@ -135,9 +166,17 @@ func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
 	cs.up.Set(1)
 
 	var c int
-	for _, value := range asr {
+	for indexName, value := range asr {
 		if value.Settings.IndexInfo.Blocks.ReadOnly == "true" {
 			c++
+		}
+		for _, metric := range cs.metrics {
+			ch <- prometheus.MustNewConstMetric(
+				metric.Desc,
+				metric.Type,
+				metric.Value(value.Settings),
+				indexName,
+			)
 		}
 	}
 	cs.readOnlyIndices.Set(float64(c))
