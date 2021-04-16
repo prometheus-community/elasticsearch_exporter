@@ -77,8 +77,8 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_settings_stats", "total_fields"),
-					"Mappig setting for total_fields",
+					prometheus.BuildFQName(namespace, "indices_settings", "total_fields"),
+					"index mapping setting for total_fields",
 					defaultIndicesTotalFieldsLabels, nil,
 				),
 				Value: func(indexSettings Settings) float64 {
