@@ -3,6 +3,7 @@ FROM quay.io/prometheus/golang-builder as builder
 ADD .   /go/src/github.com/justwatchcom/elasticsearch_exporter
 WORKDIR /go/src/github.com/justwatchcom/elasticsearch_exporter
 
+RUN go mod download github.com/alecthomas/units
 RUN make
 
 FROM scratch

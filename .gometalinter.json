@@ -2,7 +2,9 @@
   "Cyclo": 40,
   "Deadline": "6m",
   "EnableGC": true,
-  "Exclude": ["TLS InsecureSkipVerify set true.", "Potential file inclusion via variable", "Errors unhandled.,LOW,HIGH"],
-  "Sort": ["linter", "severity", "path", "line"],
-  "Vendor": true
+  "Exclude": ["TLS InsecureSkipVerify set true.",
+    "Potential file inclusion via variable",
+    "Errors unhandled.,LOW,HIGH"
+  ],
+  "Sort": ["linter", "severity", "path", "line"]
 }
