@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.ARTI_TOKEN }}
       - name: Build docker image
         run: |
-          docker build -f ./build/Dockerfile -t temp-elastic-exporter:latest .
+          docker build -f ./Dockerfile -t temp-elastic-exporter:latest .
       
       - name: Scan local image
         id: scan-local
