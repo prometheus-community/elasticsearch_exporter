@@ -22,7 +22,7 @@ jobs:
       id: sync
       uses: aormsby/Fork-Sync-With-Upstream-action@v2.1
       with:
-        upstream_repository: prometheus/jmx_exporter
+        upstream_repository: justwatchcom/elasticsearch_exporter
         upstream_branch: master
         target_branch: master
         git_pull_args: --allow-unrelated-histories
