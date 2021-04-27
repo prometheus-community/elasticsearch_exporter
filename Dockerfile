@@ -5,8 +5,7 @@ WORKDIR /go/src/github.com/justwatchcom/elasticsearch_exporter
 
 RUN make
 
-FROM        quay.io/prometheus/busybox:latest
-MAINTAINER  The Prometheus Authors <prometheus-developers@googlegroups.com>
+FROM scratch
 
 COPY --from=builder /go/src/github.com/justwatchcom/elasticsearch_exporter/elasticsearch_exporter  /bin/elasticsearch_exporter
 
