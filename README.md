@@ -1,26 +1,26 @@
-# Elasticsearch Exporter [![Build Status](https://travis-ci.org/justwatchcom/elasticsearch_exporter.svg?branch=master)](https://travis-ci.org/justwatchcom/elasticsearch_exporter)
-[![Docker Pulls](https://img.shields.io/docker/pulls/justwatch/elasticsearch_exporter.svg?maxAge=604800)](https://hub.docker.com/r/justwatch/elasticsearch_exporter)
-[![Go Report Card](https://goreportcard.com/badge/github.com/justwatchcom/elasticsearch_exporter)](https://goreportcard.com/report/github.com/justwatchcom/elasticsearch_exporter)
+# Elasticsearch Exporter 
+[![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
 Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
 ### Installation
 
 For pre-built binaries please take a look at the releases.
-https://github.com/justwatchcom/elasticsearch_exporter/releases
+https://github.com/prometheus-community/elasticsearch_exporter/releases
 
 #### Docker
 
 ```bash
-docker pull justwatch/elasticsearch_exporter:1.1.0
-docker run --rm -p 9114:9114 justwatch/elasticsearch_exporter:1.1.0
+docker pull quay.io/prometheuscommunity/elasticsearch_exporter:1.1.0
+docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch_exporter:1.1.0
 ```
 
 Example `docker-compose.yml`:
 
 ```yaml
 elasticsearch_exporter:
-    image: justwatch/elasticsearch_exporter:1.1.0
+    image: quay.io/prometheuscommunity/elasticsearch_exporter:1.1.0
     command:
      - '--es.uri=http://elasticsearch:9200'
     restart: always
@@ -225,8 +225,10 @@ Please refer to the [Prometheus SD documentation](https://prometheus.io/docs/ope
 
 ## Credit & License
 
-`elasticsearch_exporter` is maintained by the nice folks from [JustWatch](https://www.justwatch.com/)
-and licensed under the terms of the Apache license.
+`elasticsearch_exporter` is maintained by the [Prometheus Community](https://www.prometheus.io/community/).
+
+`elasticsearch_exporter` was then maintained by the nice folks from [JustWatch](https://www.justwatch.com/).
+Then transferred this repository to the Prometheus Community in May 2021.
 
 This package was originally created and maintained by [Eric Richardson](https://github.com/ewr),
 who transferred this repository to us in January 2017.

@@ -23,7 +23,7 @@ spec:
         - /bin/elasticsearch_exporter
         - --es.uri=http://elasticsearch:9200
         - --es.all
-        image: justwatch/elasticsearch_exporter:1.1.0
+        image: quay.io/prometheuscommunity/elasticsearch-exporter:1.1.0
         securityContext:
           capabilities:
             drop:
