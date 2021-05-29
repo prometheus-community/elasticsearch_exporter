@@ -3,3 +3,4 @@ elasticsearch_exporter
 *.tar.gz
 *-stamp
 .tarballs
+/vendor
