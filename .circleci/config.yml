@@ -16,8 +16,8 @@ jobs:
 
     steps:
     - prometheus/setup_environment
-    # TODO: Fix golangci-lint and test issues to use plain `make` test.
-    - run: make precheck style check_license unused build
+    # TODO: Fix test issues to use plain `make` test.
+    - run: make precheck style check_license lint unused build
     - prometheus/store_artifact:
         file: elasticsearch_exporter
 
