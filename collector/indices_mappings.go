@@ -62,11 +62,11 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 			Help: "Was the last scrape of the ElasticSearch Indices Mappings endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "total_scrapes"),
+			Name: prometheus.BuildFQName(namespace, subsystem, "scrapes_total"),
 			Help: "Current total ElasticSearch Indices Mappings scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures"),
+			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures_total"),
 			Help: "Number of errors while parsing JSON.",
 		}),
 		metrics: []*indicesMappingsMetric{
