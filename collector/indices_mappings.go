@@ -73,7 +73,7 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, subsystem, "field_count"),
+					prometheus.BuildFQName(namespace, subsystem, "fields"),
 					"Current number fields within cluster.",
 					defaultIndicesMappingsLabels, nil,
 				),
