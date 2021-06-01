@@ -129,7 +129,7 @@ Further Information
 | elasticsearch_indices_indexing_delete_total                           | counter   | 1           | Total indexing deletes
 | elasticsearch_indices_indexing_index_time_seconds_total               | counter   | 1           | Cumulative index time in seconds
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
-| elasticsearch_indices_mappings_stats_fields                           | gauge     |             | Current number fields in index
+| elasticsearch_indices_mappings_stats_fields                           | gauge     |             | Count of fields currently mapped by index
 | elasticsearch_indices_merges_docs_total                               | counter   | 1           | Cumulative docs merged
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
@@ -153,7 +153,6 @@ Further Information
 | elasticsearch_indices_segments_memory_bytes                           | gauge     | 1           | Current memory size of segments in bytes
 | elasticsearch_indices_settings_stats_read_only_indices                | gauge     | 1           | Count of indices that have read_only_allow_delete=true
 | elasticsearch_indices_settings_total_fields                           | gauge     |             | Index setting value for index.mapping.total_fields.limit (total allowable mapped fields in a index)
-| elasticsearch_indices_mappings_stats_fields                           | gauge     |             | Count of fields currently mapped by index
 | elasticsearch_indices_shards_docs                                     | gauge     | 3           | Count of documents on this shard
 | elasticsearch_indices_shards_docs_deleted                             | gauge     | 3           | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                                | gauge     | 1           | Current size of stored index data in bytes
