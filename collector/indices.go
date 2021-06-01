@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -57,6 +58,7 @@ type Indices struct {
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
+	totalScrapeTime   prometheus.Counter
 	jsonParseFailures prometheus.Counter
 
 	indexMetrics []*indexMetric
@@ -111,6 +113,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "total_scrapes"),
 			Help: "Current total ElasticSearch index scrapes.",
+		}),
+		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: prometheus.BuildFQName(namespace, "index_stats", "scrape_time_seconds_total"),
+			Help: "Current total time spent in ElasticSearch index scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),
@@ -1030,6 +1036,7 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.Desc
 	}
 	ch <- i.up.Desc()
+	ch <- i.totalScrapeTime.Desc()
 	ch <- i.totalScrapes.Desc()
 	ch <- i.jsonParseFailures.Desc()
 }
@@ -1073,10 +1080,14 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 // Collect gets Indices metric values
 func (i *Indices) Collect(ch chan<- prometheus.Metric) {
+	now := time.Now()
 	i.totalScrapes.Inc()
 	defer func() {
+		_ = level.Debug(i.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
+		i.totalScrapeTime.Add(time.Since(now).Seconds())
 		ch <- i.up
 		ch <- i.totalScrapes
+		ch <- i.totalScrapeTime
 		ch <- i.jsonParseFailures
 	}()
 
