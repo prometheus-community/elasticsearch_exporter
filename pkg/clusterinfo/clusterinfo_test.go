@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -72,8 +73,11 @@ func (mockES) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type mockConsumer struct {
 	name string
+
+	mu   sync.RWMutex
 	data *Response
-	ch   chan *Response
+
+	ch chan *Response
 }
 
 func newMockConsumer(ctx context.Context, name string, t *testing.T) *mockConsumer {
@@ -85,14 +89,22 @@ func newMockConsumer(ctx context.Context, name string, t *testing.T) *mockConsum
 		for {
 			select {
 			case d := <-mc.ch:
+				mc.mu.Lock()
 				mc.data = d
 				t.Logf("consumer %s received data from channel: %+v\n", mc, mc.data)
+				mc.mu.Unlock()
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 	return mc
+}
+
+func (mc *mockConsumer) getData() Response {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	return *mc.data
 }
 
 func (mc *mockConsumer) String() string {
@@ -196,7 +208,7 @@ func TestRetriever_Run(t *testing.T) {
 	retriever.Update()
 	time.Sleep(20 * time.Millisecond)
 	// ToDo: check mockConsumers received data
-	t.Logf("%+v\n", mc.data)
+	t.Logf("%+v\n", mc.getData())
 
 	// check for deadlocks
 	select {
