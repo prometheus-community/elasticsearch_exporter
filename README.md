@@ -41,24 +41,26 @@ Below is the command line options summary:
 elasticsearch_exporter --help
 ```
 
-| Argument                | Introduced in Version | Description | Default     |
-| --------                | --------------------- | ----------- | ----------- |
-| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | http://localhost:9200 |
-| es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
-| es.cluster_settings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
-| es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
-| es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster. | false |
-| es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
-| es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
-| es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
-| es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
-| es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
-| es.client-cert          | 1.0.2                 | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
-| es.clusterinfo.interval | 1.1.0rc1              |  Cluster info update interval for the cluster label | 5m |
-| es.ssl-skip-verify      | 1.0.4rc1              | Skip SSL verification when connecting to Elasticsearch. | false |
-| web.listen-address      | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
-| web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
-| version                 | 1.0.2                 | Show version info on stdout and exit. | |
+| Argument                 | Introduced in Version | Description | Default     |
+| --------                 | --------------------- | ----------- | ----------- |
+| es.uri                   | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | http://localhost:9200 |
+| es.all                   | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
+| es.cluster_settings      | 1.1.0rc1              | If true, query stats for cluster settings. | false |
+| es.indices               | 1.0.2                 | If true, query stats for indices in the cluster, based on es.indices-list. | false |
+| es.indices-list          | 1.1.1                 | Comma separated list or wildcard expression of index names in the cluster, for which stats should be exported. | * |
+| es.indices_settings      | 1.0.4rc1              | If true, query settings stats for indices in the cluster, based on es.indices_settings-list. | false |
+| es.indices_settings-list | 1.1.1                 | Comma separated list or wildcard expression of index names in the cluster, for which settings should be exported. | * |
+| es.shards                | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
+| es.snapshots             | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
+| es.timeout               | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
+| es.ca                    | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
+| es.client-private-key    | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
+| es.client-cert           | 1.0.2                 | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
+| es.clusterinfo.interval  | 1.1.0rc1              |  Cluster info update interval for the cluster label | 5m |
+| es.ssl-skip-verify       | 1.0.4rc1              | Skip SSL verification when connecting to Elasticsearch. | false |
+| web.listen-address       | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
+| web.telemetry-path       | 1.0.2                 | Path under which to expose metrics. | /metrics |
+| version                  | 1.0.2                 | Show version info on stdout and exit. | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`. 
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
