@@ -91,8 +91,8 @@ func newMockConsumer(ctx context.Context, name string, t *testing.T) *mockConsum
 			case d := <-mc.ch:
 				mc.mu.Lock()
 				mc.data = d
-				mc.mu.Unlock()
 				t.Logf("consumer %s received data from channel: %+v\n", mc, mc.data)
+				mc.mu.Unlock()
 			case <-ctx.Done():
 				return
 			}
