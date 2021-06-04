@@ -28,10 +28,21 @@ type Settings struct {
 
 // IndexInfo defines the blocks of the current index
 type IndexInfo struct {
-	Blocks Blocks `json:"blocks"`
+	Blocks  Blocks  `json:"blocks"`
+	Mapping Mapping `json:"mapping"`
 }
 
 // Blocks defines whether current index has read_only_allow_delete enabled
 type Blocks struct {
 	ReadOnly string `json:"read_only_allow_delete"`
+}
+
+// Mapping defines mapping settings
+type Mapping struct {
+	TotalFields TotalFields `json:"total_fields"`
+}
+
+// TotalFields defines the limit on the number of mapped fields
+type TotalFields struct {
+	Limit string `json:"limit"`
 }
