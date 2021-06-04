@@ -1528,7 +1528,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "jvm_gc", "collection_seconds_count"),
+					prometheus.BuildFQName(namespace, "jvm_gc", "collection_count"),
 					"Count of JVM GC runs",
 					append(defaultNodeLabels, "gc"), nil,
 				),
