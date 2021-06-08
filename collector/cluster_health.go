@@ -56,7 +56,7 @@ type ClusterHealth struct {
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
-	totalScrapeTime   prometheus.Counter
+	scrapeDuration    prometheus.Gauge
 	jsonParseFailures prometheus.Counter
 
 	metrics      []*clusterHealthMetric
@@ -80,9 +80,9 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 			Name: prometheus.BuildFQName(namespace, subsystem, "total_scrapes"),
 			Help: "Current total ElasticSearch cluster health scrapes.",
 		}),
-		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "scrape_time_seconds_total"),
-			Help: "Current total time spent in ElasticSearch cluster health scrapes.",
+		scrapeDuration: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: prometheus.BuildFQName(namespace, subsystem, "scrape_duration_seconds"),
+			Help: "Duration spent in ElasticSearch cluster health scrape.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures"),
@@ -237,7 +237,7 @@ func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.statusMetric.Desc
 
 	ch <- c.up.Desc()
-	ch <- c.totalScrapeTime.Desc()
+	ch <- c.scrapeDuration.Desc()
 	ch <- c.totalScrapes.Desc()
 	ch <- c.jsonParseFailures.Desc()
 }
@@ -281,10 +281,10 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 	var err error
 	c.totalScrapes.Inc()
 	defer func() {
-		_ = level.Debug(c.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
-		c.totalScrapeTime.Add(time.Since(now).Seconds())
+		_ = level.Debug(c.logger).Log("msg", "cluster health scrape took", "seconds", time.Since(now).Seconds())
+		c.scrapeDuration.Set(time.Since(now).Seconds())
 		ch <- c.up
-		ch <- c.totalScrapeTime
+		ch <- c.scrapeDuration
 		ch <- c.totalScrapes
 		ch <- c.jsonParseFailures
 	}()

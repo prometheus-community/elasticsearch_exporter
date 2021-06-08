@@ -59,7 +59,7 @@ type Snapshots struct {
 
 	up                prometheus.Gauge
 	totalScrapes      prometheus.Counter
-	totalScrapeTime   prometheus.Counter
+	scrapeDuration    prometheus.Gauge
 	jsonParseFailures prometheus.Counter
 
 	snapshotMetrics   []*snapshotMetric
@@ -81,9 +81,9 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
 			Help: "Current total ElasticSearch snapshots scrapes.",
 		}),
-		totalScrapeTime: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "scrape_time_seconds_total"),
-			Help: "Current total time spent in ElasticSearch snapshots scrapes.",
+		scrapeDuration: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "scrape_duration_seconds"),
+			Help: "Duration spent in ElasticSearch snapshots scrape.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),
@@ -231,7 +231,7 @@ func (s *Snapshots) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.Desc
 	}
 	ch <- s.up.Desc()
-	ch <- s.totalScrapeTime.Desc()
+	ch <- s.scrapeDuration.Desc()
 	ch <- s.totalScrapes.Desc()
 	ch <- s.jsonParseFailures.Desc()
 }
@@ -293,11 +293,11 @@ func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
 	now := time.Now()
 	s.totalScrapes.Inc()
 	defer func() {
-		_ = level.Debug(s.logger).Log("msg", "scrape took", "seconds", time.Since(now).Seconds())
-		s.totalScrapeTime.Add(time.Since(now).Seconds())
+		_ = level.Debug(s.logger).Log("msg", "snapshots scrape took", "seconds", time.Since(now).Seconds())
+		s.scrapeDuration.Set(time.Since(now).Seconds())
 		ch <- s.up
 		ch <- s.totalScrapes
-		ch <- s.totalScrapeTime
+		ch <- s.scrapeDuration
 		ch <- s.jsonParseFailures
 	}()
 
