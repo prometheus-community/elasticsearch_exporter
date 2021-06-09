@@ -16,6 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -1063,7 +1064,13 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		i.jsonParseFailures.Inc()
+		return isr, err
+	}
+
+	if err := json.Unmarshal(bts, &isr); err != nil {
 		i.jsonParseFailures.Inc()
 		return isr, err
 	}

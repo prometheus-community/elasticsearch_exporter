@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -284,7 +285,12 @@ func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
 		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(bts, &response); err != nil {
 		return nil, err
 	}
 
