@@ -1,3 +1,19 @@
+## 1.2.0
+
+This release marks the first release under the prometheus-community organization.
+
+* [FEATURE] Added elasticsearch_clustersettings_stats_max_shards_per_node metric
+* [FEATURE] Added elasticsearch_indices_shards_store_size_in_bytes metric
+* [FEATURE] Added --es.indices_mappings flag to scrape elasticsearch index mapping stats
+* [FEATURE] Added elasticsearch_indices_mappings_stats_fields metric
+* [FEATURE] Added elasticsearch_indices_mappings_stats_json_parse_failures_total metric
+* [FEATURE] Added elasticsearch_indices_mappings_stats_scrapes_total metric
+* [FEATURE] Added elasticsearch_indices_mappings_stats_up metric
+* [FEATURE] Added elasticsearch_indices_settings_total_fields metric
+* [FEATURE] Added elasticsearch_snapshot_stats_latest_snapshot_timestamp_seconds metric
+* [ENHANCEMENT] Added support for reloading the tls client certificate in case it changes on disk
+* [BUGFIX] Fixed the elasticsearch_indices_shards_docs metric name
+
 ## 1.1.0
 
 repeating the breaking changes introduced in 1.1.0rc1:
@@ -39,10 +55,10 @@ build fix: remove unnecessary conversion
 * [FEATURE] new collector for cluster settings
 * [FEATURE] new collector for indices settings
 * [FEATURE] cluster info collector. The collector periodically queries the / endpoints and provides the other collectors with a semi up-to-date cluster label
-* 
+*
 * [FEATURE]/ [BUGFIX] grafana dashboard improvements and fixes
 * [BUGFIX] Fixed createTLSConfig function. Return full tls configuration when ca, crt, key and insecure flag are set
-* 
+*
 * [INTERNAL] added code linting to build pipeline
 
 ## 1.0.4rc1

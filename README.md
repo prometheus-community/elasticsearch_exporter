@@ -1,4 +1,4 @@
-# Elasticsearch Exporter 
+# Elasticsearch Exporter
 [![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
@@ -60,7 +60,7 @@ elasticsearch_exporter --help
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
 
-Commandline parameters start with a single `-` for versions less than `1.1.0rc1`. 
+Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
 by replacing `.` and `-` with `_` and upper-casing the parameter name.
 
@@ -71,17 +71,17 @@ ES 7.x supports RBACs. The following security privileges are required for the el
 Setting | Privilege Required | Description
 :---- | :---- | :----
 exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
-es.cluster_settings | `cluster` `monitor` | 
-es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status) 
-es.indices_settings | `indices` `monitor` (per index or `*`) | 
-es.shards | not sure if `indices` or `cluster` `monitor` or both | 
+es.cluster_settings | `cluster` `monitor` |
+es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
+es.indices_settings | `indices` `monitor` (per index or `*`) |
+es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 
 Further Information
 - [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
- 
+
 ### Metrics
 
 |Name                                                                   |Type       |Cardinality  |Help
@@ -102,6 +102,7 @@ Further Information
 | elasticsearch_cluster_health_status                                   | gauge     | 3           | Whether all primary and replica shards are allocated.
 | elasticsearch_cluster_health_timed_out                                | gauge     | 1           | Number of cluster health checks timed out
 | elasticsearch_cluster_health_unassigned_shards                        | gauge     | 1           | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
+| elasticsearch_clustersettings_stats_max_shards_per_node               | gauge     | 0           | Current maximum number of shards per node setting.
 | elasticsearch_filesystem_data_available_bytes                         | gauge     | 1           | Available space on block device in bytes
 | elasticsearch_filesystem_data_free_bytes                              | gauge     | 1           | Free space on block device in bytes
 | elasticsearch_filesystem_data_size_bytes                              | gauge     | 1           | Size of block device in bytes
@@ -129,7 +130,10 @@ Further Information
 | elasticsearch_indices_indexing_delete_total                           | counter   | 1           | Total indexing deletes
 | elasticsearch_indices_indexing_index_time_seconds_total               | counter   | 1           | Cumulative index time in seconds
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
-| elasticsearch_indices_mappings_stats_fields                           | gauge     |             | Count of fields currently mapped by index
+| elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
+| elasticsearch_indices_mappings_stats_json_parse_failures_total        | counter   | 0           | Number of errors while parsing JSON
+| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total ElasticSearch Indices Mappings scrapes
+| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the ElasticSearch Indices Mappings endpoint successful
 | elasticsearch_indices_merges_docs_total                               | counter   | 1           | Cumulative docs merged
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
@@ -185,6 +189,7 @@ Further Information
 | elasticsearch_snapshot_stats_number_of_snapshots                      | gauge     | 1           | Total number of snapshots
 | elasticsearch_snapshot_stats_oldest_snapshot_timestamp                | gauge     | 1           | Oldest snapshot timestamp
 | elasticsearch_snapshot_stats_snapshot_start_time_timestamp            | gauge     | 1           | Last snapshot start timestamp
+| elasticsearch_snapshot_stats_latest_snapshot_timestamp_seconds        | gauge     | 1           | Timestamp of the latest SUCCESS or PARTIAL snapshot
 | elasticsearch_snapshot_stats_snapshot_end_time_timestamp              | gauge     | 1           | Last snapshot end timestamp
 | elasticsearch_snapshot_stats_snapshot_number_of_failures              | gauge     | 1           | Last snapshot number of failures
 | elasticsearch_snapshot_stats_snapshot_number_of_indices               | gauge     | 1           | Last snapshot number of indices
