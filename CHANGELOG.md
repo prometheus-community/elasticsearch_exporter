@@ -1,3 +1,14 @@
+## 1.2.0 / 2021-06-10
+
+This release marks the first release under the prometheus-community organization.
+
+* [FEATURE] Added elasticsearch_clustersettings_stats_max_shards_per_node metric. #277
+* [FEATURE] Added elasticsearch_indices_shards_store_size_in_bytes metric. #292
+* [FEATURE] Added --es.indices_mappings flag to scrape elasticsearch index mapping stats and elasticsearch_indices_mappings_stats collector. #411
+* [FEATURE] Added elasticsearch_snapshot_stats_latest_snapshot_timestamp_seconds metric. #318
+* [ENHANCEMENT] Added support for reloading the tls client certificate in case it changes on disk. #414
+* [BUGFIX] Fixed the elasticsearch_indices_shards_docs metric name. #291
+
 ## 1.1.0
 
 repeating the breaking changes introduced in 1.1.0rc1:
@@ -39,10 +50,10 @@ build fix: remove unnecessary conversion
 * [FEATURE] new collector for cluster settings
 * [FEATURE] new collector for indices settings
 * [FEATURE] cluster info collector. The collector periodically queries the / endpoints and provides the other collectors with a semi up-to-date cluster label
-* 
+*
 * [FEATURE]/ [BUGFIX] grafana dashboard improvements and fixes
 * [BUGFIX] Fixed createTLSConfig function. Return full tls configuration when ca, crt, key and insecure flag are set
-* 
+*
 * [INTERNAL] added code linting to build pipeline
 
 ## 1.0.4rc1
