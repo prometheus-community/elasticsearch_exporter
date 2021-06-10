@@ -1,4 +1,4 @@
-## 1.2.0
+## 1.2.0 / 2021-06-10
 
 This release marks the first release under the prometheus-community organization.
 
