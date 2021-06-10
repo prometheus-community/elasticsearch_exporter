@@ -12,15 +12,15 @@ https://github.com/prometheus-community/elasticsearch_exporter/releases
 #### Docker
 
 ```bash
-docker pull quay.io/prometheuscommunity/elasticsearch_exporter:1.1.0
-docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch_exporter:1.1.0
+docker pull quay.io/prometheuscommunity/elasticsearch-exporter:latest
+docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch-exporter:latest
 ```
 
 Example `docker-compose.yml`:
 
 ```yaml
 elasticsearch_exporter:
-    image: quay.io/prometheuscommunity/elasticsearch_exporter:1.1.0
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:latest
     command:
      - '--es.uri=http://elasticsearch:9200'
     restart: always
