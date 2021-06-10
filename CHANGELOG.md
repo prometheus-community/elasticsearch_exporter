@@ -4,12 +4,7 @@ This release marks the first release under the prometheus-community organization
 
 * [FEATURE] Added elasticsearch_clustersettings_stats_max_shards_per_node metric. #277
 * [FEATURE] Added elasticsearch_indices_shards_store_size_in_bytes metric. #292
-* [FEATURE] Added --es.indices_mappings flag to scrape elasticsearch index mapping stats. #411
-* [FEATURE] Added elasticsearch_indices_mappings_stats_fields metric. #411
-* [FEATURE] Added elasticsearch_indices_mappings_stats_json_parse_failures_total metric. #411
-* [FEATURE] Added elasticsearch_indices_mappings_stats_scrapes_total metric. #411
-* [FEATURE] Added elasticsearch_indices_mappings_stats_up metric. #411
-* [FEATURE] Added elasticsearch_indices_settings_total_fields metric. #411
+* [FEATURE] Added --es.indices_mappings flag to scrape elasticsearch index mapping stats and elasticsearch_indices_mappings_stats collector. #411
 * [FEATURE] Added elasticsearch_snapshot_stats_latest_snapshot_timestamp_seconds metric. #318
 * [ENHANCEMENT] Added support for reloading the tls client certificate in case it changes on disk. #414
 * [BUGFIX] Fixed the elasticsearch_indices_shards_docs metric name. #291
