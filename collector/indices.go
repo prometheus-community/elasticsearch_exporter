@@ -480,6 +480,42 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Labels: indexLabels,
 			},
 			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "recovery_current_as_source"),
+					"Number of ongoing recoveries for which a shard serves as a source",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Recovery.CurrentAsSource)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "recovery_current_as_target"),
+					"Number of ongoing recoveries for which a shard serves as a target",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Recovery.CurrentAsTarget)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "recovery_throttle_time_seconds_total"),
+					"Time in seconds recovery operations were delayed due to throttling",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Recovery.ThrottleTimeInMillis) / 1000
+				},
+				Labels: indexLabels,
+			},
+			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),

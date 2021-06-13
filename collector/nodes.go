@@ -56,7 +56,7 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 			}
 		}
 	}
-	if len(node.HTTP) == 0 {
+	if node.HTTP == nil {
 		roles["client"] = false
 	}
 	return roles
@@ -298,6 +298,42 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.OS.Mem.ActualUsed)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "swap_in_bytes_used"),
+					"Amount of used swap space in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Swap.Used)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "swap_in_bytes_free"),
+					"Amount of free swap space in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Swap.Free)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "swap_in_bytes_total"),
+					"Total amount of swap space in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Swap.Total)
 				},
 				Labels: defaultNodeLabelValues,
 			},
@@ -1479,6 +1515,18 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "tcp_connections_opened_total"),
+					"Number of connections opened for cluster communication",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.ServerOpen)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "rx_packets_total"),
 					"Count of packets received",
 					defaultNodeLabels, nil,
@@ -1521,6 +1569,30 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.TxSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "http", "connections_opened_current"),
+					"Current number of opened connections",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.HTTP.CurrentOpen)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "http", "connections_opened_total"),
+					"Total number of opened connections",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.HTTP.TotalOpen)
 				},
 				Labels: defaultNodeLabelValues,
 			},
