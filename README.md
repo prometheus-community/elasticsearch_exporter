@@ -209,6 +209,7 @@ Further Information
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
+| elasticsearch_ccr_follower_global_checkpoint                          | gauge     | ?           | Test description
 
 ### Alerts & Recording Rules
 
