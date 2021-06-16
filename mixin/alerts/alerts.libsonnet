@@ -22,8 +22,8 @@
               severity: 'warning',
             },
             annotations: {
-              summary: 'Disk Low Watermark Reached - disk saturation is {{ $value | humanizePercentage }}%',
-              message: 'Disk Low Watermark Reached at {{ $labels.node }} node in {{ $labels.cluster }} cluster. Shards can not be allocated to this node anymore. You should consider adding more disk to the node.',
+              summary: 'Some shards will be re-allocated to different nodes if possible.',
+              description: '[{{ $labels.cluster }}][{{ $labels.node }}] has disk usage of {{ $value | humanizePercentage }}. Add more disk space, or free up space.',
             },
           },
           {
@@ -38,8 +38,8 @@
               severity: 'critical',
             },
             annotations: {
-              summary: 'Disk High Watermark Reached - disk saturation is {{ $value | humanizePercentage }}%',
-              message: 'Disk High Watermark Reached at {{ $labels.node }} node in {{ $labels.cluster }} cluster. Some shards will be re-allocated to different nodes if possible. Make sure more disk space is added to the node or drop old indices allocated to this node.',
+              summary: 'Some shards will be re-allocated to different nodes if possible.',
+              description: '[{{ $labels.cluster }}][{{ $labels.node }}] has disk usage of {{ $value | humanizePercentage }}. Add more disk space, or free up space.',
             },
           },
         ],
@@ -58,7 +58,7 @@
             },
             annotations: {
               summary: 'Cluster health status is RED',
-              message: "Cluster {{ $labels.cluster }} health status has been RED for at least %(esClusterHealthStatusRED)s. Cluster does not accept writes, shards may be missing or master node hasn't been elected yet." % custom.alert,
+              description: "Cluster {{ $labels.cluster }} health status has been RED for at least %(esClusterHealthStatusRED)s. Cluster does not accept writes, shards may be missing or master node hasn't been elected yet." % custom.alert,
             },
           },
           {
@@ -72,7 +72,7 @@
             },
             annotations: {
               summary: 'Cluster health status is YELLOW',
-              message: 'Cluster {{ $labels.cluster }} health status has been YELLOW for at least %(esClusterHealthStatusYELLOW)s. Some shard replicas are not allocated.' % custom.alert,
+              description: 'Cluster {{ $labels.cluster }} health status has been YELLOW for at least %(esClusterHealthStatusYELLOW)s. Some shard replicas are not allocated.' % custom.alert,
             },
           },
           {
@@ -86,7 +86,7 @@
             },
             annotations: {
               summary: '[Elasticsearch] High rejection rate for {{ $labels.type }} threadpool',
-              message: '[{{ $labels.cluster }}][{{ $labels.name }}] threadpool rejection over %(esClusterThreadpoolWarningTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
+              description: '[{{ $labels.cluster }}][{{ $labels.name }}] threadpool rejection over %(esClusterThreadpoolWarningTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
             },
           },
           {
@@ -100,7 +100,7 @@
             },
             annotations: {
               summary: '[Elasticsearch] High rejection rate for {{ $labels.type }} threadpool',
-              message: '[{{ $labels.cluster }}][{{ $labels.name }}] threadpool rejection over %(esClusterThreadpoolCriticalTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
+              description: '[{{ $labels.cluster }}][{{ $labels.name }}] threadpool rejection over %(esClusterThreadpoolCriticalTime)s > %(esClusterThreadpoolErrorThreshold)s' % custom.alert,
             },
           },
           {
@@ -114,7 +114,7 @@
             },
             annotations: {
               summary: '[Elasticsearch] Snapshot failure',
-              message: '[{{ $labels.cluster }}] Last snapshot failed.',
+              description: '[{{ $labels.cluster }}] Last snapshot failed.',
             },
           },
           {
@@ -128,7 +128,7 @@
             },
             annotations: {
               summary: '[Elasticsearch] Snapshot metrics API is broken',
-              message: '[{{ $labels.cluster }}] No data for cluster backup status.',
+              description: '[{{ $labels.cluster }}] No data for cluster backup status.',
             },
           },
         ],
