@@ -43,6 +43,5 @@ type SnapshotStatDataResponse struct {
 
 // SnapshotRepositoriesResponse is a representation snapshots repositories
 type SnapshotRepositoriesResponse map[string]struct {
-	Type     string            `json:"type"`
-	Settings map[string]string `json:"settings"`
+	Type string `json:"type"`
 }
