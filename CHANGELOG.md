@@ -1,3 +1,8 @@
+## 1.2.1 / 2021-06-29
+
+* [BUGFIX] Fixed elasticsearch 7.13 node stats metrics #439
+* [BUGFIX] Fixed snapshot stats metrics for some snapshot repository types #442
+
 ## 1.2.0 / 2021-06-10
 
 This release marks the first release under the prometheus-community organization.
