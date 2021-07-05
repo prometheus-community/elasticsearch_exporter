@@ -110,7 +110,7 @@ func main() {
 	}
 
 	// version metric
-	versionMetric := version.NewCollector(Name)
+	versionMetric := version.NewCollector("elasticsearch_light_exporter")
 	prometheus.MustRegister(versionMetric)
 
 	// cluster info retriever
