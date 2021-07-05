@@ -17,7 +17,7 @@ docker run --rm -p 9114:9114 olivernadj/elasticsearch-light-exporter:latest
 Example `docker-compose.yml`:
 
 ```yaml
-elasticsearch_exporter:
+elasticsearch-light-exporter:
     image: olivernadj/elasticsearch-light-exporter:latest
     command:
      - '--es.uri=http://elasticsearch:9200'
@@ -34,7 +34,7 @@ elasticsearch_exporter:
 
 Below is the command line options summary:
 ```bash
-elasticsearch_exporter --help
+elasticsearch-light-exporter --help
 ```
 
 | Argument                | Introduced in Version | Description | Default     |

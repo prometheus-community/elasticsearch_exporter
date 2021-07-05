@@ -1,4 +1,4 @@
-module github.com/prometheus-community/elasticsearch_exporter
+module github.com/olivernadj/elasticsearch-light-exporter
 
 go 1.16
 

@@ -5,8 +5,8 @@ LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com
 
 ARG ARCH="amd64"
 ARG OS="linux"
-COPY .build/${OS}-${ARCH}/elasticsearch_exporter /bin/elasticsearch_exporter
+COPY .build/${OS}-${ARCH}/elasticsearch-light-exporter /bin/elasticsearch-light-exporter
 
 EXPOSE      7979
 USER        nobody
-ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
+ENTRYPOINT  [ "/bin/elasticsearch-light-exporter" ]

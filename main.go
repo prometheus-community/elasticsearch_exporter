@@ -23,8 +23,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/collector"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/olivernadj/elasticsearch-light-exporter/collector"
+	"github.com/olivernadj/elasticsearch-light-exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -33,7 +33,7 @@ import (
 
 func main() {
 	var (
-		Name          = "elasticsearch_exporter"
+		Name          = "elasticsearch-light-exporter"
 		listenAddress = kingpin.Flag("web.listen-address",
 			"Address to listen on for web interface and telemetry.").
 			Default(":9114").Envar("WEB_LISTEN_ADDRESS").String()
@@ -175,7 +175,7 @@ func main() {
 	server.Addr = *listenAddress
 
 	_ = level.Info(logger).Log(
-		"msg", "starting elasticsearch_exporter",
+		"msg", "starting elasticsearch-light-exporter",
 		"addr", *listenAddress,
 	)
 
