@@ -35,7 +35,7 @@ type indexMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
-	Omit  func(indexStats IndexStatsIndexResponse) bool
+	Omit   func(indexStats IndexStatsIndexResponse) bool
 	Labels labels
 }
 
