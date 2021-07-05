@@ -16,16 +16,14 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"path"
-	"strconv"
-
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"path"
 )
 
 type labels struct {
@@ -37,6 +35,7 @@ type indexMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(indexStats IndexStatsIndexResponse) float64
+	Omit  func(indexStats IndexStatsIndexResponse) bool
 	Labels labels
 }
 
@@ -52,7 +51,7 @@ type Indices struct {
 	logger          log.Logger
 	client          *http.Client
 	url             *url.URL
-	shards          bool
+	path            string
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
 
@@ -65,7 +64,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, path string) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -99,7 +98,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		logger:        logger,
 		client:        client,
 		url:           url,
-		shards:        shards,
+		path:          path,
 		clusterInfoCh: make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
@@ -129,6 +128,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Docs.Count)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Docs == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -140,6 +142,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Docs.Deleted)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Docs == nil
 				},
 				Labels: indexLabels,
 			},
@@ -153,6 +158,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Docs.Count)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Docs == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -164,6 +172,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Docs.Deleted)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Docs == nil
 				},
 				Labels: indexLabels,
 			},
@@ -177,6 +188,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Store.SizeInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Store == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -188,6 +202,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Store.SizeInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Store == nil
 				},
 				Labels: indexLabels,
 			},
@@ -201,6 +218,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.Count)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -212,6 +232,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.Count)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -225,6 +248,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.MemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -236,6 +262,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.MemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -249,6 +278,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.TermsMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -260,6 +292,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.TermsMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -273,6 +308,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.StoredFieldsMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -284,6 +322,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.StoredFieldsMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -297,6 +338,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.TermVectorsMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -308,6 +352,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.TermVectorsMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -321,6 +368,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.NormsMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -332,6 +382,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.NormsMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -345,6 +398,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.PointsMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -356,6 +412,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.PointsMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -369,6 +428,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.DocValuesMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -380,6 +442,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.DocValuesMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -393,6 +458,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.IndexWriterMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -404,6 +472,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.IndexWriterMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -417,6 +488,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.VersionMapMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -428,6 +502,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.VersionMapMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -441,6 +518,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Segments.FixedBitSetMemoryInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Segments == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -452,6 +532,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Segments.FixedBitSetMemoryInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Segments == nil
 				},
 				Labels: indexLabels,
 			},
@@ -465,6 +548,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Primaries.Completion.SizeInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Completion == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -476,6 +562,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Completion.SizeInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Completion == nil
 				},
 				Labels: indexLabels,
 			},
@@ -489,6 +578,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.QueryTimeInMillis) / 1000
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -500,6 +592,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.QueryTotal)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
 				},
 				Labels: indexLabels,
 			},
@@ -513,6 +608,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.FetchTimeInMillis) / 1000
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -524,6 +622,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.FetchTotal)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
 				},
 				Labels: indexLabels,
 			},
@@ -537,6 +638,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollTimeInMillis) / 1000
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -548,6 +652,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollCurrent)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
 				},
 				Labels: indexLabels,
 			},
@@ -561,6 +668,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.ScrollTotal)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -572,6 +682,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.SuggestTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
 				},
 				Labels: indexLabels,
 			},
@@ -585,6 +698,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Search.SuggestTotal)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Search == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -595,7 +711,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Indexing.IndexTimeInMillis) / 1000
+					return float64(indexStats.Primaries.Indexing.IndexTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Indexing == nil
 				},
 				Labels: indexLabels,
 			},
@@ -607,7 +726,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Indexing.IndexTotal)
+					return float64(indexStats.Primaries.Indexing.IndexTotal)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Indexing == nil
 				},
 				Labels: indexLabels,
 			},
@@ -619,7 +741,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Indexing.DeleteTimeInMillis) / 1000
+					return float64(indexStats.Primaries.Indexing.DeleteTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Indexing == nil
 				},
 				Labels: indexLabels,
 			},
@@ -631,7 +756,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Indexing.DeleteTotal)
+					return float64(indexStats.Primaries.Indexing.DeleteTotal)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Indexing == nil
 				},
 				Labels: indexLabels,
 			},
@@ -643,7 +771,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Indexing.NoopUpdateTotal)
+					return float64(indexStats.Primaries.Indexing.NoopUpdateTotal)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Indexing == nil
 				},
 				Labels: indexLabels,
 			},
@@ -655,7 +786,10 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Indexing.ThrottleTimeInMillis) / 1000
+					return float64(indexStats.Primaries.Indexing.ThrottleTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Primaries.Indexing == nil
 				},
 				Labels: indexLabels,
 			},
@@ -669,6 +803,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Get.TimeInMillis) / 1000
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Get == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -680,6 +817,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Get.Total)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Get == nil
 				},
 				Labels: indexLabels,
 			},
@@ -693,6 +833,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalTimeInMillis) / 1000
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Merges == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -704,6 +847,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.Total)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Merges == nil
 				},
 				Labels: indexLabels,
 			},
@@ -717,6 +863,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalThrottledTimeInMillis) / 1000
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Merges == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -728,6 +877,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalStoppedTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Merges == nil
 				},
 				Labels: indexLabels,
 			},
@@ -741,6 +893,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Merges.TotalAutoThrottleInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Merges == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -752,6 +907,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Refresh.TotalTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Refresh == nil
 				},
 				Labels: indexLabels,
 			},
@@ -765,6 +923,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Refresh.Total)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Refresh == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -776,6 +937,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Flush.TotalTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Flush == nil
 				},
 				Labels: indexLabels,
 			},
@@ -789,6 +953,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Flush.Total)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Flush == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -800,6 +967,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Warmer.TotalTimeInMillis) / 1000
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Warmer == nil
 				},
 				Labels: indexLabels,
 			},
@@ -813,6 +983,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Warmer.Total)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Warmer == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -824,6 +997,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.MemorySizeInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.QueryCache == nil
 				},
 				Labels: indexLabels,
 			},
@@ -837,6 +1013,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.CacheSize)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.QueryCache == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -848,6 +1027,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.HitCount)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.QueryCache == nil
 				},
 				Labels: indexLabels,
 			},
@@ -861,6 +1043,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.MissCount)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.QueryCache == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -872,6 +1057,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.CacheCount)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.QueryCache == nil
 				},
 				Labels: indexLabels,
 			},
@@ -885,6 +1073,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.QueryCache.Evictions)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.QueryCache == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -896,6 +1087,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.MemorySizeInBytes)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.RequestCache == nil
 				},
 				Labels: indexLabels,
 			},
@@ -909,6 +1103,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.HitCount)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.RequestCache == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -920,6 +1117,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.MissCount)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.RequestCache == nil
 				},
 				Labels: indexLabels,
 			},
@@ -933,6 +1133,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.RequestCache.Evictions)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.RequestCache == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -945,6 +1148,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Fielddata.MemorySizeInBytes)
 				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Fielddata == nil
+				},
 				Labels: indexLabels,
 			},
 			{
@@ -956,6 +1162,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Fielddata.Evictions)
+				},
+				Omit: func(indexStats IndexStatsIndexResponse) bool {
+					return indexStats.Total.Fielddata == nil
 				},
 				Labels: indexLabels,
 			},
@@ -1039,10 +1248,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	u.Path = path.Join(u.Path, "/_all/_stats")
-	if i.shards {
-		u.RawQuery = "level=shards"
-	}
+	u.Path = path.Join(u.Path, i.path)
 
 	res, err := i.client.Get(u.String())
 	if err != nil {
@@ -1102,27 +1308,13 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	// Index stats
 	for indexName, indexStats := range indexStatsResp.Indices {
 		for _, metric := range i.indexMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(indexStats),
-				metric.Labels.values(i.lastClusterInfo, indexName)...,
-			)
-
-		}
-		if i.shards {
-			for _, metric := range i.shardMetrics {
-				// gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
-				for shardNumber, shards := range indexStats.Shards {
-					for _, shard := range shards {
-						ch <- prometheus.MustNewConstMetric(
-							metric.Desc,
-							metric.Type,
-							metric.Value(shard),
-							metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node, strconv.FormatBool(shard.Routing.Primary))...,
-						)
-					}
-				}
+			if !metric.Omit(indexStats) {
+				ch <- prometheus.MustNewConstMetric(
+					metric.Desc,
+					metric.Type,
+					metric.Value(indexStats),
+					metric.Labels.values(i.lastClusterInfo, indexName)...,
+				)
 			}
 		}
 	}
