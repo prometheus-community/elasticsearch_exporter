@@ -1,5 +1,5 @@
 .build
-elasticsearch_exporter
+elasticsearch-light-exporter
 *.tar.gz
 *-stamp
 .tarballs

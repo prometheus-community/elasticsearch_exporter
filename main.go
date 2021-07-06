@@ -23,8 +23,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/collector"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/olivernadj/elasticsearch-light-exporter/collector"
+	"github.com/olivernadj/elasticsearch-light-exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -33,7 +33,7 @@ import (
 
 func main() {
 	var (
-		Name          = "elasticsearch_exporter"
+		Name          = "elasticsearch-light-exporter"
 		listenAddress = kingpin.Flag("web.listen-address",
 			"Address to listen on for web interface and telemetry.").
 			Default(":9114").Envar("WEB_LISTEN_ADDRESS").String()
@@ -46,30 +46,9 @@ func main() {
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
 			Default("5s").Envar("ES_TIMEOUT").Duration()
-		esAllNodes = kingpin.Flag("es.all",
-			"Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.").
-			Default("false").Envar("ES_ALL").Bool()
-		esNode = kingpin.Flag("es.node",
-			"Node's name of which metrics should be exposed.").
-			Default("_local").Envar("ES_NODE").String()
-		esExportIndices = kingpin.Flag("es.indices",
-			"Export stats for indices in the cluster.").
-			Default("false").Envar("ES_INDICES").Bool()
-		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
-			"Export stats for settings of all indices of the cluster.").
-			Default("false").Envar("ES_INDICES_SETTINGS").Bool()
-		esExportIndicesMappings = kingpin.Flag("es.indices_mappings",
-			"Export stats for mappings of all indices of the cluster.").
-			Default("false").Envar("ES_INDICES_MAPPINGS").Bool()
-		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
-			"Export stats for cluster settings.").
-			Default("false").Envar("ES_CLUSTER_SETTINGS").Bool()
-		esExportShards = kingpin.Flag("es.shards",
-			"Export stats for shards in the cluster (implies --es.indices).").
-			Default("false").Envar("ES_SHARDS").Bool()
-		esExportSnapshots = kingpin.Flag("es.snapshots",
-			"Export stats for the cluster snapshots.").
-			Default("false").Envar("ES_SNAPSHOTS").Bool()
+		esPath = kingpin.Flag("es.path",
+			"Path of Index stats API.").
+			Default("/_all/_stats").Envar("ES_PATH").String()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
@@ -110,6 +89,14 @@ func main() {
 		)
 		os.Exit(1)
 	}
+	_, err = url.Parse(*esURI + *esPath)
+	if err != nil {
+		_ = level.Error(logger).Log(
+			"msg", "failed to parse es.path",
+			"err", err,
+		)
+		os.Exit(1)
+	}
 
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
@@ -123,38 +110,19 @@ func main() {
 	}
 
 	// version metric
-	versionMetric := version.NewCollector(Name)
+	versionMetric := version.NewCollector("elasticsearch_light_exporter")
 	prometheus.MustRegister(versionMetric)
 
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
-	if *esExportIndices || *esExportShards {
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
-		prometheus.MustRegister(iC)
-		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
-			os.Exit(1)
-		}
-	}
-
-	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
-	}
-
-	if *esExportClusterSettings {
-		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
-	}
-
-	if *esExportIndicesSettings {
-		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
-	}
-
-	if *esExportIndicesMappings {
-		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
+	iC := collector.NewIndices(logger, httpClient, esURL, *esPath)
+	prometheus.MustRegister(iC)
+	if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
+		_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
+		os.Exit(1)
 	}
 
 	// create a http server
@@ -207,7 +175,7 @@ func main() {
 	server.Addr = *listenAddress
 
 	_ = level.Info(logger).Log(
-		"msg", "starting elasticsearch_exporter",
+		"msg", "starting elasticsearch-light-exporter",
 		"addr", *listenAddress,
 	)
 

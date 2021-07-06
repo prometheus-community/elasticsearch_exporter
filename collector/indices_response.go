@@ -36,22 +36,22 @@ type IndexStatsIndexResponse struct {
 
 // IndexStatsIndexDetailResponse defines index stats index details information structure
 type IndexStatsIndexDetailResponse struct {
-	Docs         IndexStatsIndexDocsResponse         `json:"docs"`
-	Store        IndexStatsIndexStoreResponse        `json:"store"`
-	Indexing     IndexStatsIndexIndexingResponse     `json:"indexing"`
-	Get          IndexStatsIndexGetResponse          `json:"get"`
-	Search       IndexStatsIndexSearchResponse       `json:"search"`
-	Merges       IndexStatsIndexMergesResponse       `json:"merges"`
-	Refresh      IndexStatsIndexRefreshResponse      `json:"refresh"`
-	Flush        IndexStatsIndexFlushResponse        `json:"flush"`
-	Warmer       IndexStatsIndexWarmerResponse       `json:"warmer"`
-	QueryCache   IndexStatsIndexQueryCacheResponse   `json:"query_cache"`
-	Fielddata    IndexStatsIndexFielddataResponse    `json:"fielddata"`
-	Completion   IndexStatsIndexCompletionResponse   `json:"completion"`
-	Segments     IndexStatsIndexSegmentsResponse     `json:"segments"`
-	Translog     IndexStatsIndexTranslogResponse     `json:"translog"`
-	RequestCache IndexStatsIndexRequestCacheResponse `json:"request_cache"`
-	Recovery     IndexStatsIndexRecoveryResponse     `json:"recovery"`
+	Docs         *IndexStatsIndexDocsResponse         `json:"docs,omitempty"`
+	Store        *IndexStatsIndexStoreResponse        `json:"store,omitempty"`
+	Indexing     *IndexStatsIndexIndexingResponse     `json:"indexing,omitempty"`
+	Get          *IndexStatsIndexGetResponse          `json:"get,omitempty"`
+	Search       *IndexStatsIndexSearchResponse       `json:"search,omitempty"`
+	Merges       *IndexStatsIndexMergesResponse       `json:"merges,omitempty"`
+	Refresh      *IndexStatsIndexRefreshResponse      `json:"refresh,omitempty"`
+	Flush        *IndexStatsIndexFlushResponse        `json:"flush,omitempty"`
+	Warmer       *IndexStatsIndexWarmerResponse       `json:"warmer,omitempty"`
+	QueryCache   *IndexStatsIndexQueryCacheResponse   `json:"query_cache,omitempty"`
+	Fielddata    *IndexStatsIndexFielddataResponse    `json:"fielddata,omitempty"`
+	Completion   *IndexStatsIndexCompletionResponse   `json:"completion,omitempty"`
+	Segments     *IndexStatsIndexSegmentsResponse     `json:"segments,omitempty"`
+	Translog     *IndexStatsIndexTranslogResponse     `json:"translog,omitempty"`
+	RequestCache *IndexStatsIndexRequestCacheResponse `json:"request_cache,omitempty"`
+	Recovery     *IndexStatsIndexRecoveryResponse     `json:"recovery,omitempty"`
 }
 
 // IndexStatsIndexShardsDetailResponse defines index stats index shard details information structure

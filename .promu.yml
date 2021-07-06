@@ -2,10 +2,10 @@ go:
     # This must match .circle/config.yml.
     version: 1.16
 repository:
-    path: github.com/prometheus-community/elasticsearch_exporter
+    path: github.com/olivernadj/elasticsearch-light-exporter
 build:
     binaries:
-        - name: elasticsearch_exporter
+        - name: elasticsearch-light-exporter
     flags: -a -tags netgo
     ldflags: |
         -s

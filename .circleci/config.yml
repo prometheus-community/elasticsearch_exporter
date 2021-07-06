@@ -18,11 +18,11 @@ jobs:
       - prometheus/setup_environment
       - run: make
       - prometheus/store_artifact:
-          file: elasticsearch_exporter
+          file: elasticsearch-light-exporter
 
 workflows:
   version: 2
-  elasticsearch_exporter:
+  elasticsearch-light-exporter:
     jobs:
       - test:
           filters:
