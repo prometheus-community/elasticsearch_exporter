@@ -348,6 +348,18 @@ func NewCCRStats(logger log.Logger, client *http.Client, url *url.URL) *CCRStats
 				},
 				Labels: defaultCCRLabelValues,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ccr_stats", "replication_lag"),
+					"Represents value of how much follower lagging the leader. Based on difference between leader_global_checkpoint and follower_global_checkpoint",
+					defaultCCRStatsLabels, nil,
+				),
+				Value: func(indexCCRStatsShard IndexCCRStatsShardResponse) float64 {
+					return float64(indexCCRStatsShard.LeaderGlobalCheckpoint - indexCCRStatsShard.FollowerGlobalCheckpoint)
+				},
+				Labels: defaultCCRLabelValues,
+			},
 		},
 	}
 }
