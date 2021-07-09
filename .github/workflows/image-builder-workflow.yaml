@@ -10,6 +10,8 @@ on:
 jobs:
   # This workflow contains a single job called "build"
   build:
+    env:
+      VERSION: 1.2.1
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     steps:
@@ -27,13 +29,13 @@ jobs:
           password: ${{ secrets.ARTI_TOKEN }}
       - name: Build docker image
         run: |
-          docker build -f ./Dockerfile -t temp-elastic-exporter:latest .
+          docker build -f ./Dockerfile -t temp-elastic-exporter:$VERSION .
       
       - name: Scan local image
         id: scan-local
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "temp-elastic-exporter:latest"
+          image-tag: "temp-elastic-exporter:$VERSION"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
@@ -47,8 +49,8 @@ jobs:
 
       - name: Change the tag of the image
         run: |
-          docker tag temp-elastic-exporter:latest artifactory.internal.sysdig.com/elasticsearch-exporter:latest
+          docker tag temp-elastic-exporter:$VERSION artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION
 
       - name: Push the image
         run: |
-          docker push artifactory.internal.sysdig.com/elasticsearch-exporter:latest
+          docker push artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION
