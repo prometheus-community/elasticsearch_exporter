@@ -20,6 +20,7 @@ pipeline {
                 script {
                     docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {                        
                         sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi"""
                     }
                 }
             }
@@ -29,7 +30,9 @@ pipeline {
                 script {
                     docker.withRegistry("https://quay.io", "QUAY") {
                         sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION} quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker tag ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi quay.io/sysdig/${env.EXPORTER}:${env.VERSION}-ubi"""
                         sh """docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}"""
+                        sh """docker push quay.io/sysdig/${env.EXPORTER}:${env.VERSION}-ubi"""
                     }
                 }
             }

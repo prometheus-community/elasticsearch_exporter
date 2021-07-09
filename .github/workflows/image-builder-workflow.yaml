@@ -30,12 +30,26 @@ jobs:
       - name: Build docker image
         run: |
           docker build -f ./Dockerfile -t temp-elastic-exporter:latest .
-      
+
+      - name: Build ubi docker image
+        run: |
+          docker build -f ./Dockerfile_ubi -t temp-elastic-exporter:ubi .
+
       - name: Scan local image
         id: scan-local
         uses: sysdiglabs/scan-action@v3
         with:
           image-tag: "temp-elastic-exporter:latest"
+          sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
+          ignore-failed-scan: true
+          input-type: docker-daemon
+          run-as-user: root
+
+      - name: Scan local image
+        id: scan-local
+        uses: sysdiglabs/scan-action@v3
+        with:
+          image-tag: "temp-elastic-exporter:ubi"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
@@ -50,7 +64,9 @@ jobs:
       - name: Change the tag of the image
         run: |
           docker tag temp-elastic-exporter:latest artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION
+          docker tag temp-elastic-exporter:ubi artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION-ubi
 
       - name: Push the image
         run: |
           docker push artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION
+          docker push artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION-ubi
