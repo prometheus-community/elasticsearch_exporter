@@ -46,7 +46,7 @@ jobs:
           run-as-user: root
 
       - name: Scan local image
-        id: scan-local
+        id: scan-local-2
         uses: sysdiglabs/scan-action@v3
         with:
           image-tag: "temp-elastic-exporter:ubi"
