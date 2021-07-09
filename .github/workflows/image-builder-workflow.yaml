@@ -29,13 +29,13 @@ jobs:
           password: ${{ secrets.ARTI_TOKEN }}
       - name: Build docker image
         run: |
-          docker build -f ./Dockerfile -t temp-elastic-exporter:$VERSION .
+          docker build -f ./Dockerfile -t temp-elastic-exporter:latest .
       
       - name: Scan local image
         id: scan-local
         uses: sysdiglabs/scan-action@v3
         with:
-          image-tag: "temp-elastic-exporter:$VERSION"
+          image-tag: "temp-elastic-exporter:latest"
           sysdig-secure-token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
           ignore-failed-scan: true
           input-type: docker-daemon
