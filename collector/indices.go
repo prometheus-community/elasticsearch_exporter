@@ -1,8 +1,22 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package collector
 
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -10,7 +24,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/justwatchcom/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -990,8 +1004,8 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	go func() {
 		_ = level.Debug(logger).Log("msg", "starting cluster info receive loop")
 		for ci := range indices.clusterInfoCh {
-			_ = level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
 			if ci != nil {
+				_ = level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
 				indices.lastClusterInfo = ci
 			}
 		}
@@ -1050,7 +1064,13 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 		return isr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&isr); err != nil {
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		i.jsonParseFailures.Inc()
+		return isr, err
+	}
+
+	if err := json.Unmarshal(bts, &isr); err != nil {
 		i.jsonParseFailures.Inc()
 		return isr, err
 	}
@@ -1077,7 +1097,6 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 		)
 		return
 	}
-	i.totalScrapes.Inc()
 	i.up.Set(1)
 
 	// Index stats

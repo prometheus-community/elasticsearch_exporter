@@ -1,26 +1,26 @@
-# Elasticsearch Exporter [![Build Status](https://travis-ci.org/justwatchcom/elasticsearch_exporter.svg?branch=master)](https://travis-ci.org/justwatchcom/elasticsearch_exporter)
-[![Docker Pulls](https://img.shields.io/docker/pulls/justwatch/elasticsearch_exporter.svg?maxAge=604800)](https://hub.docker.com/r/justwatch/elasticsearch_exporter)
-[![Go Report Card](https://goreportcard.com/badge/github.com/justwatchcom/elasticsearch_exporter)](https://goreportcard.com/report/github.com/justwatchcom/elasticsearch_exporter)
+# Elasticsearch Exporter
+[![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
 Prometheus exporter for various metrics about ElasticSearch, written in Go.
 
 ### Installation
 
 For pre-built binaries please take a look at the releases.
-https://github.com/justwatchcom/elasticsearch_exporter/releases
+https://github.com/prometheus-community/elasticsearch_exporter/releases
 
 #### Docker
 
 ```bash
-docker pull justwatch/elasticsearch_exporter:1.1.0
-docker run --rm -p 9114:9114 justwatch/elasticsearch_exporter:1.1.0
+docker pull quay.io/prometheuscommunity/elasticsearch-exporter:latest
+docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch-exporter:latest
 ```
 
 Example `docker-compose.yml`:
 
 ```yaml
 elasticsearch_exporter:
-    image: justwatch/elasticsearch_exporter:1.1.0
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:latest
     command:
      - '--es.uri=http://elasticsearch:9200'
     restart: always
@@ -60,7 +60,7 @@ elasticsearch_exporter --help
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
 
-Commandline parameters start with a single `-` for versions less than `1.1.0rc1`. 
+Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
 by replacing `.` and `-` with `_` and upper-casing the parameter name.
 
@@ -71,17 +71,17 @@ ES 7.x supports RBACs. The following security privileges are required for the el
 Setting | Privilege Required | Description
 :---- | :---- | :----
 exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
-es.cluster_settings | `cluster` `monitor` | 
-es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status) 
-es.indices_settings | `indices` `monitor` (per index or `*`) | 
-es.shards | not sure if `indices` or `cluster` `monitor` or both | 
+es.cluster_settings | `cluster` `monitor` |
+es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
+es.indices_settings | `indices` `monitor` (per index or `*`) |
+es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 
 Further Information
 - [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
- 
+
 ### Metrics
 
 |Name                                                                   |Type       |Cardinality  |Help
@@ -102,6 +102,7 @@ Further Information
 | elasticsearch_cluster_health_status                                   | gauge     | 3           | Whether all primary and replica shards are allocated.
 | elasticsearch_cluster_health_timed_out                                | gauge     | 1           | Number of cluster health checks timed out
 | elasticsearch_cluster_health_unassigned_shards                        | gauge     | 1           | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
+| elasticsearch_clustersettings_stats_max_shards_per_node               | gauge     | 0           | Current maximum number of shards per node setting.
 | elasticsearch_filesystem_data_available_bytes                         | gauge     | 1           | Available space on block device in bytes
 | elasticsearch_filesystem_data_free_bytes                              | gauge     | 1           | Free space on block device in bytes
 | elasticsearch_filesystem_data_size_bytes                              | gauge     | 1           | Size of block device in bytes
@@ -129,6 +130,10 @@ Further Information
 | elasticsearch_indices_indexing_delete_total                           | counter   | 1           | Total indexing deletes
 | elasticsearch_indices_indexing_index_time_seconds_total               | counter   | 1           | Cumulative index time in seconds
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
+| elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
+| elasticsearch_indices_mappings_stats_json_parse_failures_total        | counter   | 0           | Number of errors while parsing JSON
+| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total ElasticSearch Indices Mappings scrapes
+| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the ElasticSearch Indices Mappings endpoint successful
 | elasticsearch_indices_merges_docs_total                               | counter   | 1           | Cumulative docs merged
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
@@ -151,6 +156,7 @@ Further Information
 | elasticsearch_indices_segments_count                                  | gauge     | 1           | Count of index segments on this node
 | elasticsearch_indices_segments_memory_bytes                           | gauge     | 1           | Current memory size of segments in bytes
 | elasticsearch_indices_settings_stats_read_only_indices                | gauge     | 1           | Count of indices that have read_only_allow_delete=true
+| elasticsearch_indices_settings_total_fields                           | gauge     |             | Index setting value for index.mapping.total_fields.limit (total allowable mapped fields in a index)
 | elasticsearch_indices_shards_docs                                     | gauge     | 3           | Count of documents on this shard
 | elasticsearch_indices_shards_docs_deleted                             | gauge     | 3           | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                                | gauge     | 1           | Current size of stored index data in bytes
@@ -183,6 +189,7 @@ Further Information
 | elasticsearch_snapshot_stats_number_of_snapshots                      | gauge     | 1           | Total number of snapshots
 | elasticsearch_snapshot_stats_oldest_snapshot_timestamp                | gauge     | 1           | Oldest snapshot timestamp
 | elasticsearch_snapshot_stats_snapshot_start_time_timestamp            | gauge     | 1           | Last snapshot start timestamp
+| elasticsearch_snapshot_stats_latest_snapshot_timestamp_seconds        | gauge     | 1           | Timestamp of the latest SUCCESS or PARTIAL snapshot
 | elasticsearch_snapshot_stats_snapshot_end_time_timestamp              | gauge     | 1           | Last snapshot end timestamp
 | elasticsearch_snapshot_stats_snapshot_number_of_failures              | gauge     | 1           | Last snapshot number of failures
 | elasticsearch_snapshot_stats_snapshot_number_of_indices               | gauge     | 1           | Last snapshot number of indices
@@ -225,8 +232,10 @@ Please refer to the [Prometheus SD documentation](https://prometheus.io/docs/ope
 
 ## Credit & License
 
-`elasticsearch_exporter` is maintained by the nice folks from [JustWatch](https://www.justwatch.com/)
-and licensed under the terms of the Apache license.
+`elasticsearch_exporter` is maintained by the [Prometheus Community](https://www.prometheus.io/community/).
+
+`elasticsearch_exporter` was then maintained by the nice folks from [JustWatch](https://www.justwatch.com/).
+Then transferred this repository to the Prometheus Community in May 2021.
 
 This package was originally created and maintained by [Eric Richardson](https://github.com/ewr),
 who transferred this repository to us in January 2017.
