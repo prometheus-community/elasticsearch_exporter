@@ -49,7 +49,7 @@ jobs:
 
       - name: Change the tag of the image
         run: |
-          docker tag temp-elastic-exporter:$VERSION artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION
+          docker tag temp-elastic-exporter:latest artifactory.internal.sysdig.com/elasticsearch-exporter:$VERSION
 
       - name: Push the image
         run: |
