@@ -25,10 +25,18 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
+
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 )
 
 func main() {
@@ -85,6 +93,10 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
+		esAWS = kingpin.Flag("es.aws", "Enable support for Amazon Elasticsearch Service").
+			Default("false").Envar("ES_AWS").Bool()
+		esAWSRegion = kingpin.Flag("es.aws-region", "Sets the AWS region").
+				Default("").Envar("ES_AWS_REGION").String()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
 			Default("info").Envar("LOG_LEVEL").String()
@@ -114,12 +126,35 @@ func main() {
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
+	defaultTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		Proxy:           http.ProxyFromEnvironment,
+	}
+
 	httpClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
-		},
+		Timeout:   *esTimeout,
+		Transport: defaultTransport,
+	}
+
+	if esAWS != nil {
+		sess := session.Must(session.NewSession())
+		httpClient.Transport = &roundtripper.AWSSigningTransport{
+			DefaultTransport: defaultTransport,
+			Credentials: credentials.NewChainCredentials([]credentials.Provider{
+				&credentials.EnvProvider{},
+				&credentials.SharedCredentialsProvider{},
+				stscreds.NewWebIdentityRoleProvider(
+					sts.New(sess),
+					os.Getenv("AWS_ROLE_ARN"),
+					"",
+					os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE"),
+				),
+				&ec2rolecreds.EC2RoleProvider{
+					Client: ec2metadata.New(sess),
+				},
+			}),
+			Region: *esAWSRegion,
+		}
 	}
 
 	// version metric
