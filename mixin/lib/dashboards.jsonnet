@@ -1,6 +1,6 @@
-local dashboards = (import '../mixin.libsonnet').grafanaDashboards;
+local elastic = (import '../mixin.libsonnet');
 
-{
-  [name]: dashboards[name]
-  for name in std.objectFields(dashboards)
+elastic.grafanaDashboards['legacy_elasticsearch.json'] {
+  timezone: 'utc',
+  tags+: ['mixin'],
 }

@@ -20,3 +20,13 @@
 | ElasticsearchThreadPoolRejectionError | critical |
 | ElasticsearchSnapshotFailure | warning |
 | ElasticsearchSnapshotMetricsUnavailable | warning |
+
+## Resources
+
+*Quickstart*
+
+    jsonnet lib/dashboards.jsonnet
+    jsonnet -S lib/rules.jsonnet
+    jsonnet -S lib/alerts.jsonnet
+
+[Read the docs](https://github.com/monitoring-mixins/docs)
