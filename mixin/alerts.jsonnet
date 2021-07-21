@@ -1,3 +1,0 @@
-(
-  import 'mixin.libsonnet'
-).prometheusAlerts
