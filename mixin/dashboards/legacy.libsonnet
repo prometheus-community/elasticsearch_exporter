@@ -9222,9 +9222,9 @@
       {
         allValue: null,
         current: {
-          selected: true,
-          text: 'es-faq-prod',
-          value: 'es-faq-prod',
+          selected: false,
+          text: '',
+          value: '',
         },
         datasource: '$PROMETHEUS_DS',
         definition: 'label_values(elasticsearch_clusterinfo_version_info,cluster)',
@@ -9289,8 +9289,8 @@
         allValue: null,
         current: {
           selected: false,
-          text: '172.22.12.54:9000',
-          value: '172.22.12.54:9000',
+          text: '',
+          value: '',
         },
         datasource: '$PROMETHEUS_DS',
         definition: 'label_values(elasticsearch_indices_docs{cluster="$cluster", name!=""},instance)',
