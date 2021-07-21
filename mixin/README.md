@@ -23,7 +23,7 @@
 
 ## Resources
 
-*Quickstart*
+**Quickstart:**
 
     jsonnet lib/dashboards.jsonnet
     jsonnet -S lib/rules.jsonnet
