@@ -31,6 +31,16 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+type transportWithApiKey struct {
+	underlyingTransport http.RoundTripper
+	apiKey              *string
+}
+
+func (t *transportWithApiKey) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", "ApiKey "+*t.apiKey)
+	return t.underlyingTransport.RoundTrip(req)
+}
+
 func main() {
 	var (
 		Name          = "elasticsearch_exporter"
@@ -85,6 +95,9 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
+		esApiKey = kingpin.Flag("es.apiKey",
+			"API Key to use for authenticating against Elasticsearch").
+			Default("").Envar("ES_API_KEY").String()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
 			Default("info").Envar("LOG_LEVEL").String()
@@ -114,12 +127,24 @@ func main() {
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
+	httpTransport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		Proxy:           http.ProxyFromEnvironment,
+	}
+
 	httpClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
-		},
+		Timeout:   *esTimeout,
+		Transport: httpTransport,
+	}
+
+	if *esApiKey != "" {
+		httpClient = &http.Client{
+			Timeout: *esTimeout,
+			Transport: &transportWithApiKey{
+				underlyingTransport: httpTransport,
+				apiKey:              esApiKey,
+			},
+		}
 	}
 
 	// version metric
