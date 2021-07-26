@@ -14,6 +14,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,11 +34,11 @@ import (
 
 type transportWithApiKey struct {
 	underlyingTransport http.RoundTripper
-	apiKey              *string
+	apiKey              string
 }
 
 func (t *transportWithApiKey) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("Authorization", "ApiKey "+*t.apiKey)
+	req.Header.Add("Authorization", fmt.Sprintf("ApiKey %s", t.apiKey))
 	return t.underlyingTransport.RoundTrip(req)
 }
 
@@ -138,11 +139,12 @@ func main() {
 	}
 
 	if *esApiKey != "" {
+		apiKey := *esApiKey
 		httpClient = &http.Client{
 			Timeout: *esTimeout,
 			Transport: &transportWithApiKey{
 				underlyingTransport: httpTransport,
-				apiKey:              esApiKey,
+				apiKey:              apiKey,
 			},
 		}
 	}
