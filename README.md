@@ -67,6 +67,9 @@ by replacing `.` and `-` with `_` and upper-casing the parameter name.
 
 #### Elasticsearch 7.x security privileges
 
+Username and password can be passed either directly in the URI or through the `ES_USERNAME` and `ES_PASSWORD` environment variables.
+Specifying those two environment variables will override authentication passed in the URI (if any).
+
 ES 7.x supports RBACs. The following security privileges are required for the elasticsearch_exporter.
 
 Setting | Privilege Required | Description
