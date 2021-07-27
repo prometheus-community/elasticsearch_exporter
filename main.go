@@ -128,25 +128,25 @@ func main() {
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
-	httpTransport := &http.Transport{
+	var httpTransport http.RoundTripper
+
+	httpTransport = &http.Transport{
 		TLSClientConfig: tlsConfig,
 		Proxy:           http.ProxyFromEnvironment,
+	}
+
+	if *esApiKey != "" {
+		apiKey := *esApiKey
+
+		httpTransport = &transportWithApiKey{
+			underlyingTransport: httpTransport,
+			apiKey:              apiKey,
+		}
 	}
 
 	httpClient := &http.Client{
 		Timeout:   *esTimeout,
 		Transport: httpTransport,
-	}
-
-	if *esApiKey != "" {
-		apiKey := *esApiKey
-		httpClient = &http.Client{
-			Timeout: *esTimeout,
-			Transport: &transportWithApiKey{
-				underlyingTransport: httpTransport,
-				apiKey:              apiKey,
-			},
-		}
 	}
 
 	// version metric
