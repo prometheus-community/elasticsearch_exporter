@@ -125,6 +125,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	esUsername := os.Getenv("ES_USERNAME")
+	esPassword := os.Getenv("ES_PASSWORD")
+
+	if esUsername != "" && esPassword != "" {
+		esURL.User = url.UserPassword(esUsername, esPassword)
+	}
+
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
