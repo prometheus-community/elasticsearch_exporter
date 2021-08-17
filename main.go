@@ -194,7 +194,7 @@ func main() {
 	// create a http server
 	server := &http.Server{}
 
-	// create a context that is cancelled on SIGKILL or SIGINT
+	// Create a context that is cancelled on SIGKILL or SIGINT.
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
@@ -262,5 +262,4 @@ func main() {
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()
 	_ = server.Shutdown(srvCtx)
-
 }
