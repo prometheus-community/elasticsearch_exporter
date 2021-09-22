@@ -83,7 +83,7 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					defaultIndicesTotalFieldsLabels, nil,
 				),
 				Value: func(indexSettings Settings) float64 {
-					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 10)
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 64)
 					if err != nil {
 						return float64(defaultTotalFieldsValue)
 					}
