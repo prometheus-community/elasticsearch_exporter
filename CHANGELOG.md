@@ -1,3 +1,9 @@
+## 1.3.0 / 2021-10-01
+
+* [FEATURE] Add support for passing elasticsearch credentials via the ES_USERNAME and ES_PASSWORD environment varialbes #461
+* [FEATURE] Add support for API keys for elasticsearch authentication (Elastic cloud) #459
+* [BUGFIX] Fix index stats when shards are unavailable #445
+
 ## 1.2.1 / 2021-06-29
 
 * [BUGFIX] Fixed elasticsearch 7.13 node stats metrics #439
