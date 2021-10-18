@@ -494,6 +494,18 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_query_current"),
+					"Current number of queries",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.QueryCurrent)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_total"),
 					"Total number of queries",
 					indexLabels.keys(), nil,
@@ -596,6 +608,18 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Indexing.IndexTimeInMillis) / 1000
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_current"),
+					"Current indexing index count",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Indexing.IndexCurrent)
 				},
 				Labels: indexLabels,
 			},

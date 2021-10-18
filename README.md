@@ -134,6 +134,7 @@ Further Information
 | elasticsearch_indices_indexing_delete_time_seconds_total              | counter   | 1           | Total time indexing delete in seconds
 | elasticsearch_indices_indexing_delete_total                           | counter   | 1           | Total indexing deletes
 | elasticsearch_indices_indexing_index_time_seconds_total               | counter   | 1           | Cumulative index time in seconds
+| elasticsearch_indices_indexing_index_current                          | counter   | 1           | Current index calls
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
 | elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
 | elasticsearch_indices_mappings_stats_json_parse_failures_total        | counter   | 0           | Number of errors while parsing JSON
@@ -157,6 +158,7 @@ Further Information
 | elasticsearch_indices_search_fetch_time_seconds                       | counter   | 1           | Total search fetch time in seconds
 | elasticsearch_indices_search_fetch_total                              | counter   | 1           | Total number of fetches
 | elasticsearch_indices_search_query_time_seconds                       | counter   | 1           | Total search query time in seconds
+| elasticsearch_indices_search_query_current                            | counter   | 1           | Current number of queries
 | elasticsearch_indices_search_query_total                              | counter   | 1           | Total number of queries
 | elasticsearch_indices_segments_count                                  | gauge     | 1           | Count of index segments on this node
 | elasticsearch_indices_segments_memory_bytes                           | gauge     | 1           | Current memory size of segments in bytes
