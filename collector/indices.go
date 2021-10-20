@@ -492,9 +492,9 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Labels: indexLabels,
 			},
 			{
-				Type: prometheus.CounterValue,
+				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "index_stats", "search_query_current"),
+					prometheus.BuildFQName(namespace, "search", "active_queries"),
 					"The number of currently active queries",
 					indexLabels.keys(), nil,
 				),
