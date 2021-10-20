@@ -614,7 +614,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "index_stats", "indexing_index_current"),
+					prometheus.BuildFQName(namespace, "index_stats", "current_indexed_docs"),
 					"The number of documents currently being indexed to an index",
 					indexLabels.keys(), nil,
 				),
