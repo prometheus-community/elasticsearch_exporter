@@ -1,4 +1,4 @@
-## 1.3.0 / 2021-10-01
+## 1.3.0 / 2021-10-21
 
 * [FEATURE] Add support for passing elasticsearch credentials via the ES_USERNAME and ES_PASSWORD environment varialbes #461
 * [FEATURE] Add support for API keys for elasticsearch authentication (Elastic cloud) #459
