@@ -41,6 +41,8 @@ type IndicesSettings struct {
 }
 
 var (
+	defaultIndicesNumberOfReplicas  = []string{"index"}
+	defaultIndicesNumberOfShards    = []string{"index"}
 	defaultIndicesTotalFieldsLabels = []string{"index"}
 	defaultTotalFieldsValue         = 1000 //es default configuration for total fields
 )
@@ -86,6 +88,36 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 64)
 					if err != nil {
 						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "number_of_replicas"),
+					"number of index replicas",
+					defaultIndicesNumberOfReplicas, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfReplicas, 64)
+					if err != nil {
+						return -1.0
+					}
+					return val
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "number_of_shards"),
+					"number of index shards",
+					defaultIndicesNumberOfShards, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfShards, 64)
+					if err != nil {
+						return -1.0
 					}
 					return val
 				},
