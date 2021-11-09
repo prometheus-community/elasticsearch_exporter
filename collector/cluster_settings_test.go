@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 )
 
 func TestClusterSettingsStats(t *testing.T) {

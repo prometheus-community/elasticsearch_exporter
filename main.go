@@ -14,6 +14,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -22,7 +23,7 @@ import (
 
 	"context"
 
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
@@ -31,9 +32,20 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+const name = "elasticsearch_exporter"
+
+type transportWithApiKey struct {
+	underlyingTransport http.RoundTripper
+	apiKey              string
+}
+
+func (t *transportWithApiKey) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", fmt.Sprintf("ApiKey %s", t.apiKey))
+	return t.underlyingTransport.RoundTrip(req)
+}
+
 func main() {
 	var (
-		Name          = "elasticsearch_exporter"
 		listenAddress = kingpin.Flag("web.listen-address",
 			"Address to listen on for web interface and telemetry.").
 			Default(":9114").Envar("WEB_LISTEN_ADDRESS").String()
@@ -85,6 +97,9 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
+		esApiKey = kingpin.Flag("es.apiKey",
+			"API Key to use for authenticating against Elasticsearch").
+			Default("").Envar("ES_API_KEY").String()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
 			Default("info").Envar("LOG_LEVEL").String()
@@ -96,7 +111,7 @@ func main() {
 			Default("stdout").Envar("LOG_OUTPUT").String()
 	)
 
-	kingpin.Version(version.Print(Name))
+	kingpin.Version(version.Print(name))
 	kingpin.CommandLine.HelpFlag.Short('h')
 	kingpin.Parse()
 
@@ -111,20 +126,39 @@ func main() {
 		os.Exit(1)
 	}
 
+	esUsername := os.Getenv("ES_USERNAME")
+	esPassword := os.Getenv("ES_PASSWORD")
+
+	if esUsername != "" && esPassword != "" {
+		esURL.User = url.UserPassword(esUsername, esPassword)
+	}
+
 	// returns nil if not provided and falls back to simple TCP.
 	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
 
+	var httpTransport http.RoundTripper
+
+	httpTransport = &http.Transport{
+		TLSClientConfig: tlsConfig,
+		Proxy:           http.ProxyFromEnvironment,
+	}
+
+	if *esApiKey != "" {
+		apiKey := *esApiKey
+
+		httpTransport = &transportWithApiKey{
+			underlyingTransport: httpTransport,
+			apiKey:              apiKey,
+		}
+	}
+
 	httpClient := &http.Client{
-		Timeout: *esTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
-		},
+		Timeout:   *esTimeout,
+		Transport: httpTransport,
 	}
 
 	// version metric
-	versionMetric := version.NewCollector(Name)
-	prometheus.MustRegister(versionMetric)
+	prometheus.MustRegister(version.NewCollector(name))
 
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
@@ -160,8 +194,9 @@ func main() {
 	// create a http server
 	server := &http.Server{}
 
-	// create a context that is cancelled on SIGKILL
-	ctx, cancel := context.WithCancel(context.Background())
+	// Create a context that is cancelled on SIGKILL or SIGINT.
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer cancel()
 
 	// start the cluster info retriever
 	switch runErr := clusterInfoRetriever.Run(ctx); runErr {
@@ -221,14 +256,10 @@ func main() {
 		}
 	}()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
+	<-ctx.Done()
+	_ = level.Info(logger).Log("msg", "shutting down")
 	// create a context for graceful http server shutdown
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()
-	<-c
-	_ = level.Info(logger).Log("msg", "shutting down")
 	_ = server.Shutdown(srvCtx)
-	cancel()
 }

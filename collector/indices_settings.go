@@ -22,8 +22,8 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -83,7 +83,7 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					defaultIndicesTotalFieldsLabels, nil,
 				),
 				Value: func(indexSettings Settings) float64 {
-					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 10)
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 64)
 					if err != nil {
 						return float64(defaultTotalFieldsValue)
 					}

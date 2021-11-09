@@ -48,6 +48,7 @@ elasticsearch_exporter --help
 | es.cluster_settings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster. | false |
+| es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster. | false |
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
@@ -56,6 +57,7 @@ elasticsearch_exporter --help
 | es.client-cert          | 1.0.2                 | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
 | es.clusterinfo.interval | 1.1.0rc1              |  Cluster info update interval for the cluster label | 5m |
 | es.ssl-skip-verify      | 1.0.4rc1              | Skip SSL verification when connecting to Elasticsearch. | false |
+| es.apiKey               | unreleased            | API Key to use for authenticating against Elasticsearch. |  |
 | web.listen-address      | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
@@ -65,6 +67,9 @@ For versions greater than `1.1.0rc1`, commandline parameters are specified with 
 by replacing `.` and `-` with `_` and upper-casing the parameter name.
 
 #### Elasticsearch 7.x security privileges
+
+Username and password can be passed either directly in the URI or through the `ES_USERNAME` and `ES_PASSWORD` environment variables.
+Specifying those two environment variables will override authentication passed in the URI (if any).
 
 ES 7.x supports RBACs. The following security privileges are required for the elasticsearch_exporter.
 
@@ -111,6 +116,7 @@ Further Information
 | elasticsearch_filesystem_io_stats_device_write_operations_count       | gauge     | 1           | Count of disk write operations
 | elasticsearch_filesystem_io_stats_device_read_size_kilobytes_sum      | gauge     | 1           | Total kilobytes read from disk
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum     | gauge     | 1           | Total kilobytes written to disk
+| elasticsearch_indices_active_queries                                  | gauge     | 1           | The number of currently active queries
 | elasticsearch_indices_docs                                            | gauge     | 1           | Count of documents on this node
 | elasticsearch_indices_docs_deleted                                    | gauge     | 1           | Count of deleted documents on this node
 | elasticsearch_indices_docs_primary                                    | gauge     |             | Count of documents with only primary shards on all nodes
@@ -128,6 +134,7 @@ Further Information
 | elasticsearch_indices_get_total                                       | counter   | 1           | Total get
 | elasticsearch_indices_indexing_delete_time_seconds_total              | counter   | 1           | Total time indexing delete in seconds
 | elasticsearch_indices_indexing_delete_total                           | counter   | 1           | Total indexing deletes
+| elasticsearch_indices_index_current                                   | gauge     | 1           | The number of documents currently being indexed to an index
 | elasticsearch_indices_indexing_index_time_seconds_total               | counter   | 1           | Cumulative index time in seconds
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
 | elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
