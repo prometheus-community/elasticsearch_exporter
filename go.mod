@@ -3,6 +3,7 @@ module github.com/prometheus-community/elasticsearch_exporter
 go 1.16
 
 require (
+	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15 // indirect
 	github.com/blang/semver v3.5.2-0.20180723201105-3c1074078d32+incompatible
 	github.com/go-kit/log v0.2.0
 	github.com/imdario/mergo v0.3.12

@@ -1,12 +1,20 @@
-ARG ARCH="amd64"
-ARG OS="linux"
-FROM quay.io/prometheus/busybox-${OS}-${ARCH}:glibc
-LABEL maintainer="The Prometheus Authors <prometheus-developers@googlegroups.com>"
+FROM quay.io/prometheus/golang-builder as builder
 
-ARG ARCH="amd64"
-ARG OS="linux"
-COPY .build/${OS}-${ARCH}/elasticsearch_exporter /bin/elasticsearch_exporter
+ADD .   /go/src/github.com/prometheus-community/elasticsearch_exporter
+WORKDIR /go/src/github.com/prometheus-community/elasticsearch_exporter
 
-EXPOSE      7979
-USER        nobody
+RUN make 
+
+FROM scratch as scratch
+
+COPY --from=builder /go/src/github.com/prometheus-community/elasticsearch_exporter/elasticsearch_exporter  /bin/elasticsearch_exporter
+
+EXPOSE      9114
+ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
+
+FROM quay.io/sysdig/sysdig-mini-ubi:1.1.14 as ubi
+
+COPY --from=builder /go/src/github.com/prometheus-community/elasticsearch_exporter/elasticsearch_exporter  /bin/elasticsearch_exporter
+
+EXPOSE      9114
 ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
