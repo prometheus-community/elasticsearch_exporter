@@ -1451,34 +1451,6 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
-					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
-				),
-				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.Sys) / 1000
-				},
-				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "sys")
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
-					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
-				),
-				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.User) / 1000
-				},
-				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "user")
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "rx_packets_total"),
 					"Count of packets received",
 					defaultNodeLabels, nil,
