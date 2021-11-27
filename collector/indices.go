@@ -40,6 +40,13 @@ type indexMetric struct {
 	Labels labels
 }
 
+type indexSearchGroupMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64
+	Labels labels
+}
+
 type shardMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
@@ -53,6 +60,7 @@ type Indices struct {
 	client          *http.Client
 	url             *url.URL
 	shards          bool
+	groups          bool
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
 
@@ -60,16 +68,31 @@ type Indices struct {
 	totalScrapes      prometheus.Counter
 	jsonParseFailures prometheus.Counter
 
-	indexMetrics []*indexMetric
-	shardMetrics []*shardMetric
+	indexMetrics       []*indexMetric
+	indexSearchMetrics []*indexSearchGroupMetric
+	shardMetrics       []*shardMetric
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, groups bool) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
 			return []string{"index", "cluster"}
+		},
+		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
+			if lastClusterinfo != nil {
+				return append(s, lastClusterinfo.ClusterName)
+			}
+			// this shouldn't happen, as the clusterinfo Retriever has a blocking
+			// Run method. It blocks until the first clusterinfo call has succeeded
+			return append(s, "unknown_cluster")
+		},
+	}
+
+	indexSearchGroupLabels := labels{
+		keys: func(...string) []string {
+			return []string{"index", "group", "cluster"}
 		},
 		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
 			if lastClusterinfo != nil {
@@ -100,6 +123,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		client:        client,
 		url:           url,
 		shards:        shards,
+		groups:        groups,
 		clusterInfoCh: make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
@@ -117,6 +141,165 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			Name: prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
 		}),
+
+		indexSearchMetrics: []*indexSearchGroupMetric{
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_open_contexts"),
+					"Open contexts",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.OpenContexts)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_query_total"),
+					"Total number of queries",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.QueryTotal)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_query_time_seconds_total"),
+					"Total search query time in seconds",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.QueryTimeInMillis) / 1000
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_query_current"),
+					"The number of currently active queries",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.QueryCurrent)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_fetch_total"),
+					"Total search fetch count",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.FetchTotal)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_fetch_time_seconds_total"),
+					"Total search fetch time in seconds",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.FetchTimeInMillis) / 1000
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_fetch_current"),
+					"Current search fetch count",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.FetchCurrent)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_scroll_total"),
+					"Total search scroll count",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.ScrollTotal)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_scroll_time_seconds_total"),
+					"Total search scroll time in seconds",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.ScrollTimeInMillis) / 1000
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_scroll_current"),
+					"Current search scroll count",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.ScrollCurrent)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_suggest_total"),
+					"Total search suggest count",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.SuggestTotal)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_suggest_time_seconds_total"),
+					"Total search suggest time in seconds",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.SuggestTimeInMillis) / 1000
+				},
+				Labels: indexSearchGroupLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_group_suggest_current"),
+					"Current search suggest count",
+					indexSearchGroupLabels.keys(), nil,
+				),
+				Value: func(indexSearchGroupStats IndexStatsIndexSearchGroupResponse) float64 {
+					return float64(indexSearchGroupStats.SuggestCurrent)
+				},
+				Labels: indexSearchGroupLabels,
+			},
+		},
 
 		indexMetrics: []*indexMetric{
 			{
@@ -476,6 +659,18 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
 					return float64(indexStats.Total.Completion.SizeInBytes)
+				},
+				Labels: indexLabels,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_open_contexts"),
+					"Open contexts",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.OpenContexts)
 				},
 				Labels: indexLabels,
 			},
@@ -1064,11 +1259,16 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 	u := *i.url
 	u.Path = path.Join(u.Path, "/_all/_stats")
+
+	q := u.Query()
+	q.Add("ignore_unavailable", "true")
 	if i.shards {
-		u.RawQuery = "ignore_unavailable=true&level=shards"
-	} else {
-		u.RawQuery = "ignore_unavailable=true"
+		q.Add("level", "shards")
 	}
+	if i.groups {
+		q.Add("groups", "*")
+	}
+	u.RawQuery = q.Encode()
 
 	res, err := i.client.Get(u.String())
 	if err != nil {
@@ -1134,7 +1334,18 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				metric.Value(indexStats),
 				metric.Labels.values(i.lastClusterInfo, indexName)...,
 			)
-
+		}
+		if i.groups {
+			for groupName, indexSearchStats := range indexStats.Total.Search.Groups {
+				for _, metric := range i.indexSearchMetrics {
+					ch <- prometheus.MustNewConstMetric(
+						metric.Desc,
+						metric.Type,
+						metric.Value(indexSearchStats),
+						metric.Labels.values(i.lastClusterInfo, indexName, groupName)...,
+					)
+				}
+			}
 		}
 		if i.shards {
 			for _, metric := range i.shardMetrics {

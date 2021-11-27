@@ -105,6 +105,24 @@ type IndexStatsIndexGetResponse struct {
 
 // IndexStatsIndexSearchResponse defines index stats index search information structure
 type IndexStatsIndexSearchResponse struct {
+	OpenContexts        int64                                         `json:"open_contexts"`
+	QueryTotal          int64                                         `json:"query_total"`
+	QueryTimeInMillis   int64                                         `json:"query_time_in_millis"`
+	QueryCurrent        int64                                         `json:"query_current"`
+	FetchTotal          int64                                         `json:"fetch_total"`
+	FetchTimeInMillis   int64                                         `json:"fetch_time_in_millis"`
+	FetchCurrent        int64                                         `json:"fetch_current"`
+	ScrollTotal         int64                                         `json:"scroll_total"`
+	ScrollTimeInMillis  int64                                         `json:"scroll_time_in_millis"`
+	ScrollCurrent       int64                                         `json:"scroll_current"`
+	SuggestTotal        int64                                         `json:"suggest_total"`
+	SuggestTimeInMillis int64                                         `json:"suggest_time_in_millis"`
+	SuggestCurrent      int64                                         `json:"suggest_current"`
+	Groups              map[string]IndexStatsIndexSearchGroupResponse `json:"groups"`
+}
+
+// IndexStatsIndexSearchResponse defines index stats index search information structure
+type IndexStatsIndexSearchGroupResponse struct {
 	OpenContexts        int64 `json:"open_contexts"`
 	QueryTotal          int64 `json:"query_total"`
 	QueryTimeInMillis   int64 `json:"query_time_in_millis"`
