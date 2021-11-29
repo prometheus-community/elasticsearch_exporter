@@ -3,6 +3,7 @@ FROM quay.io/prometheus/golang-builder as builder
 ADD .   /go/src/github.com/prometheus-community/elasticsearch_exporter
 WORKDIR /go/src/github.com/prometheus-community/elasticsearch_exporter
 
+RUN go mod download
 RUN make 
 
 FROM scratch as scratch
