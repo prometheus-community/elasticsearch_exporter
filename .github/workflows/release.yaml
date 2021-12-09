@@ -6,7 +6,10 @@ jobs:
   buildDockerImage:
     env:
       EXPORTER_NAME: elasticsearch-exporter
-    name: Build docker image
+    strategy:
+      matrix:
+        docker: ['scratch','ubi']
+    name: Build docker image ${{ matrix.docker }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -21,18 +24,16 @@ jobs:
       run: exit 78
     - name: Build image
       run: |
-        docker build --label release=${{ github.event.release.tag_name }} -f Dockerfile --target scratch -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
-        docker build --label release=${{ github.event.release.tag_name }} -f Dockerfile --target ubi -t artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-ubi .
+        docker build --label release=${{ github.event.release.tag_name }} -f ./docker/Dockerfile --target ${{ matrix.docker }} -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
     - name: Publish docker image
       run: |
-        docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
-        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
-        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-ubi
+        docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-${{ matrix.docker }}
+        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-${{ matrix.docker }}
         docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:latest
     - name: Upload master to Quay.io
       uses: fjogeleit/http-request-action@master
       with:
-        url: 'https://sysdig-jenkins.internal.sysdig.com/view/Integrations/job/integrations-elasticsearch-exporter/buildWithParameters?token=${{ secrets.JENKINS_PROMCAT_LAUNCH_TOKEN }}&EXPORTER=elasticsearch-exporter&DRY_RUN=false'
+        url: 'https://sysdig-jenkins.internal.sysdig.com/view/Integrations/job/integrations-redis-exporter/buildWithParameters?token=${{ secrets.JENKINS_PROMCAT_LAUNCH_TOKEN }}&EXPORTER=redis-exporter&DRY_RUN=false'
         method: 'POST'
         username: david.lorite@sysdig.com
         password: ${{ secrets.JENKINS_PROMCAT_API_TOKEN }}
