@@ -3,6 +3,7 @@
   local custom = self,
   alert+:: {
     selector: error 'must provide selector for Elasticsearch alerts',
+    extraLabels: '',
   },
   prometheusAlerts+:: {
     groups+: [
@@ -13,7 +14,7 @@
           {
             alert: 'ElasticsearchNodeDiskWatermarkReached',
             expr: |||
-              max by (cluster, instance, node) (
+              max by (cluster, instance, node,%(extraLabels)s) (
                 1 - (elasticsearch_filesystem_data_free_bytes{%(selector)s} / elasticsearch_filesystem_data_size_bytes{%(selector)s})
               ) > %(esDiskLowWaterMark)s
             ||| % custom.alert,
@@ -29,7 +30,7 @@
           {
             alert: 'ElasticsearchNodeDiskWatermarkReached',
             expr: |||
-              max by (cluster, instance, node) (
+              max by (cluster, instance, node,%(extraLabels)s) (
                 1 - (elasticsearch_filesystem_data_free_bytes{%(selector)s} / elasticsearch_filesystem_data_size_bytes{%(selector)s})
               ) > %(esDiskHighWaterMark)s
             ||| % custom.alert,
@@ -50,7 +51,7 @@
           {
             alert: 'ElasticsearchClusterStatusRed',
             expr: |||
-              max by (cluster) (elasticsearch_cluster_health_status{color="red", %(selector)s} == 1)
+              max by (cluster,%(extraLabels)s) (elasticsearch_cluster_health_status{color="red", %(selector)s} == 1)
             ||| % custom.alert,
             'for': '%(esClusterHealthStatusRED)s' % custom.alert,
             labels: {
@@ -64,7 +65,7 @@
           {
             alert: 'ElasticsearchClusterStatusYellow',
             expr: |||
-              max by (cluster) (elasticsearch_cluster_health_status{color="yellow", %(selector)s} == 1)
+              max by (cluster,%(extraLabels)s) (elasticsearch_cluster_health_status{color="yellow", %(selector)s} == 1)
             ||| % custom.alert,
             'for': '%(esClusterHealthStatusYELLOW)s' % custom.alert,
             labels: {
@@ -78,7 +79,7 @@
           {
             alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              max by (cluster, name, type) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
+              max by (cluster, name, type,%(extraLabels)s) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolWarningTime)s' % custom.alert,
             labels: {
@@ -92,7 +93,7 @@
           {
             alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              max by (cluster, name, type) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
+              max by (cluster, name, type,%(extraLabels)s) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolCriticalTime)s' % custom.alert,
             labels: {
