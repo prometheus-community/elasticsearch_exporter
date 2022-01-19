@@ -2,13 +2,13 @@
 version: 2.1
 
 orbs:
-  prometheus: prometheus/prometheus@0.11.0
+  prometheus: prometheus/prometheus@0.15.0
 
 executors:
   # This must match .promu.yml.
   golang:
     docker:
-      - image: circleci/golang:1.16
+      - image: circleci/golang:1.17
 
 jobs:
   test:

@@ -34,12 +34,12 @@ import (
 
 const name = "elasticsearch_exporter"
 
-type transportWithApiKey struct {
+type transportWithAPIKey struct {
 	underlyingTransport http.RoundTripper
 	apiKey              string
 }
 
-func (t *transportWithApiKey) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *transportWithAPIKey) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("Authorization", fmt.Sprintf("ApiKey %s", t.apiKey))
 	return t.underlyingTransport.RoundTrip(req)
 }
@@ -97,7 +97,7 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
-		esApiKey = kingpin.Flag("es.apiKey",
+		esAPIKey = kingpin.Flag("es.apiKey",
 			"API Key to use for authenticating against Elasticsearch").
 			Default("").Envar("ES_API_KEY").String()
 		logLevel = kingpin.Flag("log.level",
@@ -143,10 +143,10 @@ func main() {
 		Proxy:           http.ProxyFromEnvironment,
 	}
 
-	if *esApiKey != "" {
-		apiKey := *esApiKey
+	if *esAPIKey != "" {
+		apiKey := *esAPIKey
 
-		httpTransport = &transportWithApiKey{
+		httpTransport = &transportWithAPIKey{
 			underlyingTransport: httpTransport,
 			apiKey:              apiKey,
 		}

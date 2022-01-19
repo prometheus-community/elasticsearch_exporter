@@ -80,7 +80,7 @@ func TestIndicesSettings(t *testing.T) {
 			// 	t.Errorf("Wrong setting for cluster routing allocation enabled")
 			// }
 			var counter int
-			var total_fields int
+			var totalFields int
 			for key, value := range nsr {
 				if value.Settings.IndexInfo.Blocks.ReadOnly == "true" {
 					counter++
@@ -89,7 +89,7 @@ func TestIndicesSettings(t *testing.T) {
 					}
 				}
 				if value.Settings.IndexInfo.Mapping.TotalFields.Limit == "10000" {
-					total_fields++
+					totalFields++
 					if key != "instagram" {
 						t.Errorf("Expected 10000 total_fields only for  instagram")
 					}
@@ -98,7 +98,7 @@ func TestIndicesSettings(t *testing.T) {
 			if counter != 2 {
 				t.Errorf("Wrong number of read_only indexes")
 			}
-			if total_fields != 1 {
+			if totalFields != 1 {
 				t.Errorf(("Wrong number of total_fields found"))
 			}
 		}
