@@ -48,67 +48,64 @@ func main() {
 	var (
 		listenAddress = kingpin.Flag("web.listen-address",
 			"Address to listen on for web interface and telemetry.").
-			Default(":9114").Envar("WEB_LISTEN_ADDRESS").String()
+			Default(":9114").String()
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
-			Default("/metrics").Envar("WEB_TELEMETRY_PATH").String()
+			Default("/metrics").String()
 		esURI = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
-			Default("http://localhost:9200").Envar("ES_URI").String()
+			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
-			Default("5s").Envar("ES_TIMEOUT").Duration()
+			Default("5s").Duration()
 		esAllNodes = kingpin.Flag("es.all",
 			"Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.").
-			Default("false").Envar("ES_ALL").Bool()
+			Default("false").Bool()
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
-			Default("_local").Envar("ES_NODE").String()
+			Default("_local").String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
-			Default("false").Envar("ES_INDICES").Bool()
+			Default("false").Bool()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
-			Default("false").Envar("ES_INDICES_SETTINGS").Bool()
+			Default("false").Bool()
 		esExportIndicesMappings = kingpin.Flag("es.indices_mappings",
 			"Export stats for mappings of all indices of the cluster.").
-			Default("false").Envar("ES_INDICES_MAPPINGS").Bool()
+			Default("false").Bool()
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
 			"Export stats for cluster settings.").
-			Default("false").Envar("ES_CLUSTER_SETTINGS").Bool()
+			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
-			Default("false").Envar("ES_SHARDS").Bool()
+			Default("false").Bool()
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
-			Default("false").Envar("ES_SNAPSHOTS").Bool()
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
-			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
+			Default("5m").Duration()
 		esCA = kingpin.Flag("es.ca",
 			"Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.").
-			Default("").Envar("ES_CA").String()
+			Default("").String()
 		esClientPrivateKey = kingpin.Flag("es.client-private-key",
 			"Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.").
-			Default("").Envar("ES_CLIENT_PRIVATE_KEY").String()
+			Default("").String()
 		esClientCert = kingpin.Flag("es.client-cert",
 			"Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.").
-			Default("").Envar("ES_CLIENT_CERT").String()
+			Default("").String()
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
-			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
-		esAPIKey = kingpin.Flag("es.apiKey",
-			"API Key to use for authenticating against Elasticsearch").
-			Default("").Envar("ES_API_KEY").String()
+			Default("false").Bool()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
-			Default("info").Envar("LOG_LEVEL").String()
+			Default("info").String()
 		logFormat = kingpin.Flag("log.format",
 			"Sets the log format. Valid formats are json and logfmt").
-			Default("logfmt").Envar("LOG_FMT").String()
+			Default("logfmt").String()
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
-			Default("stdout").Envar("LOG_OUTPUT").String()
+			Default("stdout").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -143,12 +140,12 @@ func main() {
 		Proxy:           http.ProxyFromEnvironment,
 	}
 
-	if *esAPIKey != "" {
-		apiKey := *esAPIKey
+	esAPIKey := os.Getenv("ES_API_KEY")
 
+	if esAPIKey != "" {
 		httpTransport = &transportWithAPIKey{
 			underlyingTransport: httpTransport,
-			apiKey:              apiKey,
+			apiKey:              esAPIKey,
 		}
 	}
 
