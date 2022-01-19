@@ -296,10 +296,6 @@ type NodeStatsOSSwapResponse struct {
 
 // NodeStatsOSCPUResponse defines node stats operating system CPU usage structure
 type NodeStatsOSCPUResponse struct {
-	Sys     int64                      `json:"sys"`
-	User    int64                      `json:"user"`
-	Idle    int64                      `json:"idle"`
-	Steal   int64                      `json:"stolen"`
 	LoadAvg NodeStatsOSCPULoadResponse `json:"load_average"`
 	Percent int64                      `json:"percent"`
 }
@@ -330,8 +326,6 @@ type NodeStatsProcessMemResponse struct {
 // NodeStatsProcessCPUResponse defines node stats process CPU usage structure
 type NodeStatsProcessCPUResponse struct {
 	Percent int64 `json:"percent"`
-	Sys     int64 `json:"sys_in_millis"`
-	User    int64 `json:"user_in_millis"`
 	Total   int64 `json:"total_in_millis"`
 }
 
