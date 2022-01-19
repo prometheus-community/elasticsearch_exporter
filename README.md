@@ -57,14 +57,14 @@ elasticsearch_exporter --help
 | es.client-cert          | 1.0.2                 | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
 | es.clusterinfo.interval | 1.1.0rc1              |  Cluster info update interval for the cluster label | 5m |
 | es.ssl-skip-verify      | 1.0.4rc1              | Skip SSL verification when connecting to Elasticsearch. | false |
-| es.apiKey               | unreleased            | API Key to use for authenticating against Elasticsearch. |  |
 | web.listen-address      | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
-For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
-by replacing `.` and `-` with `_` and upper-casing the parameter name.
+For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`.
+
+The API key used to connect can be set with the `ES_API_KEY` environment variable.
 
 #### Elasticsearch 7.x security privileges
 
