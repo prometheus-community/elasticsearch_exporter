@@ -93,7 +93,7 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_settings", "number_of_replicas"),
+					prometheus.BuildFQName(namespace, "indices_settings", "replicas"),
 					"index setting number_of_replicas",
 					defaultIndicesTotalFieldsLabels, nil,
 				),
