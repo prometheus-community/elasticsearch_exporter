@@ -1437,15 +1437,15 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
+					prometheus.BuildFQName(namespace, "process", "cpu_seconds_total"),
 					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
+					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.Total) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "total")
+					return defaultNodeLabelValues(cluster, node)
 				},
 			},
 			{
