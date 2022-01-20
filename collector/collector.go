@@ -1,4 +1,4 @@
-// Copyright 2022 The Prometheus Authors
+// Copyright 2022y The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -27,7 +27,10 @@ import (
 )
 
 // Namespace defines the common namespace to be used by all metrics.
-const namespace = "elasticsearch"
+const (
+	namespace    = "elasticsearch"
+	clusterLabel = "cluster"
+)
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
@@ -58,6 +61,8 @@ type ElasticsearchCollector struct {
 // NewElasticsearchCollector creates a new ElasticsearchCollector
 func NewElasticsearchCollector(logger log.Logger, httpClient *http.Client, esURL *url.URL) (*ElasticsearchCollector, error) {
 	collectors := make(map[string]Collector)
+
+	collectors["cluster_health"] = NewClusterHealth(logger, httpClient, esURL)
 
 	return &ElasticsearchCollector{Collectors: collectors, logger: logger}, nil
 }

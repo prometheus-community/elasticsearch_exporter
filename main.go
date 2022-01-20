@@ -157,10 +157,17 @@ func main() {
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
+	ec, err := collector.NewElasticsearchCollector(logger, httpClient, esURL)
+	if err != nil {
+		panic(err)
+	}
+
+	prometheus.MustRegister(ec)
+
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+	// prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 	if *esExportIndices || *esExportShards {
