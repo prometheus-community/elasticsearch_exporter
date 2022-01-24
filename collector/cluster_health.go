@@ -26,10 +26,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	namespace = "elasticsearch"
-)
-
 var (
 	colors                     = []string{"green", "yellow", "red"}
 	defaultClusterHealthLabels = []string{"cluster"}
