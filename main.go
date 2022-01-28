@@ -14,7 +14,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -106,6 +110,15 @@ func main() {
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").String()
+		ca = kingpin.Flag("ca.crt",
+			"Path to PEM file that contains trusted Certificate Authorities.").
+			Default("/tls/ca.crt").String()
+		privateKey = kingpin.Flag("tls.key",
+			"Path to PEM file that contains the private key for server auth.").
+			Default("/tls/tls.key").String()
+		certificate = kingpin.Flag("tls.crt",
+			"Path to PEM file that contains the corresponding cert for the private key.").
+			Default("/tls/tls.crt").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -188,8 +201,22 @@ func main() {
 		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
 	}
 
+	caCertFile, err := ioutil.ReadFile(*ca)
+	if err != nil {
+		log.Fatalf("error reading CA certificate: %v", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCertFile)
+
+	serverTLSConfig := &tls.Config{
+		ClientCAs:  caCertPool,
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		MinVersion: tls.VersionTLS12,
+	}
 	// create a http server
-	server := &http.Server{}
+	server := &http.Server{
+		TLSConfig: serverTLSConfig,
+	}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
@@ -244,7 +271,7 @@ func main() {
 	)
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
+		if err := server.ListenAndServeTLS(*certificate, *privateKey); err != nil {
 			_ = level.Error(logger).Log(
 				"msg", "http server quit",
 				"err", err,
