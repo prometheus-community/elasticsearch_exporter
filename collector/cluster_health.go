@@ -122,7 +122,7 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 		),
 		initializingShards: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subsystem, "initializing_shards"),
-			"Shards that are initializing.",
+			"Number of shards that are initializing.",
 			[]string{clusterLabel},
 			nil,
 		),

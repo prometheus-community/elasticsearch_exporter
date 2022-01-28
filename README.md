@@ -94,19 +94,6 @@ Further Information
 | elasticsearch_breakers_estimated_size_bytes                           | gauge     | 4           | Estimated size in bytes of breaker
 | elasticsearch_breakers_limit_size_bytes                               | gauge     | 4           | Limit size in bytes for breaker
 | elasticsearch_breakers_tripped                                        | counter   | 4           | tripped for breaker
-| elasticsearch_cluster_health_active_primary_shards                    | gauge     | 1           | The number of primary shards in your cluster. This is an aggregate total across all indices.
-| elasticsearch_cluster_health_active_shards                            | gauge     | 1           | Aggregate total of all shards across all indices, which includes replica shards.
-| elasticsearch_cluster_health_delayed_unassigned_shards                | gauge     | 1           | Shards delayed to reduce reallocation overhead
-| elasticsearch_cluster_health_initializing_shards                      | gauge     | 1           | Count of shards that are being freshly created.
-| elasticsearch_cluster_health_number_of_data_nodes                     | gauge     | 1           | Number of data nodes in the cluster.
-| elasticsearch_cluster_health_number_of_in_flight_fetch                | gauge     | 1           | The number of ongoing shard info requests.
-| elasticsearch_cluster_health_number_of_nodes                          | gauge     | 1           | Number of nodes in the cluster.
-| elasticsearch_cluster_health_number_of_pending_tasks                  | gauge     | 1           | Cluster level changes which have not yet been executed
-| elasticsearch_cluster_health_task_max_waiting_in_queue_millis         | gauge     | 1           | Max time in millis that a task is waiting in queue.
-| elasticsearch_cluster_health_relocating_shards                        | gauge     | 1           | The number of shards that are currently moving from one node to another node.
-| elasticsearch_cluster_health_status                                   | gauge     | 3           | Whether all primary and replica shards are allocated.
-| elasticsearch_cluster_health_timed_out                                | gauge     | 1           | Number of cluster health checks timed out
-| elasticsearch_cluster_health_unassigned_shards                        | gauge     | 1           | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
 | elasticsearch_clustersettings_stats_max_shards_per_node               | gauge     | 0           | Current maximum number of shards per node setting.
 | elasticsearch_filesystem_data_available_bytes                         | gauge     | 1           | Available space on block device in bytes
 | elasticsearch_filesystem_data_free_bytes                              | gauge     | 1           | Free space on block device in bytes
@@ -216,6 +203,22 @@ Further Information
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
+
+#### Cluster Health
+|Name                                                                   |Type       |Cardinality  |Help
+|----                                                                   |----       |-----------  |----
+| elasticsearch_cluster_health_active_primary_shards                    | gauge     | 1           | Number of active primary shards in the cluster. This is an aggregate of all indices.
+| elasticsearch_cluster_health_active_shards                            | gauge     | 1           | Number of shards in the cluster that are active including replica shards.
+| elasticsearch_cluster_health_delayed_unassigned_shards                | gauge     | 1           | Shards delayed to reduce the reallocation overhead
+| elasticsearch_cluster_health_initializing_shards                      | gauge     | 1           | Number of shards that are initializing.
+| elasticsearch_cluster_health_relocating_shards                        | gauge     | 1           | Number of shards in the cluster that are relocating.
+| elasticsearch_cluster_health_unassigned_shards                        | gauge     | 1           | Number of shards in the cluster that are unassigned.
+| elasticsearch_cluster_health_in_flight_fetch                          | gauge     | 1           | Number of in-flight fetch requests.
+| elasticsearch_cluster_health_data_nodes                               | gauge     | 1           | Number of data nodes in the cluster.
+| elasticsearch_cluster_health_nodes                                    | gauge     | 1           | Number of nodes in the cluster.
+| elasticsearch_cluster_health_pending_tasks                            | gauge     | 1           | Number of pending tasks in the cluster.
+| elasticsearch_cluster_health_task_max_wait_queue_seconds              | gauge     | 1           | Maximum time of tasks waiting in the queue.
+| elasticsearch_cluster_health_status                                   | gauge     | 3           | Status of the cluster.
 
 ### Alerts & Recording Rules
 

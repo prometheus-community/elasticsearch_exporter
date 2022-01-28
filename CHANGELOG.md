@@ -1,3 +1,13 @@
+## Unreleased / master
+
+* [CHANGE] Some cluster health metrics have been renamed #523
+  * `elasticsearch_cluster_health_number_of_in_flight_fetch` is now `elasticsearch_cluster_health_in_flight_fetch`
+  * `elasticsearch_cluster_health_number_of_nodes` is now `elasticsearch_cluster_health_nodes`
+  * `elasticsearch_cluster_health_number_of_data_nodes` is now `elasticsearch_cluster_health_data_nodes`
+  * `elasticsearch_cluster_health_number_of_pending_tasks` is now `elasticsearch_cluster_health_pending_tasks`
+  * `elasticsearch_cluster_health_task_max_waiting_in_queue_millis` is now `elasticsearch_cluster_health_task_max_wait_queue_seconds` and the unit changed to seconds to match prometheus standards.
+  * `elasticsearch_cluster_health_timed_out` has been removed. You can now use `elasticsearch_scrape_success{collector="cluster_health"}` to check the subsystem's scrape status.
+
 ## 1.3.0 / 2021-10-21
 
 * [FEATURE] Add support for passing elasticsearch credentials via the ES_USERNAME and ES_PASSWORD environment varialbes #461
