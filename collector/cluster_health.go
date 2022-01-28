@@ -52,7 +52,7 @@ type ClusterHealth struct {
 }
 
 func (c *ClusterHealth) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
-	chr, err := c.fetch()
+	chr, err := c.fetch(ctx)
 	if err != nil {
 		return err
 	}
@@ -169,10 +169,14 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 func (c *ClusterHealth) Describe(ch chan<- *prometheus.Desc) {
 }
 
-func (c *ClusterHealth) fetch() (clusterHealthResponse, error) {
+func (c *ClusterHealth) fetch(ctx context.Context) (clusterHealthResponse, error) {
 	var chr clusterHealthResponse
 	u := c.url.ResolveReference(&url.URL{Path: "_cluster/health"})
-	resp, err := c.client.Get(u.String())
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return chr, err
+	}
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return chr, err
 	}
