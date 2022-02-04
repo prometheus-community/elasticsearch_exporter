@@ -1791,6 +1791,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	var nsr nodeStatsResponse
 
 	u := *c.url
+
 	if c.all {
 		u.Path = path.Join(u.Path, "/_nodes/stats")
 	} else {
