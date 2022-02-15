@@ -82,6 +82,9 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Bool()
+		esExportHotThreads = kingpin.Flag("es.hot_threads",
+			"Export stats for hot threads on data nodes.").
+			Default("false").Envar("ES_HOT_THREADS").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -188,6 +191,9 @@ func main() {
 		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
 	}
 
+	if *esExportHotThreads {
+		prometheus.MustRegister(collector.NewHotThreads(logger, esURL))
+	}
 	// create a http server
 	server := &http.Server{}
 
