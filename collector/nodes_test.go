@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 )
@@ -59,7 +60,7 @@ func TestNodesStats(t *testing.T) {
 					t.Fatalf("Failed to parse URL: %s", err)
 				}
 				u.User = url.UserPassword("elastic", "changeme")
-				c := NewNodes(log.NewNopLogger(), http.DefaultClient, u, true, "_local")
+				c := NewNodes(log.NewNopLogger(), http.DefaultClient, u, true, "_local", time.Duration(5))
 				nsr, err := c.fetchAndDecodeNodeStats()
 				if err != nil {
 					t.Fatalf("Failed to fetch or decode node stats: %s", err)
