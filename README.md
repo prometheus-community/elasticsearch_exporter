@@ -30,7 +30,12 @@ elasticsearch_exporter:
 
 #### Kubernetes
 
-You can find a helm chart in the stable charts repository at https://github.com/kubernetes/charts/tree/master/stable/elasticsearch-exporter.
+You can find a helm chart in the prometheus-community charts repository at https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-elasticsearch-exporter
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install [RELEASE_NAME] prometheus-community/prometheus-elasticsearch-exporter
+```
 
 ### Configuration
 
