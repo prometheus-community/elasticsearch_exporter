@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright 2022 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -33,6 +33,13 @@ var (
 		}
 	}
 )
+
+// ShardResponse has shard's node and index info
+type ShardResponse struct {
+	Index string `json:"index"`
+	Shard string `json:"shard"`
+	Node  string `json:"node"`
+}
 
 // Shards information struct
 type Shards struct {
@@ -94,10 +101,10 @@ func (s *Shards) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (s *Shards) getAndParseURL(u *url.URL, data interface{}) error {
+func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 	res, err := s.client.Get(u.String())
 	if err != nil {
-		return fmt.Errorf("failed to get from %s://%s:%s%s: %s",
+		return nil, fmt.Errorf("failed to get from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 
@@ -112,14 +119,14 @@ func (s *Shards) getAndParseURL(u *url.URL, data interface{}) error {
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
-
-	if err := json.NewDecoder(res.Body).Decode(data); err != nil {
+	var sfr []ShardResponse
+	if err := json.NewDecoder(res.Body).Decode(&sfr); err != nil {
 		s.jsonParseFailures.Inc()
-		return err
+		return nil, err
 	}
-	return nil
+	return sfr, nil
 }
 
 func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
@@ -129,9 +136,7 @@ func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
 	q := u.Query()
 	q.Set("format", "json")
 	u.RawQuery = q.Encode()
-	u.RawPath = q.Encode()
-	var sfr []ShardResponse
-	err := s.getAndParseURL(&u, &sfr)
+	sfr, err := s.getAndParseURL(&u)
 	if err != nil {
 		return sfr, err
 	}
@@ -148,7 +153,7 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 	sr, err := s.fetchAndDecodeShards()
 	if err != nil {
 		_ = level.Warn(s.logger).Log(
-			"msg", "failed to fetch and decode cluster settings stats",
+			"msg", "failed to fetch and decode node shards stats",
 			"err", err,
 		)
 		return
