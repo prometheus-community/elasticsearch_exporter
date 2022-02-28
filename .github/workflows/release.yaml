@@ -24,7 +24,7 @@ jobs:
       run: exit 78
     - name: Build image
       run: |
-        docker build --label release=${{ github.event.release.tag_name }} -f ./build/Dockerfile --target ${{ matrix.docker }} -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
+        docker build --label release=${{ github.event.release.tag_name }} -f Dockerfile --target ${{ matrix.docker }} -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
     - name: Publish docker image
       run: |
         docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-${{ matrix.docker }}
