@@ -1365,6 +1365,20 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm", "uptime_seconds"),
+					"JVM process uptime in seconds",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Uptime) / 1000
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "mapped")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
 					defaultNodeLabels, nil,
