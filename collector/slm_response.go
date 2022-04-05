@@ -35,3 +35,8 @@ type PolicyStats struct {
 	SnapshotsDeleted         int64  `json:"snapshots_deleted"`
 	SnapshotDeletionFailures int64  `json:"snapshot_deletion_failures"`
 }
+
+// SLMStatusResponse is a representation of the SLM status
+type SLMStatusResponse struct {
+	OperationMode string `json:"operation_mode"`
+}

@@ -39,11 +39,20 @@ type slmMetric struct {
 	Value func(slmStats SLMStatsResponse) float64
 }
 
+type slmStatusMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(slmStatus SLMStatusResponse, operationMode string) float64
+	Labels func(operationMode string) []string
+}
+
 var (
 	defaultPolicyLabels      = []string{"policy"}
 	defaultPolicyLabelValues = func(policyStats PolicyStats) []string {
 		return []string{policyStats.Policy}
 	}
+
+	statuses = []string{"RUNNING", "STOPPING", "STOPPED"}
 )
 
 // SLM information struct
@@ -55,8 +64,9 @@ type SLM struct {
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
 
-	slmMetrics    []*slmMetric
-	policyMetrics []*policyMetric
+	slmMetrics      []*slmMetric
+	policyMetrics   []*policyMetric
+	slmStatusMetric *slmStatusMetric
 }
 
 // NewSLM defines SLM Prometheus metrics
@@ -218,11 +228,27 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				Labels: defaultPolicyLabelValues,
 			},
 		},
+		slmStatusMetric: &slmStatusMetric{
+			Type: prometheus.GaugeValue,
+			Desc: prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, "slm_stats", "operation_mode"),
+				"Operating status of SLM",
+				defaultPolicyLabels, nil,
+			),
+			Value: func(slmStatus SLMStatusResponse, operationMode string) float64 {
+				if slmStatus.OperationMode == operationMode {
+					return 1
+				}
+				return 0
+			},
+		},
 	}
 }
 
 // Describe adds SLM metrics descriptions
 func (s *SLM) Describe(ch chan<- *prometheus.Desc) {
+	ch <- s.slmStatusMetric.Desc
+
 	for _, metric := range s.slmMetrics {
 		ch <- metric.Desc
 	}
@@ -230,6 +256,7 @@ func (s *SLM) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range s.policyMetrics {
 		ch <- metric.Desc
 	}
+
 	ch <- s.up.Desc()
 	ch <- s.totalScrapes.Desc()
 	ch <- s.jsonParseFailures.Desc()
@@ -274,6 +301,45 @@ func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
 	return ssr, nil
 }
 
+func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
+	var ssr SLMStatusResponse
+
+	u := *s.url
+	u.Path = path.Join(u.Path, "/_slm/status")
+	res, err := s.client.Get(u.String())
+	if err != nil {
+		return ssr, fmt.Errorf("failed to get slm status from %s://%s:%s%s: %s",
+			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+	}
+
+	defer func() {
+		err = res.Body.Close()
+		if err != nil {
+			_ = level.Warn(s.logger).Log(
+				"msg", "failed to close http.Client",
+				"err", err,
+			)
+		}
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		return ssr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	}
+
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		s.jsonParseFailures.Inc()
+		return ssr, err
+	}
+
+	if err := json.Unmarshal(bts, &ssr); err != nil {
+		s.jsonParseFailures.Inc()
+		return ssr, err
+	}
+
+	return ssr, nil
+}
+
 // Collect gets SLM metric values
 func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 	s.totalScrapes.Inc()
@@ -282,6 +348,16 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 		ch <- s.totalScrapes
 		ch <- s.jsonParseFailures
 	}()
+
+	slmStatusResp, err := s.fetchAndDecodeSLMStatus()
+	if err != nil {
+		s.up.Set(0)
+		_ = level.Warn(s.logger).Log(
+			"msg", "failed to fetch and decode slm status",
+			"err", err,
+		)
+		return
+	}
 
 	slmStatsResp, err := s.fetchAndDecodeSLMStats()
 	if err != nil {
@@ -292,7 +368,17 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 		)
 		return
 	}
+
 	s.up.Set(1)
+
+	for _, status := range statuses {
+		ch <- prometheus.MustNewConstMetric(
+			s.slmStatusMetric.Desc,
+			s.slmStatusMetric.Type,
+			s.slmStatusMetric.Value(slmStatusResp, status),
+			status,
+		)
+	}
 
 	for _, metric := range s.slmMetrics {
 		ch <- prometheus.MustNewConstMetric(
