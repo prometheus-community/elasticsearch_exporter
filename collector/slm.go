@@ -125,12 +125,12 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_deletion_time_millis"),
+					prometheus.BuildFQName(namespace, "slm_stats", "retention_deletion_time_seconds"),
 					"Retention run deletion time",
 					nil, nil,
 				),
 				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.RetentionDeletionTimeMillis)
+					return float64(slmStats.RetentionDeletionTimeMillis) / 1000
 				},
 			},
 			{
