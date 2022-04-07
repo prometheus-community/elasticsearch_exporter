@@ -90,9 +90,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 		}),
 		slmMetrics: []*slmMetric{
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_runs"),
+					prometheus.BuildFQName(namespace, "slm_stats", "retention_runs_total"),
 					"Total retention runs",
 					nil, nil,
 				),
@@ -101,9 +101,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_failed"),
+					prometheus.BuildFQName(namespace, "slm_stats", "retention_failed_total"),
 					"Total failed retention runs",
 					nil, nil,
 				),
@@ -112,9 +112,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_timed_out"),
+					prometheus.BuildFQName(namespace, "slm_stats", "retention_timed_out_total"),
 					"Total timed out retention runs",
 					nil, nil,
 				),
@@ -134,9 +134,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_taken"),
+					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_taken_total"),
 					"Total snapshots taken",
 					nil, nil,
 				),
@@ -145,9 +145,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_failed"),
+					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_failed_total"),
 					"Total snapshots failed",
 					nil, nil,
 				),
@@ -156,9 +156,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_deleted"),
+					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_deleted_total"),
 					"Total snapshots deleted",
 					nil, nil,
 				),
@@ -167,9 +167,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				},
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshot_deletion_failures"),
+					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshot_deletion_failures_total"),
 					"Total snapshot deletion failures",
 					nil, nil,
 				),
@@ -180,9 +180,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 		},
 		policyMetrics: []*policyMetric{
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_taken"),
+					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_taken_total"),
 					"Total snapshots taken",
 					defaultPolicyLabels, nil,
 				),
@@ -192,9 +192,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				Labels: defaultPolicyLabelValues,
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_failed"),
+					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_failed_total"),
 					"Total snapshots failed",
 					defaultPolicyLabels, nil,
 				),
@@ -204,9 +204,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				Labels: defaultPolicyLabelValues,
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_deleted"),
+					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_deleted_total"),
 					"Total snapshots deleted",
 					defaultPolicyLabels, nil,
 				),
@@ -216,9 +216,9 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 				Labels: defaultPolicyLabelValues,
 			},
 			{
-				Type: prometheus.GaugeValue,
+				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshot_deletion_failures"),
+					prometheus.BuildFQName(namespace, "slm_stats", "snapshot_deletion_failures_total"),
 					"Total snapshot deletion failures",
 					defaultPolicyLabels, nil,
 				),

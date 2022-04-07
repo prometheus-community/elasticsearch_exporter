@@ -224,20 +224,20 @@ Further Information
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
 | elasticsearch_slm_stats_up                                            | gauge     | 0           | Up metric for SLM collector
-| elasticsearch_slm_stats_total_scrapes                                 | gauge     | 0           | Number of scrapes for SLM collector
-| elasticsearch_slm_stats_json_parse_failures                           | gauge     | 0           | JSON parse failures for SLM collector
-| elasticsearch_slm_stats_retention_runs                                | gauge     | 0           | Total retention runs
-| elasticsearch_slm_stats_retention_failed                              | gauge     | 0           | Total failed retention runs
-| elasticsearch_slm_stats_retention_timed_out                           | gauge     | 0           | Total retention run timeouts
-| elasticsearch_slm_stats_retention_retention_deletion_time_millis      | gauge     | 0           | Retention run deletion time
-| elasticsearch_slm_stats_total_snapshots_taken                         | gauge     | 0           | Total snapshots taken
-| elasticsearch_slm_stats_total_snapshots_failed                        | gauge     | 0           | Total snapshots failed
-| elasticsearch_slm_stats_total_snapshots_deleted                       | gauge     | 0           | Total snapshots deleted
-| elasticsearch_slm_stats_total_snapshots_failed                        | gauge     | 0           | Total snapshots failed
-| elasticsearch_slm_stats_snapshots_taken                               | gauge     | 1           | Snapshots taken by policy
-| elasticsearch_slm_stats_snapshots_failed                              | gauge     | 1           | Snapshots failed by policy
-| elasticsearch_slm_stats_snapshots_deleted                             | gauge     | 1           | Snapshots deleted by policy
-| elasticsearch_slm_stats_snapshot_deletion_failures                    | gauge     | 1           | Snapshot deletion failures by policy
+| elasticsearch_slm_stats_total_scrapes                                 | counter   | 0           | Number of scrapes for SLM collector
+| elasticsearch_slm_stats_json_parse_failures                           | counter   | 0           | JSON parse failures for SLM collector
+| elasticsearch_slm_stats_retention_runs_total                          | counter   | 0           | Total retention runs
+| elasticsearch_slm_stats_retention_failed_total                        | counter   | 0           | Total failed retention runs
+| elasticsearch_slm_stats_retention_timed_out_total                     | counter   | 0           | Total retention run timeouts
+| elasticsearch_slm_stats_retention_deletion_time_seconds               | gauge     | 0           | Retention run deletion time
+| elasticsearch_slm_stats_total_snapshots_taken_total                   | counter   | 0           | Total snapshots taken
+| elasticsearch_slm_stats_total_snapshots_failed_total                  | counter   | 0           | Total snapshots failed
+| elasticsearch_slm_stats_total_snapshots_deleted_total                 | counter   | 0           | Total snapshots deleted
+| elasticsearch_slm_stats_total_snapshots_failed_total                  | counter   | 0           | Total snapshots failed
+| elasticsearch_slm_stats_snapshots_taken_total                         | counter   | 1           | Snapshots taken by policy
+| elasticsearch_slm_stats_snapshots_failed_total                        | counter   | 1           | Snapshots failed by policy
+| elasticsearch_slm_stats_snapshots_deleted_total                       | counter   | 1           | Snapshots deleted by policy
+| elasticsearch_slm_stats_snapshot_deletion_failures_total              | counter   | 1           | Snapshot deletion failures by policy
 | elasticsearch_slm_stats_operation_mode                                | gauge     | 1           | SLM operation mode (Running, stopping, stopped)
 
 
