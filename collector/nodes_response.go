@@ -15,7 +15,7 @@ package collector
 
 import "encoding/json"
 
-// nodeStatsResponse is a representation of a Elasticsearch Node Stats
+// nodeStatsResponse is a representation of an Elasticsearch Node Stats
 type nodeStatsResponse struct {
 	ClusterName string `json:"cluster_name"`
 	Nodes       map[string]NodeStatsNodeResponse
@@ -55,6 +55,7 @@ type NodeStatsJVMResponse struct {
 	BufferPools map[string]NodeStatsJVMBufferPoolResponse `json:"buffer_pools"`
 	GC          NodeStatsJVMGCResponse                    `json:"gc"`
 	Mem         NodeStatsJVMMemResponse                   `json:"mem"`
+	Uptime      int64                                     `json:"uptime_in_millis"`
 }
 
 // NodeStatsJVMGCResponse defines node stats JVM garbage collector information structure
