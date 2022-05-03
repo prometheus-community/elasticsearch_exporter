@@ -1,41 +1,24 @@
+name: Release
 on:
   release:
     types: [released]
 name: Build, test and publish
 jobs:
   buildDockerImage:
-    env:
-      EXPORTER_NAME: elasticsearch-exporter
     strategy:
       matrix:
         docker: ['scratch','ubi']
     name: Build docker image ${{ matrix.docker }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - name: Login to Artifactory
-      uses: docker/login-action@v1 
-      with:
-        registry: artifactory.internal.sysdig.com
-        username: david.lorite@sysdig.com
-        password: ${{ secrets.ARTI_TOKEN }}
     - name: Release if tagged
       if: "!startswith(github.ref, 'refs/tags/v')"
       run: exit 78
-    - name: Build image
-      run: |
-        docker build --label release=${{ github.event.release.tag_name }} -f Dockerfile --target ${{ matrix.docker }} -t artifactory.internal.sysdig.com/$EXPORTER_NAME:latest .
-    - name: Publish docker image
-      run: |
-        docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-${{ matrix.docker }}
-        docker tag artifactory.internal.sysdig.com/$EXPORTER_NAME:latest artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
-        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}-${{ matrix.docker }}
-        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:${{ github.event.release.tag_name }}
-        docker push artifactory.internal.sysdig.com/$EXPORTER_NAME:latest
-    - name: Upload master to Quay.io
-      uses: fjogeleit/http-request-action@master
+    - name: build
+      uses: sysdiglabs/exporter-builder
       with:
-        url: 'https://sysdig-jenkins.internal.sysdig.com/view/Integrations/job/integrations-elasticsearch-exporter/buildWithParameters?token=${{ secrets.JENKINS_PROMCAT_LAUNCH_TOKEN }}&EXPORTER=elasticsearch-exporter&DRY_RUN=false'
-        method: 'POST'
-        username: david.lorite@sysdig.com
-        password: ${{ secrets.JENKINS_PROMCAT_API_TOKEN }}
+        exporter: elasticsearch-exporter
+        artifactory_token: ${{ secrets.ARTI_TOKEN }}
+        artifactory_username: david.lorite@sysdig.com
+        tag_name: dev
+        target: ${{ matrix.docker }}
