@@ -25,3 +25,4 @@ jobs:
         artifactory_username: david.lorite@sysdig.com
         tag_name: dev
         target: ${{ matrix.docker }}
+        repository: artifactory.internal.sysdig.com
