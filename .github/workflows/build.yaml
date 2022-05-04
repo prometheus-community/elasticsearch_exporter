@@ -18,7 +18,7 @@ jobs:
     name: ${{ matrix.docker }}
     steps:
     - name: build
-      uses: Dlorite/exporter-builder-test@v0.1
+      uses: Dlorite/exporter-builder-test@v0.2
       with:
         exporter: elasticsearch-exporter
         artifactory_token: ${{ secrets.ARTI_TOKEN }}
