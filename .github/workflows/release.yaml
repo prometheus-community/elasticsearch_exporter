@@ -2,7 +2,6 @@ name: Release
 on:
   release:
     types: [released]
-name: Build, test and publish
 jobs:
   buildDockerImage:
     strategy:
