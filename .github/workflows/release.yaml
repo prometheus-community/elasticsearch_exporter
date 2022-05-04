@@ -15,7 +15,7 @@ jobs:
       if: "!startswith(github.ref, 'refs/tags/v')"
       run: exit 78
     - name: build
-      uses: sysdiglabs/exporter-builder
+      uses: sysdiglabs/exporter-builder@v0.2
       with:
         exporter: elasticsearch-exporter
         artifactory_token: ${{ secrets.ARTI_TOKEN }}
