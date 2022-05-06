@@ -54,6 +54,7 @@ elasticsearch_exporter --help
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster. | false |
 | es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster. | false |
+| es.aliases              | 1.0.4rc1              | If true, include aliases in label for all index and shard stats. | false |
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
