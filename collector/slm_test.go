@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright 2022 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -31,16 +31,16 @@ func TestSLM(t *testing.T) {
 	//  curl -XPUT http://127.0.0.1:9200/_slm/policy/everything -H 'Content-Type: application/json' -d '{"schedule":"0 */15 * * * ?","name":"<everything-{now/d}>","repository":"my_repository","config":{"indices":".*","include_global_state":true,"ignore_unavailable":true},"retention":{"expire_after":"7d"}}'
 	//  curl http://127.0.0.1:9200/_slm/stats (Numbers manually tweaked)
 
-	tcs := map[string][]string{
-		"7.15.0": {`{"retention_runs":9,"retention_failed":0,"retention_timed_out":0,"retention_deletion_time":"1.2m","retention_deletion_time_millis":72491,"total_snapshots_taken":103,"total_snapshots_failed":2,"total_snapshots_deleted":20,"total_snapshot_deletion_failures":0,"policy_stats":[{"policy":"everything","snapshots_taken":50,"snapshots_failed":2,"snapshots_deleted":20,"snapshot_deletion_failures":0}]}`},
+	tcs := map[string]string{
+		"7.15.0": `{"retention_runs":9,"retention_failed":0,"retention_timed_out":0,"retention_deletion_time":"1.2m","retention_deletion_time_millis":72491,"total_snapshots_taken":103,"total_snapshots_failed":2,"total_snapshots_deleted":20,"total_snapshot_deletion_failures":0,"policy_stats":[{"policy":"everything","snapshots_taken":50,"snapshots_failed":2,"snapshots_deleted":20,"snapshot_deletion_failures":0}]}`,
 	}
 	for ver, out := range tcs {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.RequestURI == "/_slm/stats" {
-				fmt.Fprint(w, out[0])
+				fmt.Fprint(w, out)
 				return
 			}
-			fmt.Fprint(w, out[1])
+			fmt.Fprint(w, out)
 		}))
 		defer ts.Close()
 
