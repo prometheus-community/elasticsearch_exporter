@@ -56,6 +56,7 @@ elasticsearch_exporter --help
 | es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster. | false |
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
+| es.slm                  |                       | If true, query stats for SLM. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -86,6 +87,7 @@ es.indices | `indices` `monitor` (per index or `*`) | All actions that are requi
 es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
+es.slm | `read_slm`
 
 Further Information
 - [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
@@ -221,6 +223,23 @@ Further Information
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
+| elasticsearch_slm_stats_up                                            | gauge     | 0           | Up metric for SLM collector
+| elasticsearch_slm_stats_total_scrapes                                 | counter   | 0           | Number of scrapes for SLM collector
+| elasticsearch_slm_stats_json_parse_failures                           | counter   | 0           | JSON parse failures for SLM collector
+| elasticsearch_slm_stats_retention_runs_total                          | counter   | 0           | Total retention runs
+| elasticsearch_slm_stats_retention_failed_total                        | counter   | 0           | Total failed retention runs
+| elasticsearch_slm_stats_retention_timed_out_total                     | counter   | 0           | Total retention run timeouts
+| elasticsearch_slm_stats_retention_deletion_time_seconds               | gauge     | 0           | Retention run deletion time
+| elasticsearch_slm_stats_total_snapshots_taken_total                   | counter   | 0           | Total snapshots taken
+| elasticsearch_slm_stats_total_snapshots_failed_total                  | counter   | 0           | Total snapshots failed
+| elasticsearch_slm_stats_total_snapshots_deleted_total                 | counter   | 0           | Total snapshots deleted
+| elasticsearch_slm_stats_total_snapshots_failed_total                  | counter   | 0           | Total snapshots failed
+| elasticsearch_slm_stats_snapshots_taken_total                         | counter   | 1           | Snapshots taken by policy
+| elasticsearch_slm_stats_snapshots_failed_total                        | counter   | 1           | Snapshots failed by policy
+| elasticsearch_slm_stats_snapshots_deleted_total                       | counter   | 1           | Snapshots deleted by policy
+| elasticsearch_slm_stats_snapshot_deletion_failures_total              | counter   | 1           | Snapshot deletion failures by policy
+| elasticsearch_slm_stats_operation_mode                                | gauge     | 1           | SLM operation mode (Running, stopping, stopped)
+
 
 ### Alerts & Recording Rules
 
