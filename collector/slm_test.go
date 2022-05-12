@@ -36,11 +36,7 @@ func TestSLM(t *testing.T) {
 	}
 	for ver, out := range tcs {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.RequestURI == "/_slm/stats" {
-				fmt.Fprint(w, out)
-				return
-			}
-			fmt.Fprint(w, out)
+			fmt.Fprintln(w, out)
 		}))
 		defer ts.Close()
 
