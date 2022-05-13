@@ -167,6 +167,7 @@ func main() {
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 	if *esExportIndices || *esExportShards {
+		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL))
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
