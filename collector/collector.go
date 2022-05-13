@@ -16,6 +16,8 @@ package collector
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sync"
@@ -24,10 +26,26 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-// Namespace defines the common namespace to be used by all metrics.
-const namespace = "elasticsearch"
+const (
+	// Namespace defines the common namespace to be used by all metrics.
+	namespace = "elasticsearch"
+
+	defaultEnabled = true
+	// defaultDisabled = false
+)
+
+type factoryFunc func(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error)
+
+var (
+	factories              = make(map[string]factoryFunc)
+	initiatedCollectorsMtx = sync.Mutex{}
+	initiatedCollectors    = make(map[string]Collector)
+	collectorState         = make(map[string]*bool)
+	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
+)
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
@@ -50,16 +68,92 @@ type Collector interface {
 	Update(context.Context, chan<- prometheus.Metric) error
 }
 
+func registerCollector(name string, isDefaultEnabled bool, createFunc factoryFunc) {
+	var helpDefaultState string
+	if isDefaultEnabled {
+		helpDefaultState = "enabled"
+	} else {
+		helpDefaultState = "disabled"
+	}
+
+	// Create flag for this collector
+	flagName := fmt.Sprintf("collector.%s", name)
+	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
+	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
+
+	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Action(collectorFlagAction(name)).Bool()
+	collectorState[name] = flag
+
+	// Register the create function for this collector
+	factories[name] = createFunc
+}
+
 type ElasticsearchCollector struct {
 	Collectors map[string]Collector
 	logger     log.Logger
+	esURL      *url.URL
+	httpClient *http.Client
 }
 
-// NewElasticsearchCollector creates a new ElasticsearchCollector
-func NewElasticsearchCollector(logger log.Logger, httpClient *http.Client, esURL *url.URL) (*ElasticsearchCollector, error) {
-	collectors := make(map[string]Collector)
+type Option func(*ElasticsearchCollector) error
 
-	return &ElasticsearchCollector{Collectors: collectors, logger: logger}, nil
+// NewElasticsearchCollector creates a new ElasticsearchCollector
+func NewElasticsearchCollector(logger log.Logger, filters []string, options ...Option) (*ElasticsearchCollector, error) {
+	e := &ElasticsearchCollector{logger: logger}
+	// Apply options to customize the collector
+	for _, o := range options {
+		if err := o(e); err != nil {
+			return nil, err
+		}
+	}
+
+	f := make(map[string]bool)
+	for _, filter := range filters {
+		enabled, exist := collectorState[filter]
+		if !exist {
+			return nil, fmt.Errorf("missing collector: %s", filter)
+		}
+		if !*enabled {
+			return nil, fmt.Errorf("disabled collector: %s", filter)
+		}
+		f[filter] = true
+	}
+	collectors := make(map[string]Collector)
+	initiatedCollectorsMtx.Lock()
+	defer initiatedCollectorsMtx.Unlock()
+	for key, enabled := range collectorState {
+		if !*enabled || (len(f) > 0 && !f[key]) {
+			continue
+		}
+		if collector, ok := initiatedCollectors[key]; ok {
+			collectors[key] = collector
+		} else {
+			collector, err := factories[key](log.With(logger, "collector", key), e.esURL, e.httpClient)
+			if err != nil {
+				return nil, err
+			}
+			collectors[key] = collector
+			initiatedCollectors[key] = collector
+		}
+	}
+
+	e.Collectors = collectors
+
+	return e, nil
+}
+
+func WithElasticsearchURL(esURL *url.URL) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.esURL = esURL
+		return nil
+	}
+}
+
+func WithHTTPClient(hc *http.Client) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.httpClient = hc
+		return nil
+	}
 }
 
 // Describe implements the prometheus.Collector interface.
@@ -89,7 +183,11 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 	var success float64
 
 	if err != nil {
-		_ = level.Error(logger).Log("msg", "collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+		if IsNoDataError(err) {
+			_ = level.Debug(logger).Log("msg", "collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+		} else {
+			_ = level.Error(logger).Log("msg", "collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+		}
 		success = 0
 	} else {
 		_ = level.Debug(logger).Log("msg", "collector succeeded", "name", name, "duration_seconds", duration.Seconds())
@@ -97,4 +195,23 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+}
+
+// collectorFlagAction generates a new action function for the given collector
+// to track whether it has been explicitly enabled or disabled from the command line.
+// A new action function is needed for each collector flag because the ParseContext
+// does not contain information about which flag called the action.
+// See: https://github.com/alecthomas/kingpin/issues/294
+func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
+	return func(ctx *kingpin.ParseContext) error {
+		forcedCollectors[collector] = true
+		return nil
+	}
+}
+
+// ErrNoData indicates the collector found no data to collect, but had no other error.
+var ErrNoData = errors.New("collector returned no data")
+
+func IsNoDataError(err error) bool {
+	return err == ErrNoData
 }

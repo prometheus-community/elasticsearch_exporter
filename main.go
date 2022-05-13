@@ -160,6 +160,20 @@ func main() {
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
+	// create the exporter
+	exporter, err := collector.NewElasticsearchCollector(
+		logger,
+		[]string{},
+		collector.WithElasticsearchURL(esURL),
+		collector.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		_ = level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+		os.Exit(1)
+	}
+	prometheus.MustRegister(exporter)
+
+	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
