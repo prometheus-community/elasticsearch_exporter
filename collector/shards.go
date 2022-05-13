@@ -51,12 +51,6 @@ type Shards struct {
 	jsonParseFailures prometheus.Counter
 }
 
-// NodeShard Information per node struct
-type NodeShard struct {
-	node   string
-	shards int64
-}
-
 type nodeShardMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
