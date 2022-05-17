@@ -16,18 +16,16 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"sort"
 	"strconv"
-	"strings"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
@@ -49,6 +47,13 @@ type shardMetric struct {
 	Labels labels
 }
 
+type aliasMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func() float64
+	Labels labels
+}
+
 // Indices information struct
 type Indices struct {
 	logger          log.Logger
@@ -65,16 +70,14 @@ type Indices struct {
 
 	indexMetrics []*indexMetric
 	shardMetrics []*shardMetric
+	aliasMetrics []*aliasMetric
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, aliases bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, excludeAliases bool) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
-			if aliases {
-				return []string{"index", "aliases", "cluster"}
-			}
 			return []string{"index", "cluster"}
 		},
 		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
@@ -89,10 +92,21 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 
 	shardLabels := labels{
 		keys: func(...string) []string {
-			if aliases {
-				return []string{"index", "shard", "node", "primary", "aliases", "cluster"}
-			}
 			return []string{"index", "shard", "node", "primary", "cluster"}
+		},
+		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
+			if lastClusterinfo != nil {
+				return append(s, lastClusterinfo.ClusterName)
+			}
+			// this shouldn't happen, as the clusterinfo Retriever has a blocking
+			// Run method. It blocks until the first clusterinfo call has succeeded
+			return append(s, "unknown_cluster")
+		},
+	}
+
+	aliasLabels := labels{
+		keys: func(...string) []string {
+			return []string{"index", "alias", "cluster"}
 		},
 		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
 			if lastClusterinfo != nil {
@@ -109,7 +123,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		client:        client,
 		url:           url,
 		shards:        shards,
-		aliases:       aliases,
+		aliases:       !excludeAliases,
 		clusterInfoCh: make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
@@ -1032,6 +1046,21 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 				Labels: shardLabels,
 			},
 		},
+
+		aliasMetrics: []*aliasMetric{
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "aliases"),
+					"Record aliases associated with an index",
+					aliasLabels.keys(), nil,
+				),
+				Value: func() float64 {
+					return float64(1)
+				},
+				Labels: aliasLabels,
+			},
+		},
 	}
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
@@ -1183,28 +1212,32 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	}
 	i.up.Set(1)
 
-	// Index stats
-	for indexName, indexStats := range indexStatsResp.Indices {
-		var labelValues []string
-		var aliasesString string
-		if i.aliases {
-			if aliasNames, ok := indexStatsResp.Aliases[indexName]; ok {
-				aliasesString = strings.Join(aliasNames, ",")
+	// Alias stats
+	if i.aliases {
+		for _, metric := range i.aliasMetrics {
+			for indexName, aliases := range indexStatsResp.Aliases {
+				for _, alias := range aliases {
+					labelValues := metric.Labels.values(i.lastClusterInfo, indexName, alias)
+
+					ch <- prometheus.MustNewConstMetric(
+						metric.Desc,
+						metric.Type,
+						metric.Value(),
+						labelValues...,
+					)
+				}
 			}
 		}
+	}
 
+	// Index stats
+	for indexName, indexStats := range indexStatsResp.Indices {
 		for _, metric := range i.indexMetrics {
-			if i.aliases {
-				labelValues = metric.Labels.values(i.lastClusterInfo, indexName, aliasesString)
-			} else {
-				labelValues = metric.Labels.values(i.lastClusterInfo, indexName)
-			}
-
 			ch <- prometheus.MustNewConstMetric(
 				metric.Desc,
 				metric.Type,
 				metric.Value(indexStats),
-				labelValues...,
+				metric.Labels.values(i.lastClusterInfo, indexName)...,
 			)
 
 		}
@@ -1213,17 +1246,11 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 				// gaugeVec := prometheus.NewGaugeVec(metric.Opts, metric.Labels)
 				for shardNumber, shards := range indexStats.Shards {
 					for _, shard := range shards {
-						if i.aliases {
-							labelValues = metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node, strconv.FormatBool(shard.Routing.Primary), aliasesString)
-						} else {
-							labelValues = metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node, strconv.FormatBool(shard.Routing.Primary))
-						}
-
 						ch <- prometheus.MustNewConstMetric(
 							metric.Desc,
 							metric.Type,
 							metric.Value(shard),
-							labelValues...,
+							metric.Labels.values(i.lastClusterInfo, indexName, shardNumber, shard.Routing.Node, strconv.FormatBool(shard.Routing.Primary))...,
 						)
 					}
 				}
