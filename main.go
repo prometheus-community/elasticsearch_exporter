@@ -85,6 +85,9 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Bool()
+		esExportSLM = kingpin.Flag("es.slm",
+			"Export stats for SLM snapshots.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -160,6 +163,20 @@ func main() {
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
+	// create the exporter
+	exporter, err := collector.NewElasticsearchCollector(
+		logger,
+		[]string{},
+		collector.WithElasticsearchURL(esURL),
+		collector.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		_ = level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+		os.Exit(1)
+	}
+	prometheus.MustRegister(exporter)
+
+	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
@@ -167,6 +184,7 @@ func main() {
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 	if *esExportIndices || *esExportShards {
+		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL))
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esNoExportIndexAliases)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
@@ -177,6 +195,10 @@ func main() {
 
 	if *esExportSnapshots {
 		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+	}
+
+	if *esExportSLM {
+		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
 	}
 
 	if *esExportClusterSettings {
