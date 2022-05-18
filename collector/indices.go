@@ -74,7 +74,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, excludeAliases bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -123,7 +123,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		client:        client,
 		url:           url,
 		shards:        shards,
-		aliases:       !excludeAliases,
+		aliases:       includeAliases,
 		clusterInfoCh: make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
@@ -1109,7 +1109,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 		u.RawQuery = "ignore_unavailable=true"
 	}
 
-	bts, err := i.queryUrl(&u)
+	bts, err := i.queryURL(&u)
 	if err != nil {
 		return isr, err
 	}
@@ -1129,7 +1129,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 		for indexName, aliases := range asr {
 			var aliasList []string
-			for aliasName, _ := range aliases.Aliases {
+			for aliasName := range aliases.Aliases {
 				aliasList = append(aliasList, aliasName)
 			}
 
@@ -1149,7 +1149,7 @@ func (i *Indices) fetchAndDecodeAliases() (aliasesResponse, error) {
 	u := *i.url
 	u.Path = path.Join(u.Path, "/_alias")
 
-	bts, err := i.queryUrl(&u)
+	bts, err := i.queryURL(&u)
 	if err != nil {
 		return asr, err
 	}
@@ -1162,7 +1162,7 @@ func (i *Indices) fetchAndDecodeAliases() (aliasesResponse, error) {
 	return asr, nil
 }
 
-func (i *Indices) queryUrl(u *url.URL) ([]byte, error) {
+func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 	res, err := i.client.Get(u.String())
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to get resource from %s://%s:%s%s: %s",
