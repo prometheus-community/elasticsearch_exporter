@@ -29,10 +29,10 @@ import (
 
 // IndicesSettings information struct
 type IndicesSettings struct {
-	logger          log.Logger
-	client          *http.Client
-	url             *url.URL
-	indicesFilter   string
+	logger        log.Logger
+	client        *http.Client
+	url           *url.URL
+	indicesFilter string
 
 	up              prometheus.Gauge
 	readOnlyIndices prometheus.Gauge
@@ -141,7 +141,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 func (cs *IndicesSettings) fetchAndDecodeIndicesSettings() (IndicesSettingsResponse, error) {
 
 	u := *cs.url
-	indicesSettingsQueryPath = fmt.Sprintf("/%s/_settings", cs.indicesFilter)
+	indicesSettingsQueryPath := fmt.Sprintf("/%s/_settings", cs.indicesFilter)
 	u.Path = path.Join(u.Path, indicesSettingsQueryPath)
 	var asr IndicesSettingsResponse
 	err := cs.getAndParseURL(&u, &asr)

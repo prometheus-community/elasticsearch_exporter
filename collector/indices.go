@@ -16,16 +16,17 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"sort"
 	"strconv"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
@@ -1104,7 +1105,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	indicesStatsQueryPath = fmt.Sprintf("/%s/_stats", i.indicesFilter)
+	indicesStatsQueryPath := fmt.Sprintf("/%s/_stats", i.indicesFilter)
 	u.Path = path.Join(u.Path, indicesStatsQueryPath)
 	if i.shards {
 		u.RawQuery = "ignore_unavailable=true&level=shards"

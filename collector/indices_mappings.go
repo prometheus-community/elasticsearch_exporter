@@ -157,7 +157,7 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 
 func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (*IndicesMappingsResponse, error) {
 	u := *im.url
-	indicesMappingsQueryPath = fmt.Sprintf("/%s/_mappings", im.indicesFilter)
+	indicesMappingsQueryPath := fmt.Sprintf("/%s/_mappings", im.indicesFilter)
 	u.Path = path.Join(u.Path, indicesMappingsQueryPath)
 	return im.getAndParseURL(&u)
 }
