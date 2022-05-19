@@ -123,7 +123,7 @@ func TestAliases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false, true)
+		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false, true, "_all")
 		stats, err := i.fetchAndDecodeIndexStats()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode indices stats: %s", err)
