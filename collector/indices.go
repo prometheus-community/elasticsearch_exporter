@@ -53,6 +53,7 @@ type Indices struct {
 	client          *http.Client
 	url             *url.URL
 	shards          bool
+	indicesFilter          string
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
 
@@ -65,7 +66,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, indicesFilter string) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -100,6 +101,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		client:        client,
 		url:           url,
 		shards:        shards,
+		indicesFilter: indicesFilter,
 		clusterInfoCh: make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
@@ -1063,7 +1065,8 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	u.Path = path.Join(u.Path, "/_all/_stats")
+	indicesStatsPath := fmt.Sprintf("/%s/_stats", i.indicesFilter)
+	u.Path = path.Join(u.Path, indicesStatsPath)
 	if i.shards {
 		u.RawQuery = "ignore_unavailable=true&level=shards"
 	} else {
