@@ -1106,6 +1106,9 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 
 	u := *i.url
 	indicesStatsQueryPath := fmt.Sprintf("/%s/_stats", i.indicesFilter)
+	_ = level.Debug(i.logger).Log(
+		"msg", fmt.Sprintf("indices fetch query path: %s", indicesStatsQueryPath),
+	)
 	u.Path = path.Join(u.Path, indicesStatsQueryPath)
 	if i.shards {
 		u.RawQuery = "ignore_unavailable=true&level=shards"
