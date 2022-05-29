@@ -189,10 +189,6 @@ func main() {
 	if *esExportIndices || *esExportShards {
 		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL))
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases, *esIndicesFilter)
-		_ = level.Debug(logger).Log(
-			"msg", fmt.Sprintf("indices filter flag has recieved: %s", *esIndicesFilter),
-			"addr", *listenAddress,
-		)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
