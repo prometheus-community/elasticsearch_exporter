@@ -1170,9 +1170,6 @@ func (i *Indices) fetchAndDecodeAliases() (aliasesResponse, error) {
 }
 
 func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
-	_ = level.Info(i.logger).Log(
-		"msg", fmt.Sprintf("query url: %s", u.String()),
-	)
 	res, err := i.client.Get(u.String())
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to get resource from %s://%s:%s%s: %s",
