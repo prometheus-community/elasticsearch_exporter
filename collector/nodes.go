@@ -213,6 +213,14 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
+					// LoadAvg was an array of per-cpu values pre-2.0, and is a float in 2.x
+					if node.OS.LoadAvg != nil {
+						// trying parse as float
+						var loadAvgAsFloat float64
+						if json.Unmarshal(*node.OS.LoadAvg, &loadAvgAsFloat) == nil {
+							return loadAvgAsFloat
+						}
+					}
 					return node.OS.CPU.LoadAvg.Load1
 				},
 				Labels: defaultNodeLabelValues,

@@ -279,11 +279,9 @@ type NodeStatsIndicesCacheResponse struct {
 
 // NodeStatsOSResponse is a representation of a  operating system stats, load average, mem, swap
 type NodeStatsOSResponse struct {
-	Timestamp int64 `json:"timestamp"`
-	Uptime    int64 `json:"uptime_in_millis"`
-	// LoadAvg was an array of per-cpu values pre-2.0, and is a string in 2.0
-	// Leaving this here in case we want to implement parsing logic later
-	LoadAvg    json.RawMessage         `json:"load_average"`
+	Timestamp  int64                   `json:"timestamp"`
+	Uptime     int64                   `json:"uptime_in_millis"`
+	LoadAvg    *json.RawMessage        `json:"load_average"`
 	CPU        NodeStatsOSCPUResponse  `json:"cpu"`
 	CPUPercent *int64                  `json:"cpu_percent"`
 	Mem        NodeStatsOSMemResponse  `json:"mem"`
