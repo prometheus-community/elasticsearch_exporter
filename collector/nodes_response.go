@@ -149,6 +149,7 @@ type NodeStatsIndicesResponse struct {
 	Segments     NodeStatsIndicesSegmentsResponse
 	Refresh      NodeStatsIndicesRefreshResponse
 	Translog     NodeStatsIndicesTranslogResponse
+	Suggest      NodeStatsIndicesSuggestResponse
 	Completion   NodeStatsIndicesCompletionResponse
 }
 
@@ -168,6 +169,13 @@ type NodeStatsIndicesRefreshResponse struct {
 type NodeStatsIndicesTranslogResponse struct {
 	Operations int64 `json:"operations"`
 	Size       int64 `json:"size_in_bytes"`
+}
+
+// NodeStatsIndicesSuggestResponse defines node stats suggest information structure for indices
+type NodeStatsIndicesSuggestResponse struct {
+	Total   int64 `json:"total"`
+	Time    int64 `json:"time_in_millis"`
+	Current int64 `json:"current"`
 }
 
 // NodeStatsIndicesCompletionResponse defines node stats completion information structure for indices

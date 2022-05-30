@@ -520,6 +520,42 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "suggest_total"),
+					"Total suggest",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Suggest.Total)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "suggest_time_seconds"),
+					"Total suggest time in seconds",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Suggest.Time) / 1000
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "suggest_current"),
+					"Current suggest",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Suggest.Current)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "get_time_seconds"),
 					"Total get time in seconds",
 					defaultNodeLabels, nil,
