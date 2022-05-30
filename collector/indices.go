@@ -16,16 +16,17 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"sort"
 	"strconv"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
@@ -59,6 +60,7 @@ type Indices struct {
 	logger          log.Logger
 	client          *http.Client
 	url             *url.URL
+	indicesFilter   string
 	shards          bool
 	aliases         bool
 	clusterInfoCh   chan *clusterinfo.Response
@@ -74,7 +76,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool, indicesFilter string) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -122,6 +124,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		logger:        logger,
 		client:        client,
 		url:           url,
+		indicesFilter: indicesFilter,
 		shards:        shards,
 		aliases:       includeAliases,
 		clusterInfoCh: make(chan *clusterinfo.Response),
@@ -1102,7 +1105,11 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	u.Path = path.Join(u.Path, "/_all/_stats")
+	indicesStatsQueryPath := fmt.Sprintf("/%s/_stats", i.indicesFilter)
+	_ = level.Debug(i.logger).Log(
+		"msg", fmt.Sprintf("indices fetch query path: %s", indicesStatsQueryPath),
+	)
+	u.Path = path.Join(u.Path, indicesStatsQueryPath)
 	if i.shards {
 		u.RawQuery = "ignore_unavailable=true&level=shards"
 	} else {
