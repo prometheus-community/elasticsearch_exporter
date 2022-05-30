@@ -249,6 +249,9 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
+					if node.OS.CPUPercent != nil {
+						return float64(*node.OS.CPUPercent)
+					}
 					return float64(node.OS.CPU.Percent)
 				},
 				Labels: defaultNodeLabelValues,
