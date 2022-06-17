@@ -49,11 +49,11 @@ func NewClusterSettings(logger log.Logger, client *http.Client, url *url.URL) *C
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch cluster settings endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch cluster settings endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch cluster settings scrapes.",
+			Help: "Current total Elasticsearch cluster settings scrapes.",
 		}),
 		shardAllocationEnabled: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "clustersettings_stats", "shard_allocation_enabled"),
