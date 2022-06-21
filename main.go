@@ -26,6 +26,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	esurl "github.com/prometheus-community/elasticsearch_exporter/pkg/url"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -54,7 +55,7 @@ func main() {
 			Default("/metrics").String()
 		esURI = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
-			Default("http://localhost:9200").String()
+			Default("").String()
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
 			Default("5s").Duration()
@@ -120,10 +121,10 @@ func main() {
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
-	esURL, err := url.Parse(*esURI)
+	esURL, err := esurl.GetEsURL(*esURI, os.Getenv("ES_CLOUD_ID"))
 	if err != nil {
 		_ = level.Error(logger).Log(
-			"msg", "failed to parse es.uri",
+			"msg", "error while parsing URL",
 			"err", err,
 		)
 		os.Exit(1)
