@@ -2,7 +2,7 @@
 [![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
-Prometheus exporter for various metrics about ElasticSearch, written in Go.
+Prometheus exporter for various metrics about Elasticsearch, written in Go.
 
 ### Installation
 
@@ -39,7 +39,7 @@ helm install [RELEASE_NAME] prometheus-community/prometheus-elasticsearch-export
 
 ### Configuration
 
-**NOTE:** The exporter fetches information from an ElasticSearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `--es.all` and `--es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
+**NOTE:** The exporter fetches information from an Elasticsearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `--es.all` and `--es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
 
 Below is the command line options summary:
 ```bash
@@ -147,8 +147,8 @@ Further Information
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
 | elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
 | elasticsearch_indices_mappings_stats_json_parse_failures_total        | counter   | 0           | Number of errors while parsing JSON
-| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total ElasticSearch Indices Mappings scrapes
-| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the ElasticSearch Indices Mappings endpoint successful
+| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total Elasticsearch Indices Mappings scrapes
+| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the Elasticsearch Indices Mappings endpoint successful
 | elasticsearch_indices_merges_docs_total                               | counter   | 1           | Cumulative docs merged
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
@@ -246,7 +246,7 @@ Further Information
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
-The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the ElasticSearch cluster, we rely on a label `cluster`.
+The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the Elasticsearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)
