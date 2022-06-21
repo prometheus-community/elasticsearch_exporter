@@ -56,6 +56,9 @@ func main() {
 		esURI = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
 			Default("").String()
+		esCloudID = kingpin.Flag("es.cloudid",
+			"Cloud ID of an Elasticsearch Service cluster").
+			Default("").String()
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
 			Default("5s").Duration()
@@ -121,7 +124,7 @@ func main() {
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
 
-	esURL, err := esurl.GetEsURL(*esURI, os.Getenv("ES_CLOUD_ID"))
+	esURL, err := esurl.GetEsURL(*esURI, *esCloudID)
 	if err != nil {
 		_ = level.Error(logger).Log(
 			"msg", "error while parsing URL",
