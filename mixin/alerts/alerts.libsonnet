@@ -15,7 +15,7 @@
             alert: 'ElasticsearchNodeDiskWatermarkReached',
             expr: |||
               max by (cluster, instance, node,%(extraLabels)s) (
-                1 - (elasticsearch_filesystem_data_free_bytes{%(selector)s} / elasticsearch_filesystem_data_size_bytes{%(selector)s})
+                1 - (elasticsearch_filesystem_data_free_bytes{es_data_node="true", %(selector)s} / elasticsearch_filesystem_data_size_bytes{es_data_node="true", %(selector)s})
               ) > %(esDiskLowWaterMark)s
             ||| % custom.alert,
             'for': '5m',
@@ -31,7 +31,7 @@
             alert: 'ElasticsearchNodeDiskWatermarkReached',
             expr: |||
               max by (cluster, instance, node,%(extraLabels)s) (
-                1 - (elasticsearch_filesystem_data_free_bytes{%(selector)s} / elasticsearch_filesystem_data_size_bytes{%(selector)s})
+                1 - (elasticsearch_filesystem_data_free_bytes{es_data_node="true", %(selector)s} / elasticsearch_filesystem_data_size_bytes{es_data_node="true", %(selector)s})
               ) > %(esDiskHighWaterMark)s
             ||| % custom.alert,
             'for': '5m',
