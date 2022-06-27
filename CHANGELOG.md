@@ -1,3 +1,6 @@
+## 1.4.0 / 2021-11-04
+* [FEATURE] Scrape `number_of_replicas` and `number_of_shards` metrics when `--es.indices_settings` provided
+
 ## 1.3.0 / 2021-10-21
 
 * [FEATURE] Add support for passing elasticsearch credentials via the ES_USERNAME and ES_PASSWORD environment varialbes #461
