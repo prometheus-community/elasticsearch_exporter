@@ -73,6 +73,9 @@ func main() {
 		esExportIndicesMappings = kingpin.Flag("es.indices_mappings",
 			"Export stats for mappings of all indices of the cluster.").
 			Default("false").Bool()
+		esExportIndexAliases = kingpin.Flag("es.aliases",
+			"Export informational alias metrics.").
+			Default("true").Bool()
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
 			"Export stats for cluster settings.").
 			Default("false").Bool()
@@ -85,6 +88,9 @@ func main() {
 		esExportHotThreads = kingpin.Flag("es.hot_threads",
 			"Export stats for hot threads on data nodes.").
 			Default("false").Envar("ES_HOT_THREADS").Bool()
+		esExportSLM = kingpin.Flag("es.slm",
+			"Export stats for SLM snapshots.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -160,6 +166,20 @@ func main() {
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
+	// create the exporter
+	exporter, err := collector.NewElasticsearchCollector(
+		logger,
+		[]string{},
+		collector.WithElasticsearchURL(esURL),
+		collector.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		_ = level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+		os.Exit(1)
+	}
+	prometheus.MustRegister(exporter)
+
+	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
@@ -167,7 +187,8 @@ func main() {
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 	if *esExportIndices || *esExportShards {
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
+		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL))
+		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
@@ -177,6 +198,10 @@ func main() {
 
 	if *esExportSnapshots {
 		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+	}
+
+	if *esExportSLM {
+		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
 	}
 
 	if *esExportClusterSettings {
