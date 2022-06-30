@@ -1416,7 +1416,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(node_memory_MemTotal{cluster=~\"$cluster\"})",
+          "expr": "sum(node_memory_MemTotal_bytes{cluster=~\"$cluster\"})",
           "intervalFactor": 2,
           "legendFormat": "",
           "metric": "",
@@ -1501,7 +1501,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(node_memory_MemFree{cluster=~\"$cluster\"})",
+          "expr": "sum(node_memory_MemFree_bytes{cluster=~\"$cluster\"})",
           "intervalFactor": 2,
           "legendFormat": "",
           "refId": "A",
@@ -1585,7 +1585,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(node_memory_MemAvailable{cluster=~\"$cluster\"})",
+          "expr": "sum(node_memory_MemAvailable_bytes{cluster=~\"$cluster\"})",
           "intervalFactor": 2,
           "legendFormat": "",
           "refId": "A",
@@ -1829,7 +1829,7 @@
             }
           ],
           "dsType": "elasticsearch",
-          "expr": "avg(irate(node_cpu{cluster=~\"$cluster\"}[10s])) by(mode) *100",
+          "expr": "avg(irate(node_cpu_seconds_total{cluster=~\"$cluster\"}[60s])) by(mode) *100",
           "format": "time_series",
           "intervalFactor": 2,
           "legendFormat": "{{ mode }}",
@@ -2244,7 +2244,7 @@
     ]
   },
   "timezone": "utc",
-  "title": "ElasticSearch",
+  "title": "Elasticsearch",
   "uid": "n_nxrE_mk",
   "version": 2
 }

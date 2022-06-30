@@ -2,7 +2,7 @@
 [![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
-Prometheus exporter for various metrics about ElasticSearch, written in Go.
+Prometheus exporter for various metrics about Elasticsearch, written in Go.
 
 ### Installation
 
@@ -30,11 +30,16 @@ elasticsearch_exporter:
 
 #### Kubernetes
 
-You can find a helm chart in the stable charts repository at https://github.com/kubernetes/charts/tree/master/stable/elasticsearch-exporter.
+You can find a helm chart in the prometheus-community charts repository at https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-elasticsearch-exporter
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install [RELEASE_NAME] prometheus-community/prometheus-elasticsearch-exporter
+```
 
 ### Configuration
 
-**NOTE:** The exporter fetches information from an ElasticSearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `--es.all` and `--es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
+**NOTE:** The exporter fetches information from an Elasticsearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `--es.all` and `--es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
 
 Below is the command line options summary:
 ```bash
@@ -49,22 +54,24 @@ elasticsearch_exporter --help
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster. | false |
 | es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster. | false |
+| es.aliases              | 1.0.4rc1              | If true, include informational aliases metrics. | true |
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
+| es.slm                  |                       | If true, query stats for SLM. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
 | es.client-cert          | 1.0.2                 | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. | |
 | es.clusterinfo.interval | 1.1.0rc1              |  Cluster info update interval for the cluster label | 5m |
 | es.ssl-skip-verify      | 1.0.4rc1              | Skip SSL verification when connecting to Elasticsearch. | false |
-| es.apiKey               | unreleased            | API Key to use for authenticating against Elasticsearch. |  |
 | web.listen-address      | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
-For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`. Also, all commandline parameters can be provided as environment variables. The environment variable name is derived from the parameter name
-by replacing `.` and `-` with `_` and upper-casing the parameter name.
+For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`.
+
+The API key used to connect can be set with the `ES_API_KEY` environment variable.
 
 #### Elasticsearch 7.x security privileges
 
@@ -81,6 +88,7 @@ es.indices | `indices` `monitor` (per index or `*`) | All actions that are requi
 es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
+es.slm | `read_slm`
 
 Further Information
 - [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
@@ -139,8 +147,8 @@ Further Information
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
 | elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
 | elasticsearch_indices_mappings_stats_json_parse_failures_total        | counter   | 0           | Number of errors while parsing JSON
-| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total ElasticSearch Indices Mappings scrapes
-| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the ElasticSearch Indices Mappings endpoint successful
+| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total Elasticsearch Indices Mappings scrapes
+| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the Elasticsearch Indices Mappings endpoint successful
 | elasticsearch_indices_merges_docs_total                               | counter   | 1           | Cumulative docs merged
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
@@ -188,7 +196,7 @@ Further Information
 | elasticsearch_os_load5                                                | gauge     | 1           | Midterm load average
 | elasticsearch_os_load15                                               | gauge     | 1           | Longterm load average
 | elasticsearch_process_cpu_percent                                     | gauge     | 1           | Percent CPU used by process
-| elasticsearch_process_cpu_time_seconds_sum                            | counter   | 3           | Process CPU time in seconds
+| elasticsearch_process_cpu_seconds_total                               | counter   | 1           | Process CPU time in seconds
 | elasticsearch_process_mem_resident_size_bytes                         | gauge     | 1           | Resident memory in use by process in bytes
 | elasticsearch_process_mem_share_size_bytes                            | gauge     | 1           | Shared memory in use by process in bytes
 | elasticsearch_process_mem_virtual_size_bytes                          | gauge     | 1           | Total virtual memory used in bytes
@@ -216,12 +224,29 @@ Further Information
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels
+| elasticsearch_slm_stats_up                                            | gauge     | 0           | Up metric for SLM collector
+| elasticsearch_slm_stats_total_scrapes                                 | counter   | 0           | Number of scrapes for SLM collector
+| elasticsearch_slm_stats_json_parse_failures                           | counter   | 0           | JSON parse failures for SLM collector
+| elasticsearch_slm_stats_retention_runs_total                          | counter   | 0           | Total retention runs
+| elasticsearch_slm_stats_retention_failed_total                        | counter   | 0           | Total failed retention runs
+| elasticsearch_slm_stats_retention_timed_out_total                     | counter   | 0           | Total retention run timeouts
+| elasticsearch_slm_stats_retention_deletion_time_seconds               | gauge     | 0           | Retention run deletion time
+| elasticsearch_slm_stats_total_snapshots_taken_total                   | counter   | 0           | Total snapshots taken
+| elasticsearch_slm_stats_total_snapshots_failed_total                  | counter   | 0           | Total snapshots failed
+| elasticsearch_slm_stats_total_snapshots_deleted_total                 | counter   | 0           | Total snapshots deleted
+| elasticsearch_slm_stats_total_snapshots_failed_total                  | counter   | 0           | Total snapshots failed
+| elasticsearch_slm_stats_snapshots_taken_total                         | counter   | 1           | Snapshots taken by policy
+| elasticsearch_slm_stats_snapshots_failed_total                        | counter   | 1           | Snapshots failed by policy
+| elasticsearch_slm_stats_snapshots_deleted_total                       | counter   | 1           | Snapshots deleted by policy
+| elasticsearch_slm_stats_snapshot_deletion_failures_total              | counter   | 1           | Snapshot deletion failures by policy
+| elasticsearch_slm_stats_operation_mode                                | gauge     | 1           | SLM operation mode (Running, stopping, stopped)
+
 
 ### Alerts & Recording Rules
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
-The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the ElasticSearch cluster, we rely on a label `cluster`.
+The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the Elasticsearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)

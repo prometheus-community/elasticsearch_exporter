@@ -193,11 +193,11 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch nodes endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch node scrapes.",
+			Help: "Current total Elasticsearch node scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
@@ -1365,6 +1365,20 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm", "uptime_seconds"),
+					"JVM process uptime in seconds",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Uptime) / 1000
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "mapped")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
 					defaultNodeLabels, nil,
@@ -1437,43 +1451,15 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
+					prometheus.BuildFQName(namespace, "process", "cpu_seconds_total"),
 					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
+					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.Total) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "total")
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
-					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
-				),
-				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.Sys) / 1000
-				},
-				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "sys")
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
-					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
-				),
-				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.User) / 1000
-				},
-				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "user")
+					return defaultNodeLabelValues(cluster, node)
 				},
 			},
 			{

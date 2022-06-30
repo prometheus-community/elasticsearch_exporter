@@ -12,3 +12,7 @@ updates:
     interval: "daily"
   registries:
   - docker-registry-quay-io
+- package-ecosystem: "gomod"
+  directory: "/"
+  schedule:
+    interval: "monthly"

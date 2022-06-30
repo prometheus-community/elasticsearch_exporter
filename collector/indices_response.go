@@ -18,6 +18,15 @@ type indexStatsResponse struct {
 	Shards  IndexStatsShardsResponse           `json:"_shards"`
 	All     IndexStatsIndexResponse            `json:"_all"`
 	Indices map[string]IndexStatsIndexResponse `json:"indices"`
+	Aliases map[string][]string
+}
+
+// aliasesResponse is a representation of a Elasticsearch Alias Query
+type aliasesResponse map[string]aliasMapping
+
+// aliasMapping is a mapping of index names to a map of associated alias names where the alias names are keys
+type aliasMapping struct {
+	Aliases map[string]map[string]interface{} `json:"aliases"`
 }
 
 // IndexStatsShardsResponse defines index stats shards information structure
