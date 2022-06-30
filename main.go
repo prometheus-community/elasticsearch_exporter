@@ -34,12 +34,12 @@ import (
 
 const name = "elasticsearch_exporter"
 
-type transportWithApiKey struct {
+type transportWithAPIKey struct {
 	underlyingTransport http.RoundTripper
 	apiKey              string
 }
 
-func (t *transportWithApiKey) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *transportWithAPIKey) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("Authorization", fmt.Sprintf("ApiKey %s", t.apiKey))
 	return t.underlyingTransport.RoundTrip(req)
 }
@@ -48,67 +48,70 @@ func main() {
 	var (
 		listenAddress = kingpin.Flag("web.listen-address",
 			"Address to listen on for web interface and telemetry.").
-			Default(":9114").Envar("WEB_LISTEN_ADDRESS").String()
+			Default(":9114").String()
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
-			Default("/metrics").Envar("WEB_TELEMETRY_PATH").String()
+			Default("/metrics").String()
 		esURI = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
-			Default("http://localhost:9200").Envar("ES_URI").String()
+			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
-			Default("5s").Envar("ES_TIMEOUT").Duration()
+			Default("5s").Duration()
 		esAllNodes = kingpin.Flag("es.all",
 			"Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.").
-			Default("false").Envar("ES_ALL").Bool()
+			Default("false").Bool()
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
-			Default("_local").Envar("ES_NODE").String()
+			Default("_local").String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
-			Default("false").Envar("ES_INDICES").Bool()
+			Default("false").Bool()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
-			Default("false").Envar("ES_INDICES_SETTINGS").Bool()
+			Default("false").Bool()
 		esExportIndicesMappings = kingpin.Flag("es.indices_mappings",
 			"Export stats for mappings of all indices of the cluster.").
-			Default("false").Envar("ES_INDICES_MAPPINGS").Bool()
+			Default("false").Bool()
+		esExportIndexAliases = kingpin.Flag("es.aliases",
+			"Export informational alias metrics.").
+			Default("true").Bool()
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
 			"Export stats for cluster settings.").
-			Default("false").Envar("ES_CLUSTER_SETTINGS").Bool()
+			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
-			Default("false").Envar("ES_SHARDS").Bool()
+			Default("false").Bool()
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
-			Default("false").Envar("ES_SNAPSHOTS").Bool()
+			Default("false").Bool()
+		esExportSLM = kingpin.Flag("es.slm",
+			"Export stats for SLM snapshots.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
-			Default("5m").Envar("ES_CLUSTERINFO_INTERVAL").Duration()
+			Default("5m").Duration()
 		esCA = kingpin.Flag("es.ca",
 			"Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.").
-			Default("").Envar("ES_CA").String()
+			Default("").String()
 		esClientPrivateKey = kingpin.Flag("es.client-private-key",
 			"Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.").
-			Default("").Envar("ES_CLIENT_PRIVATE_KEY").String()
+			Default("").String()
 		esClientCert = kingpin.Flag("es.client-cert",
 			"Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch.").
-			Default("").Envar("ES_CLIENT_CERT").String()
+			Default("").String()
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
-			Default("false").Envar("ES_SSL_SKIP_VERIFY").Bool()
-		esApiKey = kingpin.Flag("es.apiKey",
-			"API Key to use for authenticating against Elasticsearch").
-			Default("").Envar("ES_API_KEY").String()
+			Default("false").Bool()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
-			Default("info").Envar("LOG_LEVEL").String()
+			Default("info").String()
 		logFormat = kingpin.Flag("log.format",
 			"Sets the log format. Valid formats are json and logfmt").
-			Default("logfmt").Envar("LOG_FMT").String()
+			Default("logfmt").String()
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
-			Default("stdout").Envar("LOG_OUTPUT").String()
+			Default("stdout").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -143,12 +146,12 @@ func main() {
 		Proxy:           http.ProxyFromEnvironment,
 	}
 
-	if *esApiKey != "" {
-		apiKey := *esApiKey
+	esAPIKey := os.Getenv("ES_API_KEY")
 
-		httpTransport = &transportWithApiKey{
+	if esAPIKey != "" {
+		httpTransport = &transportWithAPIKey{
 			underlyingTransport: httpTransport,
-			apiKey:              apiKey,
+			apiKey:              esAPIKey,
 		}
 	}
 
@@ -160,6 +163,20 @@ func main() {
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
+	// create the exporter
+	exporter, err := collector.NewElasticsearchCollector(
+		logger,
+		[]string{},
+		collector.WithElasticsearchURL(esURL),
+		collector.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		_ = level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+		os.Exit(1)
+	}
+	prometheus.MustRegister(exporter)
+
+	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
 	// cluster info retriever
 	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
@@ -167,7 +184,8 @@ func main() {
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 	if *esExportIndices || *esExportShards {
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards)
+		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL))
+		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
@@ -177,6 +195,10 @@ func main() {
 
 	if *esExportSnapshots {
 		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
+	}
+
+	if *esExportSLM {
+		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
 	}
 
 	if *esExportClusterSettings {

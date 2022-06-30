@@ -1,4 +1,8 @@
 ---
+linters:
+  enable:
+    - revive
+
 issues:
   exclude-rules:
     - path: _test.go

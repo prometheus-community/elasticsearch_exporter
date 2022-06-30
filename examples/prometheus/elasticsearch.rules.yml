@@ -12,8 +12,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          description: There are only {{$value}} < 3 ElasticSearch nodes running
-          summary: ElasticSearch running on less than 3 nodes
+          description: There are only {{$value}} < 3 Elasticsearch nodes running
+          summary: Elasticsearch running on less than 3 nodes
       - alert: ElasticsearchHeapTooHigh
         expr: elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"}
           > 0.9
@@ -22,4 +22,4 @@ groups:
           severity: critical
         annotations:
           description: The heap usage is over 90% for 15m
-          summary: ElasticSearch node {{$labels.node}} heap usage is high
+          summary: Elasticsearch node {{$labels.node}} heap usage is high
