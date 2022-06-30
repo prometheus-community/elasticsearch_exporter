@@ -60,11 +60,11 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch Indices Settings endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch Indices Settings endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch Indices Settings scrapes.",
+			Help: "Current total Elasticsearch Indices Settings scrapes.",
 		}),
 		readOnlyIndices: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),

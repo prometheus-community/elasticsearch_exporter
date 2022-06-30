@@ -15,7 +15,7 @@ package collector
 
 import "encoding/json"
 
-// nodeStatsResponse is a representation of a Elasticsearch Node Stats
+// nodeStatsResponse is a representation of an Elasticsearch Node Stats
 type nodeStatsResponse struct {
 	ClusterName string `json:"cluster_name"`
 	Nodes       map[string]NodeStatsNodeResponse
@@ -55,6 +55,7 @@ type NodeStatsJVMResponse struct {
 	BufferPools map[string]NodeStatsJVMBufferPoolResponse `json:"buffer_pools"`
 	GC          NodeStatsJVMGCResponse                    `json:"gc"`
 	Mem         NodeStatsJVMMemResponse                   `json:"mem"`
+	Uptime      int64                                     `json:"uptime_in_millis"`
 }
 
 // NodeStatsJVMGCResponse defines node stats JVM garbage collector information structure
@@ -296,10 +297,6 @@ type NodeStatsOSSwapResponse struct {
 
 // NodeStatsOSCPUResponse defines node stats operating system CPU usage structure
 type NodeStatsOSCPUResponse struct {
-	Sys     int64                      `json:"sys"`
-	User    int64                      `json:"user"`
-	Idle    int64                      `json:"idle"`
-	Steal   int64                      `json:"stolen"`
 	LoadAvg NodeStatsOSCPULoadResponse `json:"load_average"`
 	Percent int64                      `json:"percent"`
 }
@@ -330,8 +327,6 @@ type NodeStatsProcessMemResponse struct {
 // NodeStatsProcessCPUResponse defines node stats process CPU usage structure
 type NodeStatsProcessCPUResponse struct {
 	Percent int64 `json:"percent"`
-	Sys     int64 `json:"sys_in_millis"`
-	User    int64 `json:"user_in_millis"`
 	Total   int64 `json:"total_in_millis"`
 }
 

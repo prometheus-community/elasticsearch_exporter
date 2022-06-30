@@ -26,10 +26,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	namespace = "elasticsearch"
-)
-
 var (
 	colors                     = []string{"green", "yellow", "red"}
 	defaultClusterHealthLabels = []string{"cluster"}
@@ -72,11 +68,11 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "up"),
-			Help: "Was the last scrape of the ElasticSearch cluster health endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch cluster health endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "total_scrapes"),
-			Help: "Current total ElasticSearch cluster health scrapes.",
+			Help: "Current total Elasticsearch cluster health scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures"),
