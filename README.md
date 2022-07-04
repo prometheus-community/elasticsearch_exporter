@@ -182,6 +182,10 @@ Further Information
 | elasticsearch_indices_translog_size_in_bytes                          | counter   | 1           | Total translog size in bytes
 | elasticsearch_indices_warmer_time_seconds_total                       | counter   | 1           | Total warmer time in seconds
 | elasticsearch_indices_warmer_total                                    | counter   | 1           | Total warmer count
+| elasticsearch_indices_health_up                                       | gauge     | 0           | Was the last scrape of the Elasticsearch cat indices endpoint successful
+| elasticsearch_indices_health_total_scrapes                            | counter   | 0           | Current total Elasticsearch cat indices scrapes
+| elasticsearch_indices_health_json_parse_failures                      | counter   | 0           | Number of errors while parsing JSON
+| elasticsearch_indices_health_health                                   | gauge     | 3           | Whether all primary and replica index shards are allocated.
 | elasticsearch_jvm_gc_collection_seconds_count                         | counter   | 2           | Count of JVM GC runs
 | elasticsearch_jvm_gc_collection_seconds_sum                           | counter   | 2           | GC run time in seconds
 | elasticsearch_jvm_memory_committed_bytes                              | gauge     | 2           | JVM memory currently committed by area
