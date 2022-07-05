@@ -165,7 +165,11 @@ func main() {
 	}
 
 	if *awsRegion != "" {
-		httpClient.Transport = roundtripper.NewAWSSigningTransport(httpTransport, awsRegion, logger)
+		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, logger)
+		if err != nil {
+			_ = level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	// version metric

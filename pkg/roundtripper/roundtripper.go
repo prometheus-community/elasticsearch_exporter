@@ -21,7 +21,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -38,21 +37,21 @@ const (
 type AWSSigningTransport struct {
 	t      http.RoundTripper
 	creds  aws.Credentials
-	region *string
+	region string
 	log    log.Logger
 }
 
-func NewAWSSigningTransport(transport http.RoundTripper, region *string, log log.Logger) *AWSSigningTransport {
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(*region))
+func NewAWSSigningTransport(transport http.RoundTripper, region string, log log.Logger) (*AWSSigningTransport, error) {
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 	if err != nil {
 		_ = level.Error(log).Log("msg", "fail to load aws default config", "err", err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	creds, err := cfg.Credentials.Retrieve(context.Background())
 	if err != nil {
 		_ = level.Error(log).Log("msg", "fail to retrive aws credentials", "err", err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	return &AWSSigningTransport{
@@ -60,7 +59,7 @@ func NewAWSSigningTransport(transport http.RoundTripper, region *string, log log
 		region: region,
 		creds:  creds,
 		log:    log,
-	}
+	}, err
 }
 
 func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -71,7 +70,7 @@ func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, erro
 		return nil, err
 	}
 	req.Body = newReader
-	err = signer.SignHTTP(context.Background(), a.creds, req, payloadHash, service, *a.region, time.Now())
+	err = signer.SignHTTP(context.Background(), a.creds, req, payloadHash, service, a.region, time.Now())
 	if err != nil {
 		_ = level.Error(a.log).Log("msg", "fail to sign request body", "err", err)
 		return nil, err
@@ -84,6 +83,7 @@ func hashPayload(r io.ReadCloser) (payloadHash string, newReader io.ReadCloser, 
 	if r == nil {
 		payload = []byte("")
 	} else {
+		defer r.Close()
 		payload, err = ioutil.ReadAll(r)
 		if err != nil {
 			return
