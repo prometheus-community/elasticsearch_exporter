@@ -78,19 +78,22 @@ func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, erro
 	return a.t.RoundTrip(req)
 }
 
-func hashPayload(r io.ReadCloser) (payloadHash string, newReader io.ReadCloser, err error) {
-	var payload []byte
+func hashPayload(r io.ReadCloser) (string, io.ReadCloser, error) {
+	var (
+		payload   []byte
+		newReader io.ReadCloser
+	)
 	if r == nil {
 		payload = []byte("")
 	} else {
 		defer r.Close()
-		payload, err = ioutil.ReadAll(r)
+		payload, err := ioutil.ReadAll(r)
 		if err != nil {
-			return
+			return "", newReader, err
 		}
 		newReader = ioutil.NopCloser(bytes.NewReader(payload))
 	}
 	hash := sha256.Sum256(payload)
-	payloadHash = hex.EncodeToString(hash[:])
-	return
+	payloadHash := hex.EncodeToString(hash[:])
+	return payloadHash, newReader, nil
 }
