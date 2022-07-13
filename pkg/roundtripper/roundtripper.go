@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright 2022 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -79,13 +79,9 @@ func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, erro
 }
 
 func hashPayload(r io.ReadCloser) (string, io.ReadCloser, error) {
-	var (
-		payload   []byte
-		newReader io.ReadCloser
-	)
-	if r == nil {
-		payload = []byte("")
-	} else {
+	var newReader io.ReadCloser
+	payload := []byte("")
+	if r != nil {
 		defer r.Close()
 		payload, err := ioutil.ReadAll(r)
 		if err != nil {
