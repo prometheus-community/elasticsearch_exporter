@@ -27,8 +27,9 @@ type ClusterSettingsResponse struct {
 
 // Cluster is a representation of a Elasticsearch Cluster Settings
 type Cluster struct {
-	Routing          Routing `json:"routing"`
-	MaxShardsPerNode string  `json:"max_shards_per_node"`
+	Routing Routing `json:"routing"`
+	// This can be either a JSON object (which does not contain the value we are interested in) or a string
+	MaxShardsPerNode interface{} `json:"max_shards_per_node"`
 }
 
 // Routing is a representation of a Elasticsearch Cluster shard routing configuration
