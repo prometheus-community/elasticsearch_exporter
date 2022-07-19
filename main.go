@@ -89,6 +89,9 @@ func main() {
 		esExportSLM = kingpin.Flag("es.slm",
 			"Export stats for SLM snapshots.").
 			Default("false").Bool()
+		esExportDataStream = kingpin.Flag("es.data_stream",
+			"Export stas for Data Streams.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -211,6 +214,10 @@ func main() {
 
 	if *esExportSLM {
 		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
+	}
+
+	if *esExportDataStream {
+		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
 	}
 
 	if *esExportClusterSettings {
