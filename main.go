@@ -26,6 +26,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -115,6 +116,9 @@ func main() {
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").String()
+		awsRegion = kingpin.Flag("aws.region",
+			"Region for AWS elasticsearch").
+			Default("").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -161,6 +165,14 @@ func main() {
 	httpClient := &http.Client{
 		Timeout:   *esTimeout,
 		Transport: httpTransport,
+	}
+
+	if *awsRegion != "" {
+		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, logger)
+		if err != nil {
+			_ = level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	// version metric
