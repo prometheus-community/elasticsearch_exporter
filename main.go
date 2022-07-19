@@ -92,6 +92,9 @@ func main() {
 		esIndicesFilter = kingpin.Flag("es.indices_filter",
 			"Indices filter by name for which metrics should be exposed, using prefix with wildcards and/or commas as multi-selection delimiter.").
 			Default("_all").String()
+		esExportDataStream = kingpin.Flag("es.data_stream",
+			"Export stas for Data Streams.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -214,6 +217,10 @@ func main() {
 
 	if *esExportSLM {
 		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
+	}
+
+	if *esExportDataStream {
+		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
 	}
 
 	if *esExportClusterSettings {

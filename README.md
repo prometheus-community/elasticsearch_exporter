@@ -58,6 +58,7 @@ elasticsearch_exporter --help
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
 | es.slm                  |                       | If true, query stats for SLM. | false |
+| es.data_stream          |                       | If true, query state for Data Steams. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -89,6 +90,7 @@ es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 es.slm | `read_slm`
+es.data_stream | `monitor` or `manage` (per index or `*`) |
 
 Further Information
 - [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
@@ -240,6 +242,11 @@ Further Information
 | elasticsearch_slm_stats_snapshots_deleted_total                       | counter   | 1           | Snapshots deleted by policy
 | elasticsearch_slm_stats_snapshot_deletion_failures_total              | counter   | 1           | Snapshot deletion failures by policy
 | elasticsearch_slm_stats_operation_mode                                | gauge     | 1           | SLM operation mode (Running, stopping, stopped)
+| elasticsearch_data_stream_stats_up                                    | gauge     | 0           | Up metric for Data Stream collection
+| elasticsearch_data_stream_stats_total_scrapes                         | counter   | 0           | Total scrapes for Data Stream stats
+| elasticsearch_data_stream_stats_json_parse_failures                   | counter   | 0           | Number of parsing failures for Data Stream stats
+| elasticsearch_data_stream_backing_indices_total                       | gauge     | 1           | Number of backing indices for Data Stream
+| elasticsearch_data_stream_store_size_bytes                            | gauge     | 1           | Current size of data stream backing indices in bytes
 
 
 ### Alerts & Recording Rules
