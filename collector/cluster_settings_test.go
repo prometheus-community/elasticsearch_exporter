@@ -53,7 +53,7 @@ func TestClusterSettingsStats(t *testing.T) {
 			if nsr.Cluster.Routing.Allocation.Enabled != "ALL" {
 				t.Errorf("Wrong setting for cluster routing allocation enabled")
 			}
-			if nsr.Cluster.MaxShardsPerNode != "" {
+			if nsr.Cluster.MaxShardsPerNode != nil {
 				t.Errorf("MaxShardsPerNode should be empty on older releases")
 			}
 		}
@@ -61,10 +61,14 @@ func TestClusterSettingsStats(t *testing.T) {
 }
 
 func TestClusterMaxShardsPerNode(t *testing.T) {
-	// Testcases created using:
+	// settings-7.3.0.json testcase created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
 	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	files := []string{"../fixtures/settings-7.3.0.json"}
+	// settings-persistent-clustermaxshartspernode-7.17.json testcase created using:
+	//  docker run -d -p 9200:9200 elasticsearch:VERSION
+	//  curl -X PUT http://localhost:9200/_cluster/settings -H 'Content-Type: application/json' -d '{"persistent":{"cluster.max_shards_per_node":1000}}'
+	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
+	files := []string{"../fixtures/settings-7.3.0.json", "../fixtures/settings-persistent-clustermaxshartspernode-7.17.5.json"}
 	for _, filename := range files {
 		f, _ := os.Open(filename)
 		defer f.Close()
