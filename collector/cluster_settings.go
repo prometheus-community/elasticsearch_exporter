@@ -174,8 +174,10 @@ func (cs *ClusterSettings) Collect(ch chan<- prometheus.Metric) {
 
 	cs.shardAllocationEnabled.Set(float64(shardAllocationMap[csr.Cluster.Routing.Allocation.Enabled]))
 
-	maxShardsPerNode, err := strconv.ParseInt(csr.Cluster.MaxShardsPerNode, 10, 64)
-	if err == nil {
-		cs.maxShardsPerNode.Set(float64(maxShardsPerNode))
+	if maxShardsPerNodeString, ok := csr.Cluster.MaxShardsPerNode.(string); ok {
+		maxShardsPerNode, err := strconv.ParseInt(maxShardsPerNodeString, 10, 64)
+		if err == nil {
+			cs.maxShardsPerNode.Set(float64(maxShardsPerNode))
+		}
 	}
 }
