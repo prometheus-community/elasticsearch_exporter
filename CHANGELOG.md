@@ -1,3 +1,9 @@
+## 1.5.0 / 2022-07-28
+
+* [FEATURE] Add metrics collection for data stream statistics #592
+* [FEATURE] Support for AWS Elasticsearch using AWS SDK v2 #597
+* [BUGFIX] Fix cluster settings collection when max_shards_per_node is manually set. #603
+
 ## 1.4.0 / 2022-06-29
 
 * [BREAKING] Remove ENV var support for most non-sensitive options. #518
