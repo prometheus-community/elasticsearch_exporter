@@ -14,7 +14,7 @@
 package clusterinfo
 
 import (
-	"github.com/blang/semver"
+	"github.com/blang/semver/v4"
 )
 
 // Response is the cluster info retrievable from the / endpoint
