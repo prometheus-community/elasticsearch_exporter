@@ -48,11 +48,11 @@
           "total_shards_per_node": "-1",
           "type": "balanced",
           "disk": {
-            "threshold_enabled": "true",
+            "threshold_enabled": "false",
             "watermark": {
-              "low": "85%",
-              "flood_stage": "95%",
-              "high": "90%"
+              "low": "0.85",
+              "flood_stage": "0.95",
+              "high": "0.9"
             },
             "include_relocations": "true",
             "reroute_interval": "60s"

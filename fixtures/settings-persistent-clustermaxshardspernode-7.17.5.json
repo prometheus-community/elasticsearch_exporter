@@ -67,9 +67,9 @@
             "threshold_enabled": "true",
             "watermark": {
               "flood_stage.frozen.max_headroom": "20GB",
-              "flood_stage": "95%",
-              "high": "90%",
-              "low": "85%",
+              "flood_stage": "100b",
+              "high": "200gb",
+              "low": "50mb",
               "enable_for_single_data_node": "false",
               "flood_stage.frozen": "95%"
             },
