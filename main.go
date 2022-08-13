@@ -30,6 +30,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/web"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -53,7 +54,8 @@ func main() {
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
 			Default("/metrics").String()
-		esURI = kingpin.Flag("es.uri",
+		tlsConfigFile = kingpin.Flag("web.config", "Path to config yaml file that can enable TLS").Default("").String()
+		esURI         = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
 			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
@@ -288,11 +290,8 @@ func main() {
 	)
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			_ = level.Error(logger).Log(
-				"msg", "http server quit",
-				"err", err,
-			)
+		if err := web.ListenAndServe(server, *tlsConfigFile, logger); err != nil {
+			_ = level.Error(logger).Log("msg", "http server quit", "err", err)
 			os.Exit(1)
 		}
 	}()
