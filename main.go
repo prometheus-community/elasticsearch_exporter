@@ -31,6 +31,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
+	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -55,7 +56,7 @@ func main() {
 			"Path under which to expose metrics.").
 			Default("/metrics").String()
 		webConfig = webflag.AddFlags(kingpin.CommandLine)
-		esURI         = kingpin.Flag("es.uri",
+		esURI     = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
 			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
