@@ -54,7 +54,7 @@ func main() {
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
 			Default("/metrics").String()
-		tlsConfigFile = kingpin.Flag("web.config", "Path to config yaml file that can enable TLS").Default("").String()
+		webConfig = webflag.AddFlags(kingpin.CommandLine)
 		esURI         = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
 			Default("http://localhost:9200").String()
@@ -290,7 +290,7 @@ func main() {
 	)
 
 	go func() {
-		if err := web.ListenAndServe(server, *tlsConfigFile, logger); err != nil {
+		if err := web.ListenAndServe(server, *webConfig, logger); err != nil {
 			_ = level.Error(logger).Log("msg", "http server quit", "err", err)
 			os.Exit(1)
 		}
