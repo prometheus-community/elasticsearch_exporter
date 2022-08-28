@@ -1510,6 +1510,54 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				},
 				Labels: defaultNodeLabelValues,
 			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_count"),
+					"Total number of ingest count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.Count)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_time_in_millis"),
+					"Total number of ingest time in millis",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.TimeInMillis)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_current"),
+					"Total number of current ingest docs",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.Current)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_failed"),
+					"Total number of ingest failed docs",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.Failed)
+				},
+				Labels: defaultNodeLabelValues,
+			},
 		},
 		gcCollectionMetrics: []*gcCollectionMetric{
 			{
