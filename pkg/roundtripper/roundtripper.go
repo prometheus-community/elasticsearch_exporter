@@ -87,7 +87,7 @@ func (a *AWSSigningTransport) refreshCredentialsIfNeeded() error {
 		creds, err := a.cfg.Credentials.Retrieve(context.Background())
 
 		if err != nil {
-			_ = level.Error(a.log).Log("msg", "fail to retrive aws credentials", "err", err)
+			_ = level.Error(a.log).Log("msg", "fail to refresh aws credentials", "err", err)
 			return err
 		}
 
