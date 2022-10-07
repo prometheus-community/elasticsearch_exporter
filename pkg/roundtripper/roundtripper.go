@@ -65,7 +65,9 @@ func NewAWSSigningTransport(transport http.RoundTripper, region string, log log.
 }
 
 func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	a.refreshCredentialsIfNeeded()
+	if err := a.refreshCredentialsIfNeeded(); err != nil {
+		_ = level.Error(a.log).Log("msg", "fail to refresh aws credentials", "err", err)
+	}
 
 	signer := v4.NewSigner()
 	payloadHash, newReader, err := hashPayload(req.Body)
@@ -87,7 +89,6 @@ func (a *AWSSigningTransport) refreshCredentialsIfNeeded() error {
 		creds, err := a.cfg.Credentials.Retrieve(context.Background())
 
 		if err != nil {
-			_ = level.Error(a.log).Log("msg", "fail to refresh aws credentials", "err", err)
 			return err
 		}
 
