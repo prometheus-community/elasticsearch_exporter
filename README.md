@@ -223,10 +223,14 @@ Further Information
 | elasticsearch_thread_pool_queue_count                                 | gauge     | 14          | Thread Pool operations queued
 | elasticsearch_thread_pool_rejected_count                              | counter   | 14          | Thread Pool operations rejected
 | elasticsearch_thread_pool_threads_count                               | gauge     | 14          | Thread Pool current threads count
+| elasticsearch_transport_tcp_connections_open_current                  | gauge     | 1           | Number of connections opened for cluster communication
+| elasticsearch_transport_outbound_connections_total                    | counter   | 1           | Total number of outbound transport connections
 | elasticsearch_transport_rx_packets_total                              | counter   | 1           | Count of packets received
 | elasticsearch_transport_rx_size_bytes_total                           | counter   | 1           | Total number of bytes received
 | elasticsearch_transport_tx_packets_total                              | counter   | 1           | Count of packets sent
 | elasticsearch_transport_tx_size_bytes_total                           | counter   | 1           | Total number of bytes sent
+| elasticsearch_http_connections_opened_current                         | gauge     | 1           | Current number of opened connections
+| elasticsearch_http_connections_opened_total                           | counter   | 1           | Total number of opened connections
 | elasticsearch_clusterinfo_last_retrieval_success_ts                   | gauge     | 1           | Timestamp of the last successful cluster info retrieval
 | elasticsearch_clusterinfo_up                                          | gauge     | 1           | Up metric for the cluster info collector
 | elasticsearch_clusterinfo_version_info                                | gauge     | 6           | Constant metric with ES version information as labels

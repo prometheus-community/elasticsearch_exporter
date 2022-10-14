@@ -37,7 +37,7 @@ type NodeStatsNodeResponse struct {
 	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
 	JVM              NodeStatsJVMResponse                       `json:"jvm"`
 	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
-	HTTP             map[string]interface{}                     `json:"http"`
+	HTTP             *NodeStatsHTTPResponse                     `json:"http"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
 }
@@ -101,11 +101,12 @@ type NodeStatsNetworkResponse struct {
 
 // NodeStatsTransportResponse is a representation of a transport statistics about sent and received bytes in cluster communication
 type NodeStatsTransportResponse struct {
-	ServerOpen int64 `json:"server_open"`
-	RxCount    int64 `json:"rx_count"`
-	RxSize     int64 `json:"rx_size_in_bytes"`
-	TxCount    int64 `json:"tx_count"`
-	TxSize     int64 `json:"tx_size_in_bytes"`
+	ServerOpen   int64 `json:"server_open"`
+	OutboundConn int64 `json:"total_outbound_connections"`
+	RxCount      int64 `json:"rx_count"`
+	RxSize       int64 `json:"rx_size_in_bytes"`
+	TxCount      int64 `json:"tx_count"`
+	TxSize       int64 `json:"tx_size_in_bytes"`
 }
 
 // NodeStatsThreadPoolPoolResponse is a representation of a statistics about each thread pool, including current size, queue and rejected tasks
@@ -333,7 +334,7 @@ type NodeStatsProcessCPUResponse struct {
 // NodeStatsHTTPResponse defines node stats HTTP connections structure
 type NodeStatsHTTPResponse struct {
 	CurrentOpen int64 `json:"current_open"`
-	TotalOpen   int64 `json:"total_open"`
+	TotalOpen   int64 `json:"total_opened"`
 }
 
 // NodeStatsFSResponse is a representation of a file system information, data path, free disk space, read/write stats

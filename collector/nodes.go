@@ -56,7 +56,7 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 			}
 		}
 	}
-	if len(node.HTTP) == 0 {
+	if node.HTTP == nil {
 		roles["client"] = false
 	}
 	return roles
@@ -1463,6 +1463,30 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				},
 			},
 			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "tcp_connections_open_current"),
+					"Current number of connections open for cluster communication",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.ServerOpen)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "transport", "outbound_connections_total"),
+					"Count of outbound transport connections",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Transport.OutboundConn)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "transport", "rx_packets_total"),
@@ -1507,6 +1531,30 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Transport.TxSize)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "http", "connections_opened_current"),
+					"Current number of open HTTP connections",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.HTTP.CurrentOpen)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "http", "connections_opened_total"),
+					"Total number of HTTP connections opened ",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.HTTP.TotalOpen)
 				},
 				Labels: defaultNodeLabelValues,
 			},
