@@ -36,7 +36,7 @@ const (
 
 type AWSSigningTransport struct {
 	t      http.RoundTripper
-	creds  aws.Credentials
+	creds  aws.CredentialsProvider
 	region string
 	log    log.Logger
 }
@@ -48,11 +48,16 @@ func NewAWSSigningTransport(transport http.RoundTripper, region string, log log.
 		return nil, err
 	}
 
-	creds, err := cfg.Credentials.Retrieve(context.Background())
+	// Run a single fetch credentials operation to ensure that the credentials
+	// are valid before returning the transport.
+	_, err = cfg.Credentials.Retrieve(context.Background())
 	if err != nil {
 		_ = level.Error(log).Log("msg", "fail to retrive aws credentials", "err", err)
 		return nil, err
 	}
+
+	// Build a cached credentials provider to manage the credentials and prevent new credentials on every request.
+	creds := aws.NewCredentialsCache(cfg.Credentials)
 
 	return &AWSSigningTransport{
 		t:      transport,
@@ -69,8 +74,15 @@ func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, erro
 		_ = level.Error(a.log).Log("msg", "fail to hash request body", "err", err)
 		return nil, err
 	}
+
+	creds, err := a.creds.Retrieve(context.Background())
+	if err != nil {
+		_ = level.Error(a.log).Log("msg", "fail to retrive aws credentials", "err", err)
+		return nil, err
+	}
+
 	req.Body = newReader
-	err = signer.SignHTTP(context.Background(), a.creds, req, payloadHash, service, a.region, time.Now())
+	err = signer.SignHTTP(context.Background(), creds, req, payloadHash, service, a.region, time.Now())
 	if err != nil {
 		_ = level.Error(a.log).Log("msg", "fail to sign request body", "err", err)
 		return nil, err
