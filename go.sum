@@ -40,8 +40,9 @@ github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRF
 github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d h1:UQZhZ2O0vMHr2cI+DC1Mbh0TJxzA3RcLoMsFw+aXw7E=
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
-github.com/aws/aws-sdk-go-v2 v1.16.16 h1:M1fj4FE2lB4NzRb9Y0xdWsn2P0+2UHVxwKyOa4YJNjk=
 github.com/aws/aws-sdk-go-v2 v1.16.16/go.mod h1:SwiyXi/1zTUZ6KIAmLK5V5ll8SiURNUYOqTerZPaF9k=
+github.com/aws/aws-sdk-go-v2 v1.17.1 h1:02c72fDJr87N8RAC2s3Qu0YuvMRZKNZJ9F+lAehCazk=
+github.com/aws/aws-sdk-go-v2 v1.17.1/go.mod h1:JLnGeGONAyi2lWXI1p0PCIOIy333JMVK1U7Hf0aRFLw=
 github.com/aws/aws-sdk-go-v2/config v1.17.8 h1:b9LGqNnOdg9vR4Q43tBTVWk4J6F+W774MSchvKJsqnE=
 github.com/aws/aws-sdk-go-v2/config v1.17.8/go.mod h1:UkCI3kb0sCdvtjiXYiU4Zx5h07BOpgBTtkPu/49r+kA=
 github.com/aws/aws-sdk-go-v2/credentials v1.12.21 h1:4tjlyCD0hRGNQivh5dN8hbP30qQhMLBE/FgQR1vHHWM=
@@ -62,8 +63,9 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.6 h1:OwhhKc1P9ElfWbMKPIbMMZBV
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.6/go.mod h1:csZuQY65DAdFBt1oIjO5hhBR49kQqop4+lcuCjf2arA=
 github.com/aws/aws-sdk-go-v2/service/sts v1.16.19 h1:9pPi0PsFNAGILFfPCk8Y0iyEBGc6lu6OQ97U7hmdesg=
 github.com/aws/aws-sdk-go-v2/service/sts v1.16.19/go.mod h1:h4J3oPZQbxLhzGnk+j9dfYHi5qIOVJ5kczZd658/ydM=
-github.com/aws/smithy-go v1.13.3 h1:l7LYxGuzK6/K+NzJ2mC+VvLUbae0sL3bXU//04MkmnA=
 github.com/aws/smithy-go v1.13.3/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J3gBHzA=
+github.com/aws/smithy-go v1.13.4 h1:/RN2z1txIJWeXeOkzX+Hk/4Uuvv7dWtCjbmVJcrskyk=
+github.com/aws/smithy-go v1.13.4/go.mod h1:Tg+OJXh4MB2R/uN61Ko2f6hTZwB/ZYGOtib8J3gBHzA=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
