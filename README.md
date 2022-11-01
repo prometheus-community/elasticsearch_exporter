@@ -130,7 +130,7 @@ Further Information
 | elasticsearch_filesystem_io_stats_device_write_operations_count       | gauge     | 1           | Count of disk write operations
 | elasticsearch_filesystem_io_stats_device_read_size_kilobytes_sum      | gauge     | 1           | Total kilobytes read from disk
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum     | gauge     | 1           | Total kilobytes written to disk
-| elasticsearch_indices_active_queries                                  | gauge     | 1           | The number of currently active queries
+| elasticsearch_indices_search_active_queries                           | gauge     | 1           | The number of currently active search and suggest queries
 | elasticsearch_indices_docs                                            | gauge     | 1           | Count of documents on this node
 | elasticsearch_indices_docs_deleted                                    | gauge     | 1           | Count of deleted documents on this node
 | elasticsearch_indices_docs_primary                                    | gauge     |             | Count of documents with only primary shards on all nodes
