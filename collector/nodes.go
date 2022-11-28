@@ -75,7 +75,7 @@ func createRoleMetric(role string) *nodeMetric {
 		Type: prometheus.GaugeValue,
 		Desc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "nodes", "roles"),
-			"Node default roles",
+			"Node roles",
 			defaultRoleLabels, prometheus.Labels{"role": role},
 		),
 		Value: func(node NodeStatsNodeResponse) float64 {
