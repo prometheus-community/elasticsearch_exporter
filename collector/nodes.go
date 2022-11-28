@@ -29,14 +29,18 @@ import (
 func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	// default settings (2.x) and map, which roles to consider
 	roles := map[string]bool{
-		"master":      false,
-		"data":        false,
-		"data_hot":    false,
-		"data_warm":   false,
-		"data_cold":   false,
-		"data_frozen": false,
-		"ingest":      false,
-		"client":      true,
+		"master":                false,
+		"data":                  false,
+		"data_hot":              false,
+		"data_warm":             false,
+		"data_cold":             false,
+		"data_frozen":           false,
+		"data_content":          false,
+		"ml":                    false,
+		"remote_cluster_client": false,
+		"transform":             false,
+		"ingest":                false,
+		"client":                true,
 	}
 	// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
 	if len(node.Roles) > 0 {
@@ -71,7 +75,7 @@ func createRoleMetric(role string) *nodeMetric {
 		Type: prometheus.GaugeValue,
 		Desc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "nodes", "roles"),
-			"Node roles",
+			"Node default roles",
 			defaultRoleLabels, prometheus.Labels{"role": role},
 		),
 		Value: func(node NodeStatsNodeResponse) float64 {
@@ -88,9 +92,7 @@ func createRoleMetric(role string) *nodeMetric {
 }
 
 var (
-	defaultNodeLabels = []string{"cluster", "host", "name", "es_master_node", "es_data_node",
-		"es_data_hot_node", "es_data_warm_node", "es_data_cold_node", "es_data_frozen_node",
-		"es_ingest_node", "es_client_node"}
+	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
 	defaultRoleLabels               = []string{"cluster", "host", "name"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
@@ -106,10 +108,6 @@ var (
 			node.Name,
 			fmt.Sprintf("%t", roles["master"]),
 			fmt.Sprintf("%t", roles["data"]),
-			fmt.Sprintf("%t", roles["data_hot"]),
-			fmt.Sprintf("%t", roles["data_warm"]),
-			fmt.Sprintf("%t", roles["data_cold"]),
-			fmt.Sprintf("%t", roles["data_frozen"]),
 			fmt.Sprintf("%t", roles["ingest"]),
 			fmt.Sprintf("%t", roles["client"]),
 		}
@@ -1876,9 +1874,8 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		// Handle the node labels metric
 		roles := getRoles(node)
 
-		for _, role := range []string{"master", "data", "data_hot", "data_cold",
-			"data_warm", "data_frozen", "client", "ingest"} {
-			if roles[role] {
+		for role, roleEnabled := range roles {
+			if roleEnabled {
 				metric := createRoleMetric(role)
 				ch <- prometheus.MustNewConstMetric(
 					metric.Desc,
