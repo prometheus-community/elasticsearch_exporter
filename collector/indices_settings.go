@@ -90,6 +90,21 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					return val
 				},
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "replicas"),
+					"index setting number_of_replicas",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfReplicas, 64)
+					if err != nil {
+						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
 		},
 	}
 }
