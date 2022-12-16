@@ -79,7 +79,7 @@
           {
             alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              max by (cluster, name, type,%(extraLabels)s) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
+              max by (cluster, name, type,%(extraLabels)s) (rate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolWarningTime)s' % custom.alert,
             labels: {
@@ -93,7 +93,7 @@
           {
             alert: 'ElasticsearchThreadPoolRejectionError',
             expr: |||
-              max by (cluster, name, type,%(extraLabels)s) (irate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
+              max by (cluster, name, type,%(extraLabels)s) (rate(elasticsearch_thread_pool_rejected_count{%(selector)s}[%(esClusterThreadpoolEvalTime)s])) > %(esClusterThreadpoolErrorThreshold)s
             ||| % custom.alert,
             'for': '%(esClusterThreadpoolCriticalTime)s' % custom.alert,
             labels: {
