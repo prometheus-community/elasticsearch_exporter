@@ -73,11 +73,11 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch snapshots endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch snapshots endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch snapshots scrapes.",
+			Help: "Current total Elasticsearch snapshots scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),

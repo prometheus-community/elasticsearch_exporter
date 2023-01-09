@@ -193,11 +193,11 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch nodes endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch node scrapes.",
+			Help: "Current total Elasticsearch node scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),

@@ -26,9 +26,12 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/web"
+	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -52,7 +55,8 @@ func main() {
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
 			Default("/metrics").String()
-		esURI = kingpin.Flag("es.uri",
+		webConfig = webflag.AddFlags(kingpin.CommandLine)
+		esURI     = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
 			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
@@ -91,6 +95,9 @@ func main() {
 		esExportSLM = kingpin.Flag("es.slm",
 			"Export stats for SLM snapshots.").
 			Default("false").Bool()
+		esExportDataStream = kingpin.Flag("es.data_stream",
+			"Export stas for Data Streams.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -115,6 +122,9 @@ func main() {
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").String()
+		awsRegion = kingpin.Flag("aws.region",
+			"Region for AWS elasticsearch").
+			Default("").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -163,6 +173,14 @@ func main() {
 		Transport: httpTransport,
 	}
 
+	if *awsRegion != "" {
+		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, logger)
+		if err != nil {
+			_ = level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
+			os.Exit(1)
+		}
+	}
+
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
@@ -202,6 +220,10 @@ func main() {
 
 	if *esExportSLM {
 		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
+	}
+
+	if *esExportDataStream {
+		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
 	}
 
 	if *esExportClusterSettings {
@@ -277,11 +299,8 @@ func main() {
 	)
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			_ = level.Error(logger).Log(
-				"msg", "http server quit",
-				"err", err,
-			)
+		if err := web.ListenAndServe(server, *webConfig, logger); err != nil {
+			_ = level.Error(logger).Log("msg", "http server quit", "err", err)
 			os.Exit(1)
 		}
 	}()

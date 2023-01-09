@@ -131,11 +131,11 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch index endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch index endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch index scrapes.",
+			Help: "Current total Elasticsearch index scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),

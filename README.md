@@ -1,13 +1,14 @@
 # Elasticsearch Exporter
+
 [![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
-Prometheus exporter for various metrics about ElasticSearch, written in Go.
+Prometheus exporter for various metrics about Elasticsearch, written in Go.
 
 ### Installation
 
 For pre-built binaries please take a look at the releases.
-https://github.com/prometheus-community/elasticsearch_exporter/releases
+<https://github.com/prometheus-community/elasticsearch_exporter/releases>
 
 #### Docker
 
@@ -30,7 +31,7 @@ elasticsearch_exporter:
 
 #### Kubernetes
 
-You can find a helm chart in the prometheus-community charts repository at https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-elasticsearch-exporter
+You can find a helm chart in the prometheus-community charts repository at <https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-elasticsearch-exporter>
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -39,16 +40,17 @@ helm install [RELEASE_NAME] prometheus-community/prometheus-elasticsearch-export
 
 ### Configuration
 
-**NOTE:** The exporter fetches information from an ElasticSearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `--es.all` and `--es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
+**NOTE:** The exporter fetches information from an Elasticsearch cluster on every scrape, therefore having a too short scrape interval can impose load on ES master nodes, particularly if you run with `--es.all` and `--es.indices`. We suggest you measure how long fetching `/_nodes/stats` and `/_all/_stats` takes for your ES cluster to determine whether your scraping interval is too short. As a last resort, you can scrape this exporter using a dedicated job with its own scraping interval.
 
 Below is the command line options summary:
+
 ```bash
 elasticsearch_exporter --help
 ```
 
 | Argument                | Introduced in Version | Description | Default     |
 | --------                | --------------------- | ----------- | ----------- |
-| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | http://localhost:9200 |
+| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | <http://localhost:9200> |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
 | es.cluster_settings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
@@ -58,6 +60,7 @@ elasticsearch_exporter --help
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
 | es.slm                  |                       | If true, query stats for SLM. | false |
+| es.data_stream          |                       | If true, query state for Data Steams. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch. | |
@@ -66,6 +69,7 @@ elasticsearch_exporter --help
 | es.ssl-skip-verify      | 1.0.4rc1              | Skip SSL verification when connecting to Elasticsearch. | false |
 | web.listen-address      | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
+| aws.region              | 1.5.0                 | Region for AWS elasticsearch | |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
@@ -89,9 +93,11 @@ es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 es.slm | `read_slm`
+es.data_stream | `monitor` or `manage` (per index or `*`) |
 
 Further Information
-- [Build in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
+
+- [Built in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
 
@@ -147,8 +153,8 @@ Further Information
 | elasticsearch_indices_indexing_index_total                            | counter   | 1           | Total index calls
 | elasticsearch_indices_mappings_stats_fields                           | gauge     | 1           | Count of fields currently mapped by index
 | elasticsearch_indices_mappings_stats_json_parse_failures_total        | counter   | 0           | Number of errors while parsing JSON
-| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total ElasticSearch Indices Mappings scrapes
-| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the ElasticSearch Indices Mappings endpoint successful
+| elasticsearch_indices_mappings_stats_scrapes_total                    | counter   | 0           | Current total Elasticsearch Indices Mappings scrapes
+| elasticsearch_indices_mappings_stats_up                               | gauge     | 0           | Was the last scrape of the Elasticsearch Indices Mappings endpoint successful
 | elasticsearch_indices_merges_docs_total                               | counter   | 1           | Cumulative docs merged
 | elasticsearch_indices_merges_total                                    | counter   | 1           | Total merges
 | elasticsearch_indices_merges_total_size_bytes_total                   | counter   | 1           | Total merge size in bytes
@@ -172,6 +178,7 @@ Further Information
 | elasticsearch_indices_segments_memory_bytes                           | gauge     | 1           | Current memory size of segments in bytes
 | elasticsearch_indices_settings_stats_read_only_indices                | gauge     | 1           | Count of indices that have read_only_allow_delete=true
 | elasticsearch_indices_settings_total_fields                           | gauge     |             | Index setting value for index.mapping.total_fields.limit (total allowable mapped fields in a index)
+| elasticsearch_indices_settings_replicas                     | gauge     |             | Index setting value for index.replicas
 | elasticsearch_indices_shards_docs                                     | gauge     | 3           | Count of documents on this shard
 | elasticsearch_indices_shards_docs_deleted                             | gauge     | 3           | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                                | gauge     | 1           | Current size of stored index data in bytes
@@ -240,13 +247,17 @@ Further Information
 | elasticsearch_slm_stats_snapshots_deleted_total                       | counter   | 1           | Snapshots deleted by policy
 | elasticsearch_slm_stats_snapshot_deletion_failures_total              | counter   | 1           | Snapshot deletion failures by policy
 | elasticsearch_slm_stats_operation_mode                                | gauge     | 1           | SLM operation mode (Running, stopping, stopped)
-
+| elasticsearch_data_stream_stats_up                                    | gauge     | 0           | Up metric for Data Stream collection
+| elasticsearch_data_stream_stats_total_scrapes                         | counter   | 0           | Total scrapes for Data Stream stats
+| elasticsearch_data_stream_stats_json_parse_failures                   | counter   | 0           | Number of parsing failures for Data Stream stats
+| elasticsearch_data_stream_backing_indices_total                       | gauge     | 1           | Number of backing indices for Data Stream
+| elasticsearch_data_stream_store_size_bytes                            | gauge     | 1           | Current size of data stream backing indices in bytes
 
 ### Alerts & Recording Rules
 
 We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
-The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the ElasticSearch cluster, we rely on a label `cluster`.
+The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the Elasticsearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:
 
 For example on [GCE](https://cloud.google.com)
@@ -274,7 +285,7 @@ who transferred this repository to us in January 2017.
 
 Maintainers of this repository:
 
-* Christoph Oelmüller <christoph.oelmueller@justwatch.com> @zwopir
+- Christoph Oelmüller <christoph.oelmueller@justwatch.com> @zwopir
 
 Please refer to the Git commit log for a complete list of contributors.
 

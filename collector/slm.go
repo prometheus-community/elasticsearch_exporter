@@ -78,11 +78,11 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "slm_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch SLM endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch SLM endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "slm_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch SLM scrapes.",
+			Help: "Current total Elasticsearch SLM scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "slm_stats", "json_parse_failures"),

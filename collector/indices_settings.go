@@ -60,11 +60,11 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch Indices Settings endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch Indices Settings endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch Indices Settings scrapes.",
+			Help: "Current total Elasticsearch Indices Settings scrapes.",
 		}),
 		readOnlyIndices: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
@@ -84,6 +84,21 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 				),
 				Value: func(indexSettings Settings) float64 {
 					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 64)
+					if err != nil {
+						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "replicas"),
+					"index setting number_of_replicas",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfReplicas, 64)
 					if err != nil {
 						return float64(defaultTotalFieldsValue)
 					}

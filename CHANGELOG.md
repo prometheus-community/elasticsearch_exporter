@@ -1,3 +1,20 @@
+## 1.5.0 / 2022-07-28
+
+* [FEATURE] Add metrics collection for data stream statistics #592
+* [FEATURE] Support for AWS Elasticsearch using AWS SDK v2 #597
+* [BUGFIX] Fix cluster settings collection when max_shards_per_node is manually set. #603
+
+## 1.4.0 / 2022-06-29
+
+* [BREAKING] Remove ENV var support for most non-sensitive options. #518
+* [BREAKING] Rename elasticsearch_process_cpu_time_seconds_sum to elasticsearch_process_cpu_seconds_total #520
+* [FEATURE] Add metric for index aliases #563
+* [FEATURE] Add metric for number of shards on a node #535
+* [FEATURE] Add metrics for SLM (snapshot lifecycle management) #558
+* [FEATURE] Add metric for JVM uptime #537
+* [FEATURE] Add metrics for current searches and current indexing documents #485
+* [BUGFIX] Remove the elasticsearch_process_cpu_time_seconds_sum metric as it was never used #498
+
 ## 1.3.0 / 2021-10-21
 
 * [FEATURE] Add support for passing elasticsearch credentials via the ES_USERNAME and ES_PASSWORD environment varialbes #461
