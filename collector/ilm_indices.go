@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright 2023 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -43,6 +44,19 @@ type IlmIndiciesCollector struct {
 	jsonParseFailures prometheus.Counter
 
 	ilmMetric ilmMetric
+}
+
+type IlmResponse struct {
+	Indices map[string]IlmIndexResponse `json:"indices"`
+}
+
+type IlmIndexResponse struct {
+	Index          string  `json:"index"`
+	Managed        bool    `json:"managed"`
+	Phase          string  `json:"phase"`
+	Action         string  `json:"action"`
+	Step           string  `json:"step"`
+	StepTimeMillis float64 `json:"step_time_millis"`
 }
 
 var (
@@ -117,7 +131,13 @@ func (i *IlmIndiciesCollector) fetchAndDecodeIlm() (IlmResponse, error) {
 		return ir, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&ir); err != nil {
+	bts, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		i.jsonParseFailures.Inc()
+		return ir, err
+	}
+
+	if err := json.Unmarshal(bts, &ir); err != nil {
 		i.jsonParseFailures.Inc()
 		return ir, err
 	}

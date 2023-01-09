@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright 2023 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -49,6 +49,10 @@ type IlmStatusCollector struct {
 	metric ilmStatusMetric
 }
 
+type IlmStatusResponse struct {
+	OperationMode string `json:"operation_mode"`
+}
+
 // NewIlmStatus defines Indices IndexIlms Prometheus metrics
 func NewIlmStatus(logger log.Logger, client *http.Client, url *url.URL) *IlmStatusCollector {
 	subsystem := "ilm"
@@ -95,7 +99,10 @@ func (im *IlmStatusCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- im.jsonParseFailures.Desc()
 }
 
-func (im *IlmStatusCollector) getAndParseURL(u *url.URL) (*IlmStatusResponse, error) {
+func (im *IlmStatusCollector) fetchAndDecodeIlm() (*IlmStatusResponse, error) {
+	u := *im.url
+	u.Path = path.Join(im.url.Path, "/_ilm/status")
+
 	res, err := im.client.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get from %s://%s:%s%s: %s",
@@ -125,12 +132,6 @@ func (im *IlmStatusCollector) getAndParseURL(u *url.URL) (*IlmStatusResponse, er
 	}
 
 	return &imr, nil
-}
-
-func (im *IlmStatusCollector) fetchAndDecodeIlm() (*IlmStatusResponse, error) {
-	u := *im.url
-	u.Path = path.Join(u.Path, "/_ilm/status")
-	return im.getAndParseURL(&u)
 }
 
 // Collect gets all indices Ilms metric values
