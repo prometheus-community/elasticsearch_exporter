@@ -24,6 +24,12 @@ elasticsearch_exporter:
     image: quay.io/prometheuscommunity/elasticsearch-exporter:latest
     command:
      - '--es.uri=http://elasticsearch:9200'
+    environment:
+    # By definition these variables 
+    # the base auth for metrics endpoint 
+    # will be enabled.
+    - METRICS_USERNAME="prometheus"
+    - METRICS_PASSWORD="plainTextPAssword"
     restart: always
     ports:
     - "127.0.0.1:9114:9114"
@@ -100,6 +106,12 @@ Further Information
 - [Built in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
+
+
+### Basic-Auth on **/metrics** endpoint
+
+Username and password for /metrics endpoint could be passed through the `METRICS_USERNAME` and `METRICS_PASSWORD` environment variables.
+
 
 ### Metrics
 
