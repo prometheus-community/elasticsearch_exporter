@@ -260,10 +260,8 @@ func main() {
 	prometheus.MustRegister(clusterInfoRetriever)
 
 	mux := http.DefaultServeMux
-	mux.HandleFunc(*metricsPath, baseAuthFunc(func(w http.ResponseWriter, r *http.Request) {
-		promhttp.Handler()
-	}))
-	//mux.Handle(*metricsPath, promhttp.Handler())
+
+	mux.Handle(*metricsPath, authWrapper(promhttp.Handler()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>

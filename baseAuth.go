@@ -3,28 +3,28 @@ package main
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	"log"
 	"net/http"
 	"os"
 )
 
-func baseAuthFunc(next http.HandlerFunc) http.HandlerFunc {
-	/*
-		Super simple implementation of BaseAuth.
-
-	*/
+func authWrapper(h http.Handler) http.Handler {
 	bauthUser := os.Getenv("METRICS_USERNAME")
 	bauthPassword := os.Getenv("METRICS_PASSWORD")
 
 	if len(bauthUser) < 1 {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
+			h.ServeHTTP(w, r) // call original
+			return
 		})
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		username, password, ok := r.BasicAuth()
+
 		if ok {
+			log.Println("Doing basic auth verification")
+
 			usernameHash := sha256.Sum256([]byte(username))
 			passwordHash := sha256.Sum256([]byte(password))
 			expectedUsernameHash := sha256.Sum256([]byte(bauthUser))
@@ -34,12 +34,14 @@ func baseAuthFunc(next http.HandlerFunc) http.HandlerFunc {
 			passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
 
 			if usernameMatch && passwordMatch {
-				next.ServeHTTP(w, r)
+				h.ServeHTTP(w, r) // call original
 				return
 			}
 		}
 
+		// Wrong user or password
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	})
 }
