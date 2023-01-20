@@ -1,3 +1,8 @@
+
+## 1.5.1 / 2022-07-29
+
+* [BUGFIX] Fixed counting of the number of index fields in the `countFieldsRecursive` function as it was previously not including parent object fields prior to recursing. #674
+
 ## 1.5.0 / 2022-07-28
 
 * [FEATURE] Add metrics collection for data stream statistics #592

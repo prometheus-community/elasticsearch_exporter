@@ -103,7 +103,7 @@ func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float6
 
 		// count recursively in case the property has more properties
 		if property.Properties != nil {
-			fieldCounter = +countFieldsRecursive(property.Properties, fieldCounter)
+			fieldCounter = 1 + countFieldsRecursive(property.Properties, fieldCounter)
 		}
 	}
 
