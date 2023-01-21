@@ -170,6 +170,7 @@ func TestIndexMappingFieldCount(t *testing.T) {
 				"mappings": {
 					"properties": {
 						"data": {
+							"type": "object",
 							"properties": {
 								"field1": {
 									"type": "text",
