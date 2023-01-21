@@ -83,6 +83,9 @@ func main() {
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
 			"Export stats for cluster settings.").
 			Default("false").Bool()
+		esExportILM = kingpin.Flag("es.ilm",
+			"Export index lifecycle politics for indices in the cluster.").
+			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
@@ -236,6 +239,11 @@ func main() {
 
 	if *esExportIndicesMappings {
 		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL, *esIndicesFilter))
+	}
+
+	if *esExportILM {
+		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
 	}
 
 	// create a http server
