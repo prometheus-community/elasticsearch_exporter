@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	ilm_statuses = []string{"STOPPED", "RUNNING", "STOPPING"}
+	ilmStatuses = []string{"STOPPED", "RUNNING", "STOPPING"}
 )
 
 type ilmStatusMetric struct {
@@ -79,7 +79,7 @@ func NewIlmStatus(logger log.Logger, client *http.Client, url *url.URL) *IlmStat
 			Desc: prometheus.NewDesc(
 				prometheus.BuildFQName(namespace, subsystem, "status"),
 				"Current status of ilm. Status can be STOPPED, RUNNING, STOPPING.",
-				ilm_statuses, nil,
+				ilmStatuses, nil,
 			),
 			Value: func(ilm *IlmStatusResponse, status string) float64 {
 				if ilm.OperationMode == status {
@@ -155,7 +155,7 @@ func (im *IlmStatusCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	im.up.Set(1)
 
-	for _, status := range ilm_statuses {
+	for _, status := range ilmStatuses {
 		ch <- prometheus.MustNewConstMetric(
 			im.metric.Desc,
 			im.metric.Type,
