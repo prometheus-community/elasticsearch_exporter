@@ -128,6 +128,9 @@ func main() {
 		awsRegion = kingpin.Flag("aws.region",
 			"Region for AWS elasticsearch").
 			Default("").String()
+		awsRoleArn = kingpin.Flag("aws.role-arn",
+			"Role ARN of an IAM role to assume.").
+			Default("").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -177,7 +180,7 @@ func main() {
 	}
 
 	if *awsRegion != "" {
-		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, logger)
+		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
 		if err != nil {
 			_ = level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
 			os.Exit(1)
