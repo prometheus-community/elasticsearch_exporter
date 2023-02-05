@@ -55,7 +55,7 @@ elasticsearch_exporter --help
 ```
 
 | Argument                | Introduced in Version | Description | Default     |
-| --------                | --------------------- | ----------- | ----------- |
+| ----------------------- | --------------------- | ----------- | ----------- |
 | es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | <http://localhost:9200> |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
 | es.cluster_settings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
@@ -76,6 +76,7 @@ elasticsearch_exporter --help
 | web.listen-address      | 1.0.2                 | Address to listen on for web interface and telemetry. | :9114 |
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics. | /metrics |
 | aws.region              | 1.5.0                 | Region for AWS elasticsearch | |
+| aws.role-arn            | 1.6.0                 | Role ARN of an IAM role to assume. | |
 | version                 | 1.0.2                 | Show version info on stdout and exit. | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
@@ -190,6 +191,7 @@ Username and password for /metrics endpoint could be passed through the `METRICS
 | elasticsearch_indices_segments_memory_bytes                           | gauge     | 1           | Current memory size of segments in bytes
 | elasticsearch_indices_settings_stats_read_only_indices                | gauge     | 1           | Count of indices that have read_only_allow_delete=true
 | elasticsearch_indices_settings_total_fields                           | gauge     |             | Index setting value for index.mapping.total_fields.limit (total allowable mapped fields in a index)
+| elasticsearch_indices_settings_replicas                     | gauge     |             | Index setting value for index.replicas
 | elasticsearch_indices_shards_docs                                     | gauge     | 3           | Count of documents on this shard
 | elasticsearch_indices_shards_docs_deleted                             | gauge     | 3           | Count of deleted documents on each shard
 | elasticsearch_indices_store_size_bytes                                | gauge     | 1           | Current size of stored index data in bytes

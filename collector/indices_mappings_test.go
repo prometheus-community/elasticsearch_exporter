@@ -159,3 +159,222 @@ func TestMapping(t *testing.T) {
 		}
 	}
 }
+
+func TestIndexMappingFieldCount(t *testing.T) {
+
+	testIndexNumFields := 40.0
+	testIndexName := "test-data-2023.01.20"
+
+	rawMapping := `{
+			"test-data-2023.01.20": {
+				"mappings": {
+					"properties": {
+						"data": {
+							"type": "object",
+							"properties": {
+								"field1": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field10": {
+									"type": "long"
+								},
+								"field2": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field3": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field4": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field5": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field6": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field7": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field8": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field9": {
+									"type": "long"
+								}
+							}
+						},
+						"data2": {
+							"properties": {
+								"field1": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field2": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field3": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field4": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"field5": {
+									"type": "text",
+									"fields": {
+										"keyword": {
+											"type": "keyword",
+											"ignore_above": 256
+										}
+									}
+								},
+								"nested_field6": {
+									"properties": {
+										"field1": {
+											"type": "text",
+											"fields": {
+												"keyword": {
+													"type": "keyword",
+													"ignore_above": 256
+												}
+											}
+										},
+										"field2": {
+											"type": "text",
+											"fields": {
+												"keyword": {
+													"type": "keyword",
+													"ignore_above": 256
+												}
+											}
+										},
+										"field3": {
+											"type": "text",
+											"fields": {
+												"keyword": {
+													"type": "keyword",
+													"ignore_above": 256
+												}
+											}
+										},
+										"field4": {
+											"type": "text",
+											"fields": {
+												"keyword": {
+													"type": "keyword",
+													"ignore_above": 256
+												}
+											}
+										},
+										"field5": {
+											"type": "long"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}`
+
+	for _, handler := range map[string]http.Handler{
+		"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, rawMapping)
+		}),
+	} {
+
+		ts := httptest.NewServer(handler)
+		defer ts.Close()
+
+		u, err := url.Parse(ts.URL)
+		if err != nil {
+			t.Fatalf("Failed to parse URL: %s", err)
+		}
+		c := NewIndicesMappings(log.NewNopLogger(), http.DefaultClient, u)
+		indicesMappingsResponse, err := c.fetchAndDecodeIndicesMappings()
+		if err != nil {
+			t.Fatalf("Failed to fetch or decode indices mappings: %s", err)
+		}
+
+		response := *indicesMappingsResponse
+		mapping := response[testIndexName]
+		totalFields := countFieldsRecursive(mapping.Mappings.Properties, 0)
+		if totalFields != testIndexNumFields {
+			t.Errorf("Number of actual fields in index doesn't match the count returned by the recursive countFieldsRecursive function")
+		}
+
+	}
+
+}

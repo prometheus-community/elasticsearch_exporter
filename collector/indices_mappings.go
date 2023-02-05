@@ -88,8 +88,10 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float64) float64 {
 	// iterate over all properties
 	for _, property := range properties {
-		if property.Type != nil {
-			// property has a type set - counts as a field
+
+		if property.Type != nil && *property.Type != "object" {
+			// property has a type set - counts as a field unless the value is object
+			// as the recursion below will handle counting that
 			fieldCounter++
 
 			// iterate over all fields of that property
@@ -103,7 +105,7 @@ func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float6
 
 		// count recursively in case the property has more properties
 		if property.Properties != nil {
-			fieldCounter = +countFieldsRecursive(property.Properties, fieldCounter)
+			fieldCounter = 1 + countFieldsRecursive(property.Properties, fieldCounter)
 		}
 	}
 

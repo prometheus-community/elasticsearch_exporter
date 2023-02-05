@@ -83,6 +83,9 @@ func main() {
 		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
 			"Export stats for cluster settings.").
 			Default("false").Bool()
+		esExportILM = kingpin.Flag("es.ilm",
+			"Export index lifecycle politics for indices in the cluster.").
+			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
@@ -121,6 +124,9 @@ func main() {
 			Default("stdout").String()
 		awsRegion = kingpin.Flag("aws.region",
 			"Region for AWS elasticsearch").
+			Default("").String()
+		awsRoleArn = kingpin.Flag("aws.role-arn",
+			"Role ARN of an IAM role to assume.").
 			Default("").String()
 	)
 
@@ -171,7 +177,7 @@ func main() {
 	}
 
 	if *awsRegion != "" {
-		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, logger)
+		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
 		if err != nil {
 			_ = level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
 			os.Exit(1)
@@ -233,6 +239,11 @@ func main() {
 
 	if *esExportIndicesMappings {
 		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
+	}
+
+	if *esExportILM {
+		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
 	}
 
 	// create a http server
