@@ -16,16 +16,17 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
 	"sort"
 	"strconv"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
@@ -518,8 +519,8 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "search", "active_queries"),
-					"The number of currently active queries",
+					prometheus.BuildFQName(namespace, "indices_search", "active_queries"),
+					"The number of currently active search and suggest queries",
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
