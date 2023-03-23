@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -245,7 +245,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(c.logger).Log(
+			level.Warn(c.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -256,7 +256,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 		return chr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		c.jsonParseFailures.Inc()
 		return chr, err
@@ -283,7 +283,7 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 	clusterHealthResp, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		c.up.Set(0)
-		_ = level.Warn(c.logger).Log(
+		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode cluster health",
 			"err", err,
 		)

@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -113,15 +113,15 @@ func (im *IlmStatusCollector) fetchAndDecodeIlm() (*IlmStatusResponse, error) {
 		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		_ = level.Warn(im.logger).Log("msg", "failed to read response body", "err", err)
+		level.Warn(im.logger).Log("msg", "failed to read response body", "err", err)
 		return nil, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		_ = level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
+		level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
 		return nil, err
 	}
 
@@ -147,7 +147,7 @@ func (im *IlmStatusCollector) Collect(ch chan<- prometheus.Metric) {
 	indicesIlmsResponse, err := im.fetchAndDecodeIlm()
 	if err != nil {
 		im.up.Set(0)
-		_ = level.Warn(im.logger).Log(
+		level.Warn(im.logger).Log(
 			"msg", "failed to fetch and decode cluster ilm status",
 			"err", err,
 		)

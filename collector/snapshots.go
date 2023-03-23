@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -239,7 +239,7 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(s.logger).Log(
+			level.Warn(s.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -250,7 +250,7 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		s.jsonParseFailures.Inc()
 		return err
@@ -300,7 +300,7 @@ func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
 	snapshotsStatsResp, err := s.fetchAndDecodeSnapshotsStats()
 	if err != nil {
 		s.up.Set(0)
-		_ = level.Warn(s.logger).Log(
+		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode snapshot stats",
 			"err", err,
 		)

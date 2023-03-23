@@ -105,7 +105,7 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(s.logger).Log(
+			level.Warn(s.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -146,7 +146,7 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 
 	sr, err := s.fetchAndDecodeShards()
 	if err != nil {
-		_ = level.Warn(s.logger).Log(
+		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode node shards stats",
 			"err", err,
 		)

@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -125,7 +125,7 @@ func (ds *DataStream) fetchAndDecodeDataStreamStats() (DataStreamStatsResponse, 
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(ds.logger).Log(
+			level.Warn(ds.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -136,7 +136,7 @@ func (ds *DataStream) fetchAndDecodeDataStreamStats() (DataStreamStatsResponse, 
 		return dsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		ds.jsonParseFailures.Inc()
 		return dsr, err
@@ -162,7 +162,7 @@ func (ds *DataStream) Collect(ch chan<- prometheus.Metric) {
 	dataStreamStatsResp, err := ds.fetchAndDecodeDataStreamStats()
 	if err != nil {
 		ds.up.Set(0)
-		_ = level.Warn(ds.logger).Log(
+		level.Warn(ds.logger).Log(
 			"msg", "failed to fetch and decode data stream stats",
 			"err", err,
 		)

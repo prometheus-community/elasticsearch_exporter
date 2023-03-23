@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -276,7 +276,7 @@ func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(s.logger).Log(
+			level.Warn(s.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -287,7 +287,7 @@ func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
 		return ssr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		s.jsonParseFailures.Inc()
 		return ssr, err
@@ -315,7 +315,7 @@ func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(s.logger).Log(
+			level.Warn(s.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -326,7 +326,7 @@ func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
 		return ssr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		s.jsonParseFailures.Inc()
 		return ssr, err
@@ -352,7 +352,7 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 	slmStatusResp, err := s.fetchAndDecodeSLMStatus()
 	if err != nil {
 		s.up.Set(0)
-		_ = level.Warn(s.logger).Log(
+		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode slm status",
 			"err", err,
 		)
@@ -362,7 +362,7 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 	slmStatsResp, err := s.fetchAndDecodeSLMStats()
 	if err != nil {
 		s.up.Set(0)
-		_ = level.Warn(s.logger).Log(
+		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode slm stats",
 			"err", err,
 		)
