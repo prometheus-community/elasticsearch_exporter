@@ -16,10 +16,10 @@ package collector
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -29,7 +29,7 @@ import (
 func TestNodesStats(t *testing.T) {
 	for _, ver := range testElasticsearchVersions {
 		filename := fmt.Sprintf("../fixtures/nodestats/%s.json", ver)
-		data, _ := ioutil.ReadFile(filename)
+		data, _ := os.ReadFile(filename)
 
 		handlers := map[string]http.Handler{
 			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

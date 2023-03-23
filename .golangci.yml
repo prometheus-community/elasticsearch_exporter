@@ -8,3 +8,7 @@ issues:
     - path: _test.go
       linters:
         - errcheck
+
+linters-settings:
+  errcheck:
+    exclude: scripts/errcheck_excludes.txt

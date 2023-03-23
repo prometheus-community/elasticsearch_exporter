@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -127,7 +127,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(cs.logger).Log(
+			level.Warn(cs.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -138,7 +138,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		cs.jsonParseFailures.Inc()
 		return err
@@ -179,7 +179,7 @@ func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		cs.readOnlyIndices.Set(0)
 		cs.up.Set(0)
-		_ = level.Warn(cs.logger).Log(
+		level.Warn(cs.logger).Log(
 			"msg", "failed to fetch and decode cluster settings stats",
 			"err", err,
 		)

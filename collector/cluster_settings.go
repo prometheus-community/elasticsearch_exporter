@@ -16,7 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -87,15 +87,6 @@ type clusterSettingsAllocation struct {
 	Enabled string `json:"enable"`
 }
 
-// ClusterSettings information struct
-type ClusterSettings struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-
-	maxShardsPerNode prometheus.Gauge
-}
-
 func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 	u := c.u.ResolveReference(&url.URL{Path: "_cluster/settings"})
 	q := u.Query()
@@ -112,7 +103,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 		return err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
