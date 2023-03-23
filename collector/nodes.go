@@ -29,10 +29,18 @@ import (
 func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	// default settings (2.x) and map, which roles to consider
 	roles := map[string]bool{
-		"master": false,
-		"data":   false,
-		"ingest": false,
-		"client": true,
+		"master":                false,
+		"data":                  false,
+		"data_hot":              false,
+		"data_warm":             false,
+		"data_cold":             false,
+		"data_frozen":           false,
+		"data_content":          false,
+		"ml":                    false,
+		"remote_cluster_client": false,
+		"transform":             false,
+		"ingest":                false,
+		"client":                true,
 	}
 	// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
 	if len(node.Roles) > 0 {
@@ -1866,8 +1874,8 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		// Handle the node labels metric
 		roles := getRoles(node)
 
-		for _, role := range []string{"master", "data", "client", "ingest"} {
-			if roles[role] {
+		for role, roleEnabled := range roles {
+			if roleEnabled {
 				metric := createRoleMetric(role)
 				ch <- prometheus.MustNewConstMetric(
 					metric.Desc,
