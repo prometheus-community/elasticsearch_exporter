@@ -1,3 +1,6 @@
+## Unreleased
+* [BREAKING] Rename --es.cluster_settings to --collector.clustersettings
+
 ## 1.5.0 / 2022-07-28
 
 * [FEATURE] Add metrics collection for data stream statistics #592

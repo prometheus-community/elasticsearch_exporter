@@ -14,84 +14,112 @@
 package collector
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
+
+type wrapCollector struct {
+	c Collector
+}
+
+func (w wrapCollector) Describe(ch chan<- *prometheus.Desc) {
+}
+
+func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
+	w.c.Update(context.Background(), ch)
+}
 
 func TestClusterSettingsStats(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
 	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	files := []string{"../fixtures/settings-5.4.2.json", "../fixtures/settings-merge-5.4.2.json"}
-	for _, filename := range files {
-		f, _ := os.Open(filename)
-		defer f.Close()
-		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				io.Copy(w, f)
-			}),
-		} {
-			ts := httptest.NewServer(handler)
-			defer ts.Close()
 
-			u, err := url.Parse(ts.URL)
-			if err != nil {
-				t.Fatalf("Failed to parse URL: %s", err)
-			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
-			nsr, err := c.fetchAndDecodeClusterSettingsStats()
-			if err != nil {
-				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)
-			}
-			t.Logf("[%s/%s] Cluster Settings Stats Response: %+v", hn, filename, nsr)
-			if nsr.Cluster.Routing.Allocation.Enabled != "ALL" {
-				t.Errorf("Wrong setting for cluster routing allocation enabled")
-			}
-			if nsr.Cluster.MaxShardsPerNode != nil {
-				t.Errorf("MaxShardsPerNode should be empty on older releases")
-			}
-		}
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		// MaxShardsPerNode is empty in older versions
+		{
+			name: "5.4.2",
+			file: "../fixtures/settings-5.4.2.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+`,
+		},
+		{
+			name: "5.4.2-merge",
+			file: "../fixtures/settings-merge-5.4.2.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+`,
+		},
+		{
+			name: "7.3.0",
+			file: "../fixtures/settings-7.3.0.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_max_shards_per_node Current maximum number of shards per node setting.
+# TYPE elasticsearch_clustersettings_stats_max_shards_per_node gauge
+elasticsearch_clustersettings_stats_max_shards_per_node 1000
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+`,
+		},
+		{
+			name: "7.17.5-persistent-clustermaxshardspernode",
+			file: "../fixtures/settings-persistent-clustermaxshardspernode-7.17.5.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_max_shards_per_node Current maximum number of shards per node setting.
+# TYPE elasticsearch_clustersettings_stats_max_shards_per_node gauge
+elasticsearch_clustersettings_stats_max_shards_per_node 1000
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+`,
+		},
 	}
-}
 
-func TestClusterMaxShardsPerNode(t *testing.T) {
-	// settings-7.3.0.json testcase created using:
-	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
-	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	// settings-persistent-clustermaxshartspernode-7.17.json testcase created using:
-	//  docker run -d -p 9200:9200 elasticsearch:VERSION
-	//  curl -X PUT http://localhost:9200/_cluster/settings -H 'Content-Type: application/json' -d '{"persistent":{"cluster.max_shards_per_node":1000}}'
-	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	files := []string{"../fixtures/settings-7.3.0.json", "../fixtures/settings-persistent-clustermaxshartspernode-7.17.5.json"}
-	for _, filename := range files {
-		f, _ := os.Open(filename)
-		defer f.Close()
-		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				io.Copy(w, f)
-			}),
-		} {
-			ts := httptest.NewServer(handler)
+			}))
 			defer ts.Close()
+
 			u, err := url.Parse(ts.URL)
 			if err != nil {
-				t.Fatalf("Failed to parse URL: %s", err)
+				t.Fatal(err)
 			}
-			c := NewClusterSettings(log.NewNopLogger(), http.DefaultClient, u)
-			nsr, err := c.fetchAndDecodeClusterSettingsStats()
+
+			c, err := NewClusterSettings(log.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
-				t.Fatalf("Failed to fetch or decode cluster settings stats: %s", err)
+				t.Fatal(err)
 			}
-			t.Logf("[%s/%s] Cluster Settings Stats Response: %+v", hn, filename, nsr)
-			if nsr.Cluster.MaxShardsPerNode != "1000" {
-				t.Errorf("Wrong value for MaxShardsPerNode")
+
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
 			}
-		}
+		})
 	}
 }
