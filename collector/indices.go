@@ -20,7 +20,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -1065,14 +1065,14 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
 	go func() {
-		_ = level.Debug(logger).Log("msg", "starting cluster info receive loop")
+		level.Debug(logger).Log("msg", "starting cluster info receive loop")
 		for ci := range indices.clusterInfoCh {
 			if ci != nil {
-				_ = level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
+				level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
 				indices.lastClusterInfo = ci
 			}
 		}
-		_ = level.Debug(logger).Log("msg", "exiting cluster info receive loop")
+		level.Debug(logger).Log("msg", "exiting cluster info receive loop")
 	}()
 	return indices
 }
@@ -1123,7 +1123,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 		isr.Aliases = map[string][]string{}
 		asr, err := i.fetchAndDecodeAliases()
 		if err != nil {
-			_ = level.Error(i.logger).Log("err", err.Error())
+			level.Error(i.logger).Log("err", err.Error())
 			return isr, err
 		}
 
@@ -1172,7 +1172,7 @@ func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(i.logger).Log(
+			level.Warn(i.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -1183,7 +1183,7 @@ func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 		return []byte{}, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -1204,7 +1204,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 	indexStatsResp, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
 		i.up.Set(0)
-		_ = level.Warn(i.logger).Log(
+		level.Warn(i.logger).Log(
 			"msg", "failed to fetch and decode index stats",
 			"err", err,
 		)

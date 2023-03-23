@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -120,7 +120,7 @@ func (i *IlmIndiciesCollector) fetchAndDecodeIlm() (IlmResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(i.logger).Log(
+			level.Warn(i.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -131,7 +131,7 @@ func (i *IlmIndiciesCollector) fetchAndDecodeIlm() (IlmResponse, error) {
 		return ir, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		i.jsonParseFailures.Inc()
 		return ir, err
@@ -164,7 +164,7 @@ func (i *IlmIndiciesCollector) Collect(ch chan<- prometheus.Metric) {
 	ilmResp, err := i.fetchAndDecodeIlm()
 	if err != nil {
 		i.up.Set(0)
-		_ = level.Warn(i.logger).Log(
+		level.Warn(i.logger).Log(
 			"msg", "failed to fetch and decode ILM stats",
 			"err", err,
 		)
