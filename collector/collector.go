@@ -33,8 +33,8 @@ const (
 	// Namespace defines the common namespace to be used by all metrics.
 	namespace = "elasticsearch"
 
-	defaultEnabled = true
-	// defaultDisabled = false
+	defaultEnabled  = true
+	defaultDisabled = false
 )
 
 type factoryFunc func(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error)
