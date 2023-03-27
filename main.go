@@ -54,7 +54,7 @@ func main() {
 			Default("/metrics").String()
 		esURI = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
-			Default("http://localhost:9200").Envar("ES_URI").String()
+			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
 			Default("5s").Duration()
