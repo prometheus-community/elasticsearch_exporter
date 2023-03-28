@@ -209,6 +209,12 @@ func main() {
 			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
 			os.Exit(1)
 		}
+		iHC := collector.NewIndicesHealth(logger, httpClient, esURL)
+		prometheus.MustRegister(iHC)
+		if registerErr := clusterInfoRetriever.RegisterConsumer(iHC); registerErr != nil {
+			_ = level.Error(logger).Log("msg", "failed to register indices health collector in cluster info")
+			os.Exit(1)
+		}
 	}
 
 	if *esExportSnapshots {
