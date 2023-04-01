@@ -199,6 +199,7 @@ Further Information
 | elasticsearch_jvm_memory_pool_max_bytes                               | counter   | 3           | JVM memory max by pool
 | elasticsearch_jvm_memory_pool_peak_used_bytes                         | counter   | 3           | JVM memory peak used by pool
 | elasticsearch_jvm_memory_pool_peak_max_bytes                          | counter   | 3           | JVM memory peak max by pool
+| elasticsearch_node_shards_total                                       | gauge     | 1           | Total shards per node
 | elasticsearch_os_cpu_percent                                          | gauge     | 1           | Percent CPU used by the OS
 | elasticsearch_os_load1                                                | gauge     | 1           | Shortterm load average
 | elasticsearch_os_load5                                                | gauge     | 1           | Midterm load average
