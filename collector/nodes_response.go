@@ -318,13 +318,14 @@ type NodeStatsProcessResponse struct {
 	Memory    NodeStatsProcessMemResponse `json:"mem"`
 }
 
-// NodestatsIndexingPressureMemoryResponse is a representation of a elasticsearc indexing pressure 
+// NodestatsIndexingPressureMemoryResponse is a representation of a elasticsearc indexing pressure
 type NodestatsIndexingPressureMemoryResponse struct {
 	Current      NodestatsIndexingPressureMemoryCurrentResponse `json:"current"`
 	Total        NodestatsIndexingPressureMemoryTotalResponse   `json:"total"`
 	LimitInBytes int64                                          `json:"limit_in_bytes"`
 }
 
+// NodestatsIndexingPressureMemoryCurrentResponse is a representation of a elasticsearc indexing pressure current memory usage
 type NodestatsIndexingPressureMemoryCurrentResponse struct {
 	CombinedCoordinatingAndPrimaryInBytes int64 `json:"combined_coordinating_and_primary_in_bytes"`
 	CoordinatingInBytes                   int64 `json:"coordinating_in_bytes"`
@@ -333,6 +334,7 @@ type NodestatsIndexingPressureMemoryCurrentResponse struct {
 	AllInBytes                            int64 `json:"all_in_bytes"`
 }
 
+// NodestatsIndexingPressureMemoryTotalResponse is a representation of a elasticsearc indexing pressure total memory usage
 type NodestatsIndexingPressureMemoryTotalResponse struct {
 	CombinedCoordinatingAndPrimaryInBytes int64 `json:"combined_coordinating_and_primary_in_bytes"`
 	CoordinatingInBytes                   int64 `json:"coordinating_in_bytes"`
