@@ -319,7 +319,6 @@ type NodeStatsProcessResponse struct {
 }
 
 // NodestatsIndexingPressureMemoryResponse is a representation of a elasticsearc indexing pressure 
-// see: https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-nodes-stats.html#cluster-nodes-stats-api-response-body-indexing-pressure
 type NodestatsIndexingPressureMemoryResponse struct {
 	Current      NodestatsIndexingPressureMemoryCurrentResponse `json:"current"`
 	Total        NodestatsIndexingPressureMemoryTotalResponse   `json:"total"`
