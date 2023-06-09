@@ -2136,8 +2136,6 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
-		// indexing_pressure Stats  https://github.com/prometheus-community/elasticsearch_exporter/issues/638
-		// https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-indexing-pressure.html
 		for _, indexingPressureMem := range node.IndexingPressure {
 			for _, metric := range c.indexingPressureMetrics {
 				ch <- prometheus.MustNewConstMetric(
