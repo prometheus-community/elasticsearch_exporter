@@ -255,7 +255,7 @@ Further Information
 | elasticsearch_data_stream_stats_json_parse_failures                                | counter | 0           | Number of parsing failures for Data Stream stats                                                    |
 | elasticsearch_data_stream_backing_indices_total                                    | gauge   | 1           | Number of backing indices for Data Stream                                                           |
 | elasticsearch_data_stream_store_size_bytes                                         | gauge   | 1           | Current size of data stream backing indices in bytes                                                |
-| elasticsearch_indexing_pressure_limit_in_bytes                                     | counter | 1           | Current size of data stream backing indices in bytes                                                |
+| elasticsearch_indexing_pressure_limit_in_bytes                                     | gauge   | 1           | Current size of data stream backing indices in bytes                                                |
 | elasticsearch_indexing_pressure_current_combined_coordinating_and_primary_in_bytes | gauge   | 1           | Memory consumed, in bytes, by indexing requests in the coordinating or primary stage.               |
 | elasticsearch_indexing_pressure_current_coordinating_in_bytes                      | gauge   | 1           | Memory consumed, in bytes, by indexing requests in the coordinating stage.                          |
 | elasticsearch_indexing_pressure_current_primary_in_bytes                           | gauge   | 1           | Memory consumed, in bytes, by indexing requests in the primary stage.                               |

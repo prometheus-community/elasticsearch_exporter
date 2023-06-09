@@ -1947,7 +1947,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
-				Type: prometheus.CounterValue,
+				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indexing_pressure", "limit_in_bytes"),
 					"Configured memory limit, in bytes, for the indexing requests. Replica requests have an automatic limit that is 1.5x this value.",
