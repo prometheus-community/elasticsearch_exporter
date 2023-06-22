@@ -146,7 +146,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 		res.Version.BuildHash,
 		res.Version.Number.String(),
 		res.Version.LuceneVersion.String(),
-	)
+	).Set(1.0)
 	r.lastUpstreamSuccessTs.WithLabelValues(url).Set(float64(time.Now().Unix()))
 }
 
