@@ -91,6 +91,7 @@ exporter defaults | `cluster` `monitor` | All cluster read-only operations, like
 es.cluster_settings | `cluster` `monitor` |
 es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
 es.indices_settings | `indices` `monitor` (per index or `*`) |
+es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
 es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 es.slm | `read_slm`

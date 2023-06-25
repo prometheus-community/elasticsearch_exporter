@@ -49,7 +49,7 @@ type consumer interface {
 	String() string
 }
 
-// Retriever periodically gets the cluster info from the / endpoint end
+// Retriever periodically gets the cluster info from the / endpoint and
 // sends it to all registered consumer channels
 type Retriever struct {
 	consumerChannels      map[string]*chan *Response
@@ -146,7 +146,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 		res.Version.BuildHash,
 		res.Version.Number.String(),
 		res.Version.LuceneVersion.String(),
-	)
+	).Set(1.0)
 	r.lastUpstreamSuccessTs.WithLabelValues(url).Set(float64(time.Now().Unix()))
 }
 
