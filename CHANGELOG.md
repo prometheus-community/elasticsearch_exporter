@@ -1,6 +1,10 @@
 ## 1.6.0 / 2023-06-22
 
-* [BREAKING] Rename --es.cluster_settings to --collector.clustersettings
+BREAKING CHANGES:
+
+The flag `--es.cluster_settings` has been renamed to `--collector.clustersettings`.
+
+* [CHANGE] Rename --es.cluster_settings to --collector.clustersettings
 * [FEATURE] Add ILM metrics #513
 * [ENHANCEMENT] Add ElasticCloud node roles to role label #652
 * [ENHANCEMENT] Add ability to use AWS IAM role for authentication #653
