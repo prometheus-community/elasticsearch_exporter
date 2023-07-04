@@ -52,7 +52,7 @@ elasticsearch_exporter --help
 | ----------------------- | --------------------- | ----------- | ----------- |
 | es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | <http://localhost:9200> |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                             | false |
-| es.cluster_settings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
+| collector.clustersettings     | 1.1.0rc1              | If true, query stats for cluster settings. | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster. | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster. | false |
 | es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster. | false |
@@ -88,7 +88,7 @@ ES 7.x supports RBACs. The following security privileges are required for the el
 Setting | Privilege Required | Description
 :---- | :---- | :----
 exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
-es.cluster_settings | `cluster` `monitor` |
+collector.clustersettings | `cluster` `monitor` |
 es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
 es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
