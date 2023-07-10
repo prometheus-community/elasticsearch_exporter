@@ -23,23 +23,24 @@ type nodeStatsResponse struct {
 
 // NodeStatsNodeResponse defines node stats information structure for nodes
 type NodeStatsNodeResponse struct {
-	Name             string                                     `json:"name"`
-	Host             string                                     `json:"host"`
-	Timestamp        int64                                      `json:"timestamp"`
-	TransportAddress string                                     `json:"transport_address"`
-	Hostname         string                                     `json:"hostname"`
-	Roles            []string                                   `json:"roles"`
-	Attributes       map[string]string                          `json:"attributes"`
-	Indices          NodeStatsIndicesResponse                   `json:"indices"`
-	OS               NodeStatsOSResponse                        `json:"os"`
-	Network          NodeStatsNetworkResponse                   `json:"network"`
-	FS               NodeStatsFSResponse                        `json:"fs"`
-	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
-	JVM              NodeStatsJVMResponse                       `json:"jvm"`
-	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
-	HTTP             map[string]interface{}                     `json:"http"`
-	Transport        NodeStatsTransportResponse                 `json:"transport"`
-	Process          NodeStatsProcessResponse                   `json:"process"`
+	Name             string                                             `json:"name"`
+	Host             string                                             `json:"host"`
+	Timestamp        int64                                              `json:"timestamp"`
+	TransportAddress string                                             `json:"transport_address"`
+	Hostname         string                                             `json:"hostname"`
+	Roles            []string                                           `json:"roles"`
+	Attributes       map[string]string                                  `json:"attributes"`
+	Indices          NodeStatsIndicesResponse                           `json:"indices"`
+	OS               NodeStatsOSResponse                                `json:"os"`
+	Network          NodeStatsNetworkResponse                           `json:"network"`
+	FS               NodeStatsFSResponse                                `json:"fs"`
+	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse         `json:"thread_pool"`
+	JVM              NodeStatsJVMResponse                               `json:"jvm"`
+	Breakers         map[string]NodeStatsBreakersResponse               `json:"breakers"`
+	HTTP             map[string]interface{}                             `json:"http"`
+	Transport        NodeStatsTransportResponse                         `json:"transport"`
+	Process          NodeStatsProcessResponse                           `json:"process"`
+	IndexingPressure map[string]NodestatsIndexingPressureMemoryResponse `json:"indexing_pressure"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
@@ -315,6 +316,34 @@ type NodeStatsProcessResponse struct {
 	MaxFD     int64                       `json:"max_file_descriptors"`
 	CPU       NodeStatsProcessCPUResponse `json:"cpu"`
 	Memory    NodeStatsProcessMemResponse `json:"mem"`
+}
+
+// NodestatsIndexingPressureMemoryResponse is a representation of a elasticsearc indexing pressure
+type NodestatsIndexingPressureMemoryResponse struct {
+	Current      NodestatsIndexingPressureMemoryCurrentResponse `json:"current"`
+	Total        NodestatsIndexingPressureMemoryTotalResponse   `json:"total"`
+	LimitInBytes int64                                          `json:"limit_in_bytes"`
+}
+
+// NodestatsIndexingPressureMemoryCurrentResponse is a representation of a elasticsearc indexing pressure current memory usage
+type NodestatsIndexingPressureMemoryCurrentResponse struct {
+	CombinedCoordinatingAndPrimaryInBytes int64 `json:"combined_coordinating_and_primary_in_bytes"`
+	CoordinatingInBytes                   int64 `json:"coordinating_in_bytes"`
+	PrimaryInBytes                        int64 `json:"primary_in_bytes"`
+	ReplicaInBytes                        int64 `json:"replica_in_bytes"`
+	AllInBytes                            int64 `json:"all_in_bytes"`
+}
+
+// NodestatsIndexingPressureMemoryTotalResponse is a representation of a elasticsearc indexing pressure total memory usage
+type NodestatsIndexingPressureMemoryTotalResponse struct {
+	CombinedCoordinatingAndPrimaryInBytes int64 `json:"combined_coordinating_and_primary_in_bytes"`
+	CoordinatingInBytes                   int64 `json:"coordinating_in_bytes"`
+	PrimaryInBytes                        int64 `json:"primary_in_bytes"`
+	ReplicaInBytes                        int64 `json:"replica_in_bytes"`
+	AllInBytes                            int64 `json:"all_in_bytes"`
+	CoordinatingRejections                int64 `json:"coordinating_rejections"`
+	PrimaryRejections                     int64 `json:"primary_rejections"`
+	ReplicaRejections                     int64 `json:"replica_rejections"`
 }
 
 // NodeStatsProcessMemResponse defines node stats process memory usage structure
