@@ -77,7 +77,7 @@ type VersionInfo struct {
 	LuceneVersion semver.Version `json:"lucene_version"`
 }
 
-func (c *ClusterInfoCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *ClusterInfoCollector) Update(_ context.Context, ch chan<- prometheus.Metric) error {
 	resp, err := c.hc.Get(c.u.String())
 	if err != nil {
 		return err

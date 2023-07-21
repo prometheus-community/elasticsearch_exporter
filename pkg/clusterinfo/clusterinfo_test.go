@@ -44,7 +44,7 @@ const (
 
 type mockES struct{}
 
-func (mockES) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (mockES) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 
 	fmt.Fprintf(w, `{
   "name" : "%s",
