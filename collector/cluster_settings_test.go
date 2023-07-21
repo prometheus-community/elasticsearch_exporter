@@ -32,7 +32,7 @@ type wrapCollector struct {
 	c Collector
 }
 
-func (w wrapCollector) Describe(ch chan<- *prometheus.Desc) {
+func (w wrapCollector) Describe(_ chan<- *prometheus.Desc) {
 }
 
 func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
