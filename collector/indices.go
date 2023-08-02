@@ -26,10 +26,6 @@ import (
 	"path"
 	"sort"
 	"strconv"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
