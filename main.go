@@ -23,13 +23,16 @@ import (
 
 	"context"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/prometheus/exporter-toolkit/web"
+	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
 const name = "elasticsearch_exporter"
@@ -46,13 +49,11 @@ func (t *transportWithAPIKey) RoundTrip(req *http.Request) (*http.Response, erro
 
 func main() {
 	var (
-		listenAddress = kingpin.Flag("web.listen-address",
-			"Address to listen on for web interface and telemetry.").
-			Default(":9114").String()
 		metricsPath = kingpin.Flag("web.telemetry-path",
 			"Path under which to expose metrics.").
 			Default("/metrics").String()
-		esURI = kingpin.Flag("es.uri",
+		toolkitFlags = webflag.AddFlags(kingpin.CommandLine, ":9114")
+		esURI        = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
 			Default("http://localhost:9200").String()
 		esTimeout = kingpin.Flag("es.timeout",
@@ -76,8 +77,8 @@ func main() {
 		esExportIndexAliases = kingpin.Flag("es.aliases",
 			"Export informational alias metrics.").
 			Default("true").Bool()
-		esExportClusterSettings = kingpin.Flag("es.cluster_settings",
-			"Export stats for cluster settings.").
+		esExportILM = kingpin.Flag("es.ilm",
+			"Export index lifecycle politics for indices in the cluster.").
 			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
@@ -91,6 +92,9 @@ func main() {
 		esIndicesFilter = kingpin.Flag("es.indices_filter",
 			"Indices filter by name for which metrics should be exposed, using prefix with wildcards and/or commas as multi-selection delimiter.").
 			Default("_all").String()
+		esExportDataStream = kingpin.Flag("es.data_stream",
+			"Export stas for Data Streams.").
+			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -115,6 +119,12 @@ func main() {
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").String()
+		awsRegion = kingpin.Flag("aws.region",
+			"Region for AWS elasticsearch").
+			Default("").String()
+		awsRoleArn = kingpin.Flag("aws.role-arn",
+			"Role ARN of an IAM role to assume.").
+			Default("").String()
 	)
 
 	kingpin.Version(version.Print(name))
@@ -125,7 +135,7 @@ func main() {
 
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
-		_ = level.Error(logger).Log(
+		level.Error(logger).Log(
 			"msg", "failed to parse es.uri",
 			"err", err,
 		)
@@ -163,6 +173,14 @@ func main() {
 		Transport: httpTransport,
 	}
 
+	if *awsRegion != "" {
+		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
+			os.Exit(1)
+		}
+	}
+
 	// version metric
 	prometheus.MustRegister(version.NewCollector(name))
 
@@ -174,7 +192,7 @@ func main() {
 		collector.WithHTTPClient(httpClient),
 	)
 	if err != nil {
-		_ = level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+		level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
 		os.Exit(1)
 	}
 	prometheus.MustRegister(exporter)
@@ -191,7 +209,7 @@ func main() {
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases, *esIndicesFilter)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-			_ = level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
+			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
 			os.Exit(1)
 		}
 	}
@@ -204,8 +222,8 @@ func main() {
 		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
 	}
 
-	if *esExportClusterSettings {
-		prometheus.MustRegister(collector.NewClusterSettings(logger, httpClient, esURL))
+	if *esExportDataStream {
+		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
 	}
 
 	if *esExportIndicesSettings {
@@ -216,8 +234,10 @@ func main() {
 		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL, *esIndicesFilter))
 	}
 
-	// create a http server
-	server := &http.Server{}
+	if *esExportILM {
+		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
+	}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
@@ -226,63 +246,56 @@ func main() {
 	// start the cluster info retriever
 	switch runErr := clusterInfoRetriever.Run(ctx); runErr {
 	case nil:
-		_ = level.Info(logger).Log(
+		level.Info(logger).Log(
 			"msg", "started cluster info retriever",
 			"interval", (*esClusterInfoInterval).String(),
 		)
 	case clusterinfo.ErrInitialCallTimeout:
-		_ = level.Info(logger).Log("msg", "initial cluster info call timed out")
+		level.Info(logger).Log("msg", "initial cluster info call timed out")
 	default:
-		_ = level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
+		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
 		os.Exit(1)
 	}
 
 	// register cluster info retriever as prometheus collector
 	prometheus.MustRegister(clusterInfoRetriever)
 
-	mux := http.DefaultServeMux
-	mux.Handle(*metricsPath, promhttp.Handler())
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err = w.Write([]byte(`<html>
-			<head><title>Elasticsearch Exporter</title></head>
-			<body>
-			<h1>Elasticsearch Exporter</h1>
-			<p><a href="` + *metricsPath + `">Metrics</a></p>
-			</body>
-			</html>`))
-		if err != nil {
-			_ = level.Error(logger).Log(
-				"msg", "failed handling writer",
-				"err", err,
-			)
+	http.Handle(*metricsPath, promhttp.Handler())
+	if *metricsPath != "/" && *metricsPath != "" {
+		landingConfig := web.LandingConfig{
+			Name:        "Elasticsearch Exporter",
+			Description: "Prometheus Exporter for Elasticsearch servers",
+			Version:     version.Info(),
+			Links: []web.LandingLinks{
+				{
+					Address: *metricsPath,
+					Text:    "Metrics",
+				},
+			},
 		}
-	})
+		landingPage, err := web.NewLandingPage(landingConfig)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+		http.Handle("/", landingPage)
+	}
 
 	// health endpoint
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 	})
 
-	server.Handler = mux
-	server.Addr = *listenAddress
-
-	_ = level.Info(logger).Log(
-		"msg", "starting elasticsearch_exporter",
-		"addr", *listenAddress,
-	)
-
+	server := &http.Server{}
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			_ = level.Error(logger).Log(
-				"msg", "http server quit",
-				"err", err,
-			)
+		if err = web.ListenAndServe(server, toolkitFlags, logger); err != nil {
+			level.Error(logger).Log("msg", "http server quit", "err", err)
 			os.Exit(1)
 		}
 	}()
 
 	<-ctx.Done()
-	_ = level.Info(logger).Log("msg", "shutting down")
+	level.Info(logger).Log("msg", "shutting down")
 	// create a context for graceful http server shutdown
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()

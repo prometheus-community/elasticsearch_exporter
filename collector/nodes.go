@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -29,10 +29,18 @@ import (
 func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	// default settings (2.x) and map, which roles to consider
 	roles := map[string]bool{
-		"master": false,
-		"data":   false,
-		"ingest": false,
-		"client": true,
+		"master":                false,
+		"data":                  false,
+		"data_hot":              false,
+		"data_warm":             false,
+		"data_cold":             false,
+		"data_frozen":           false,
+		"data_content":          false,
+		"ml":                    false,
+		"remote_cluster_client": false,
+		"transform":             false,
+		"ingest":                false,
+		"client":                true,
 	}
 	// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
 	if len(node.Roles) > 0 {
@@ -193,11 +201,11 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch nodes endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch node scrapes.",
+			Help: "Current total Elasticsearch node scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
@@ -1818,7 +1826,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(c.logger).Log(
+			level.Warn(c.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -1829,7 +1837,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		c.jsonParseFailures.Inc()
 		return nsr, err
@@ -1854,7 +1862,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
 		c.up.Set(0)
-		_ = level.Warn(c.logger).Log(
+		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
@@ -1866,8 +1874,8 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		// Handle the node labels metric
 		roles := getRoles(node)
 
-		for _, role := range []string{"master", "data", "client", "ingest"} {
-			if roles[role] {
+		for role, roleEnabled := range roles {
+			if roleEnabled {
 				metric := createRoleMetric(role)
 				ch <- prometheus.MustNewConstMetric(
 					metric.Desc,

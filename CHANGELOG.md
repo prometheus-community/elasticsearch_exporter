@@ -1,3 +1,35 @@
+## 1.6.0 / 2023-06-22
+
+BREAKING CHANGES:
+
+The flag `--es.cluster_settings` has been renamed to `--collector.clustersettings`.
+
+* [CHANGE] Rename --es.cluster_settings to --collector.clustersettings
+* [FEATURE] Add ILM metrics #513
+* [ENHANCEMENT] Add ElasticCloud node roles to role label #652
+* [ENHANCEMENT] Add ability to use AWS IAM role for authentication #653
+* [ENHANCEMENT] Add metric for index replica count #483
+* [BUGFIX] Set elasticsearch_clusterinfo_version_info guage to 1 #728
+* [BUGFIX] Fix index field counts with nested fields #675
+
+
+## 1.5.0 / 2022-07-28
+
+* [FEATURE] Add metrics collection for data stream statistics #592
+* [FEATURE] Support for AWS Elasticsearch using AWS SDK v2 #597
+* [BUGFIX] Fix cluster settings collection when max_shards_per_node is manually set. #603
+
+## 1.4.0 / 2022-06-29
+
+* [BREAKING] Remove ENV var support for most non-sensitive options. #518
+* [BREAKING] Rename elasticsearch_process_cpu_time_seconds_sum to elasticsearch_process_cpu_seconds_total #520
+* [FEATURE] Add metric for index aliases #563
+* [FEATURE] Add metric for number of shards on a node #535
+* [FEATURE] Add metrics for SLM (snapshot lifecycle management) #558
+* [FEATURE] Add metric for JVM uptime #537
+* [FEATURE] Add metrics for current searches and current indexing documents #485
+* [BUGFIX] Remove the elasticsearch_process_cpu_time_seconds_sum metric as it was never used #498
+
 ## 1.3.0 / 2021-10-21
 
 * [FEATURE] Add support for passing elasticsearch credentials via the ES_USERNAME and ES_PASSWORD environment varialbes #461

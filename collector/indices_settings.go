@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -62,11 +62,11 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL, in
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch Indices Settings endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch Indices Settings endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch Indices Settings scrapes.",
+			Help: "Current total Elasticsearch Indices Settings scrapes.",
 		}),
 		readOnlyIndices: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
@@ -86,6 +86,21 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL, in
 				),
 				Value: func(indexSettings Settings) float64 {
 					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 64)
+					if err != nil {
+						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "replicas"),
+					"index setting number_of_replicas",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfReplicas, 64)
 					if err != nil {
 						return float64(defaultTotalFieldsValue)
 					}
@@ -114,7 +129,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(cs.logger).Log(
+			level.Warn(cs.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -125,7 +140,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		cs.jsonParseFailures.Inc()
 		return err
@@ -167,7 +182,7 @@ func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
 	if err != nil {
 		cs.readOnlyIndices.Set(0)
 		cs.up.Set(0)
-		_ = level.Warn(cs.logger).Log(
+		level.Warn(cs.logger).Log(
 			"msg", "failed to fetch and decode cluster settings stats",
 			"err", err,
 		)
