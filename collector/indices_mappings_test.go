@@ -124,7 +124,7 @@ func TestMapping(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
-			c := NewIndicesMappings(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewIndicesMappings(log.NewNopLogger(), http.DefaultClient, u, "_all")
 			imr, err := c.fetchAndDecodeIndicesMappings()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode indices mappings: %s", err)
@@ -362,7 +362,7 @@ func TestIndexMappingFieldCount(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to parse URL: %s", err)
 		}
-		c := NewIndicesMappings(log.NewNopLogger(), http.DefaultClient, u)
+		c := NewIndicesMappings(log.NewNopLogger(), http.DefaultClient, u, "_all")
 		indicesMappingsResponse, err := c.fetchAndDecodeIndicesMappings()
 		if err != nil {
 			t.Fatalf("Failed to fetch or decode indices mappings: %s", err)
