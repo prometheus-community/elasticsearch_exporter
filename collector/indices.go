@@ -59,7 +59,7 @@ type Indices struct {
 	logger          log.Logger
 	client          *http.Client
 	url             *url.URL
-	indicesFilter   string
+	indicesSelector string
 	shards          bool
 	aliases         bool
 	clusterInfoCh   chan *clusterinfo.Response
@@ -75,7 +75,7 @@ type Indices struct {
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool, indicesFilter string) *Indices {
+func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool, indicesSelector string) *Indices {
 
 	indexLabels := labels{
 		keys: func(...string) []string {
@@ -120,13 +120,13 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	}
 
 	indices := &Indices{
-		logger:        logger,
-		client:        client,
-		url:           url,
-		indicesFilter: indicesFilter,
-		shards:        shards,
-		aliases:       includeAliases,
-		clusterInfoCh: make(chan *clusterinfo.Response),
+		logger:          logger,
+		client:          client,
+		url:             url,
+		indicesSelector: indicesSelector,
+		shards:          shards,
+		aliases:         includeAliases,
+		clusterInfoCh:   make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
 		},
@@ -1104,7 +1104,7 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	indicesStatsQueryPath := fmt.Sprintf("/%s/_stats", i.indicesFilter)
+	indicesStatsQueryPath := fmt.Sprintf("/%s/_stats", i.indicesSelector)
 	_ = level.Debug(i.logger).Log(
 		"msg", fmt.Sprintf("indices fetch query path: %s", indicesStatsQueryPath),
 	)
