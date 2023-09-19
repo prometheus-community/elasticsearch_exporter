@@ -86,6 +86,12 @@ func main() {
 		esExportSnapshots = kingpin.Flag("es.snapshots",
 			"Export stats for the cluster snapshots.").
 			Default("false").Bool()
+		esExportTasks = kingpin.Flag("es.tasks",
+			"Aggregate stats for tasks in the cluster.").
+			Default("false").Bool()
+		esTaskActions = kingpin.Flag("es.tasks.actions",
+			"Filter on task actions. Used in same way as Task API actions param").
+			Default("indices:*").String()
 		esExportSLM = kingpin.Flag("es.slm",
 			"Export stats for SLM snapshots.").
 			Default("false").Bool()
@@ -234,6 +240,10 @@ func main() {
 	if *esExportILM {
 		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
 		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
+	}
+
+	if *esExportTasks {
+		prometheus.MustRegister(collector.NewTask(logger, httpClient, esURL, *esTaskActions))
 	}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
