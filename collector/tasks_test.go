@@ -18,60 +18,61 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func TestTasks(t *testing.T) {
 	// Test data was collected by running the following:
+	//   # create container
 	//   docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.17.11
 	//   sleep 15
-	//   # start some busy work
-	//   for i in $(seq 1 1000); do \
-	//     curl -o /dev/null -s -X POST "localhost:9200/a1/_doc" -H 'Content-Type: application/json' \
-	//     -d'{"abc": "'$i'"}'; done &
-	//   curl -X POST "localhost:9200/a1/_delete_by_query?requests_per_second=1&wait_for_completion=false" \
-	//     -H 'Content-Type: application/json' -d'{"query": {"match_all": {}}}
+	//   # start some busy work in background
+	//   for i in $(seq 1 500)
+	//   do
+	//     curl -o /dev/null -sX POST "localhost:9200/a1/_doc" -H 'Content-Type: application/json' -d'{"a1": "'"$i"'"}'
+	//     sleep .01
+	//     curl -o /dev/null -sX POST "localhost:9200/a1/_doc" -H 'Content-Type: application/json' -d'{"a2": "'"$i"'"}'
+	//     sleep .01
+	//     curl -o /dev/null -sX POST "localhost:9200/a1/_doc" -H 'Content-Type: application/json' -d'{"a3": "'"$i"'"}'
+	//     sleep .01
+	//   done &
 	//   # try and collect a good sample
 	//   curl -X GET 'localhost:9200/_tasks?group_by=none&actions=indices:*'
-	//   docker rm elasticsearch
+	//   # cleanup
+	//   docker rm --force elasticsearch
 	tcs := map[string]string{
-		"7.17": `{"tasks":[{"node":"NVe9ksxcSu6AJTKlIfI24A","id":17223,"type":"transport","action":"indices:data/write/delete/byquery","start_time_in_millis":1695214684290,"running_time_in_nanos":8003510219,"cancellable":true,"cancelled":false,"headers":{}},{"node":"NVe9ksxcSu6AJTKlIfI24A","id":20890,"type":"transport","action":"indices:data/write/index","start_time_in_millis":1695214692292,"running_time_in_nanos":1611966,"cancellable":false,"headers":{}},{"node":"NVe9ksxcSu6AJTKlIfI24A","id":20891,"type":"transport","action":"indices:data/write/bulk[s]","start_time_in_millis":1695214692292,"running_time_in_nanos":1467298,"cancellable":false,"parent_task_id":"NVe9ksxcSu6AJTKlIfI24A:20890","headers":{}},{"node":"NVe9ksxcSu6AJTKlIfI24A","id":20892,"type":"direct","action":"indices:data/write/bulk[s][p]","start_time_in_millis":1695214692292,"running_time_in_nanos":1437170,"cancellable":false,"parent_task_id":"NVe9ksxcSu6AJTKlIfI24A:20891","headers":{}}]}`,
+		"7.17": `{"tasks":[{"node":"9lWCm1y_QkujaAg75bVx7A","id":70,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464655,"running_time_in_nanos":308640039,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":73,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464683,"running_time_in_nanos":280672000,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":76,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464711,"running_time_in_nanos":253247906,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":93,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464904,"running_time_in_nanos":60230460,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":50,"type":"transport","action":"indices:data/write/index","start_time_in_millis":1695900464229,"running_time_in_nanos":734480468,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":51,"type":"transport","action":"indices:admin/auto_create","start_time_in_millis":1695900464235,"running_time_in_nanos":729223933,"cancellable":false,"headers":{}}]}`,
 	}
+	want := `# HELP elasticsearch_task_stats_action_total Number of tasks of a certain action
+# TYPE elasticsearch_task_stats_action_total gauge
+elasticsearch_task_stats_action_total{action="indices:admin/auto_create"} 1
+elasticsearch_task_stats_action_total{action="indices:admin/index_template/put"} 4
+elasticsearch_task_stats_action_total{action="indices:data/write/index"} 1
+`
 	for ver, out := range tcs {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprintln(w, out)
-		}))
-		defer ts.Close()
+		t.Run(ver, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprintln(w, out)
+			}))
+			defer ts.Close()
 
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatalf("Failed to parse URL: %s", err)
+			}
 
-		task := NewTask(log.NewNopLogger(), http.DefaultClient, u, "indices:*")
-		stats, err := task.fetchAndDecodeAndAggregateTaskStats()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode data stream stats: %s", err)
-		}
-		t.Logf("[%s] Task Response: %+v", ver, stats)
+			c, err := NewTaskCollector(log.NewNopLogger(), u, ts.Client())
+			if err != nil {
+				t.Fatalf("Failed to create collector: %v", err)
+			}
 
-		// validate actions aggregations
-		if len(stats.CountByAction) != 4 {
-			t.Fatal("expected to get 4 tasks")
-		}
-		if stats.CountByAction["indices:data/write/index"] != 1 {
-			t.Fatal("excpected action indices:data/write/delete/byquery to have count 1")
-		}
-		if stats.CountByAction["indices:data/write/bulk[s]"] != 1 {
-			t.Fatal("excpected action indices:data/write/bulk[s] to have count 1")
-		}
-		if stats.CountByAction["indices:data/write/bulk[s][p]"] != 1 {
-			t.Fatal("excpected action indices:data/write/bulk[s][p] to have count 1")
-		}
-		if stats.CountByAction["indices:data/write/delete/byquery"] != 1 {
-			t.Fatal("excpected action indices:data/write/delete/byquery to have count 1")
-		}
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(want)); err != nil {
+				t.Fatalf("Metrics did not match: %v", err)
+			}
+		})
 	}
 }

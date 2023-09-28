@@ -14,7 +14,6 @@
 package collector
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,20 +23,8 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
-
-type wrapCollector struct {
-	c Collector
-}
-
-func (w wrapCollector) Describe(ch chan<- *prometheus.Desc) {
-}
-
-func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
-	w.c.Update(context.Background(), ch)
-}
 
 func TestClusterSettingsStats(t *testing.T) {
 	// Testcases created using:

@@ -14,97 +14,80 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type taskByAction struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(action string, count int64) float64
-	Labels func(action string, count int64) []string
-}
+// filterByTask global required because collector interface doesn't expose any way to take
+// constructor args.
+var actionFilter string
 
-var (
-	taskLabels = []string{"cluster", "action"}
-)
+var taskActionDesc = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, "task_stats", "action_total"),
+	"Number of tasks of a certain action",
+	[]string{"action"}, nil)
+
+func init() {
+	kingpin.Flag("tasks.actions",
+		"Filter on task actions. Used in same way as Task API actions param").
+		Default("indices:*").StringVar(&actionFilter)
+	registerCollector("tasks", defaultDisabled, NewTaskCollector)
+}
 
 // Task Information Struct
-type Task struct {
-	logger  log.Logger
-	client  *http.Client
-	url     *url.URL
-	actions string
-
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
-	byActionMetrics []*taskByAction
+type TaskCollector struct {
+	logger log.Logger
+	hc     *http.Client
+	u      *url.URL
 }
 
-// NewTask defines Task Prometheus metrics
-func NewTask(logger log.Logger, client *http.Client, url *url.URL, actions string) *Task {
-	return &Task{
-		logger:  logger,
-		client:  client,
-		url:     url,
-		actions: actions,
+// NewTaskCollector defines Task Prometheus metrics
+func NewTaskCollector(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+	level.Info(logger).Log("msg", "task collector created",
+		"actionFilter", actionFilter,
+	)
 
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "task_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch Task endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "task_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch snapshots scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "task_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
-		byActionMetrics: []*taskByAction{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "task_stats", "action_total"),
-					"Number of tasks of a certain action",
-					[]string{"action"}, nil,
-				),
-				Value: func(action string, count int64) float64 {
-					return float64(count)
-				},
-				Labels: func(action string, count int64) []string {
-					return []string{action}
-				},
-			},
-		},
+	return &TaskCollector{
+		logger: logger,
+		hc:     hc,
+		u:      u,
+	}, nil
+}
+
+func (t *TaskCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+	stats, err := t.fetchAndDecodeAndAggregateTaskStats()
+	if err != nil {
+		err = fmt.Errorf("failed to fetch and decode task stats: %w", err)
+		return err
 	}
-}
-
-// Describe adds Task metrics descriptions
-func (t *Task) Describe(ch chan<- *prometheus.Desc) {
-	for _, metric := range t.byActionMetrics {
-		ch <- metric.Desc
+	for action, count := range stats.CountByAction {
+		ch <- prometheus.MustNewConstMetric(
+			taskActionDesc,
+			prometheus.GaugeValue,
+			float64(count),
+			action,
+		)
 	}
-
-	ch <- t.up.Desc()
-	ch <- t.totalScrapes.Desc()
-	ch <- t.jsonParseFailures.Desc()
+	return nil
 }
 
-func (t *Task) fetchAndDecodeAndAggregateTaskStats() (*AggregatedTaskStats, error) {
-	u := *t.url
-	u.Path = path.Join(u.Path, "/_tasks")
-	u.RawQuery = "group_by=none&actions=" + t.actions
-	res, err := t.client.Get(u.String())
+func (t *TaskCollector) fetchAndDecodeAndAggregateTaskStats() (*AggregatedTaskStats, error) {
+	u := t.u.ResolveReference(&url.URL{Path: "_tasks"})
+	q := u.Query()
+	q.Set("group_by", "none")
+	q.Set("actions", actionFilter)
+	u.RawQuery = q.Encode()
+
+	res, err := t.hc.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get data stream stats health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
@@ -126,13 +109,11 @@ func (t *Task) fetchAndDecodeAndAggregateTaskStats() (*AggregatedTaskStats, erro
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		t.jsonParseFailures.Inc()
 		return nil, err
 	}
 
 	var tr TasksResponse
 	if err := json.Unmarshal(bts, &tr); err != nil {
-		t.jsonParseFailures.Inc()
 		return nil, err
 	}
 
@@ -140,35 +121,27 @@ func (t *Task) fetchAndDecodeAndAggregateTaskStats() (*AggregatedTaskStats, erro
 	return stats, nil
 }
 
-// Collect gets Task metric values
-func (ds *Task) Collect(ch chan<- prometheus.Metric) {
-	ds.totalScrapes.Inc()
-	defer func() {
-		ch <- ds.up
-		ch <- ds.totalScrapes
-		ch <- ds.jsonParseFailures
-	}()
+// TasksResponse is a representation of the Task management API.
+type TasksResponse struct {
+	Tasks []TaskResponse `json:"tasks"`
+}
 
-	stats, err := ds.fetchAndDecodeAndAggregateTaskStats()
-	if err != nil {
-		ds.up.Set(0)
-		level.Warn(ds.logger).Log(
-			"msg", "failed to fetch and decode task stats",
-			"err", err,
-		)
-		return
+// TaskResponse is a representation of the individual task item returned by task API endpoint.
+//
+// We only parse a very limited amount of this API for use in aggregation.
+type TaskResponse struct {
+	Action string `json:"action"`
+}
+
+type AggregatedTaskStats struct {
+	CountByAction map[string]int64
+}
+
+func AggregateTasks(t TasksResponse) *AggregatedTaskStats {
+	actions := map[string]int64{}
+	for _, task := range t.Tasks {
+		actions[task.Action] += 1
 	}
-
-	for action, count := range stats.CountByAction {
-		for _, metric := range ds.byActionMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(action, count),
-				metric.Labels(action, count)...,
-			)
-		}
-	}
-
-	ds.up.Set(1)
+	agg := &AggregatedTaskStats{CountByAction: actions}
+	return agg
 }
