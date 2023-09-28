@@ -64,11 +64,12 @@ func NewTaskCollector(logger log.Logger, u *url.URL, hc *http.Client) (Collector
 }
 
 func (t *TaskCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
-	stats, err := t.fetchAndDecodeAndAggregateTaskStats()
+	tasks, err := t.fetchTasks(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to fetch and decode task stats: %w", err)
-		return err
+		return fmt.Errorf("failed to fetch and decode task stats: %w", err)
 	}
+
+	stats := AggregateTasks(tasks)
 	for action, count := range stats.CountByAction {
 		ch <- prometheus.MustNewConstMetric(
 			taskActionDesc,
@@ -80,16 +81,17 @@ func (t *TaskCollector) Update(ctx context.Context, ch chan<- prometheus.Metric)
 	return nil
 }
 
-func (t *TaskCollector) fetchAndDecodeAndAggregateTaskStats() (*AggregatedTaskStats, error) {
+func (t *TaskCollector) fetchTasks(_ context.Context) (TasksResponse, error) {
 	u := t.u.ResolveReference(&url.URL{Path: "_tasks"})
 	q := u.Query()
 	q.Set("group_by", "none")
 	q.Set("actions", actionFilter)
 	u.RawQuery = q.Encode()
 
+	var tr TasksResponse
 	res, err := t.hc.Get(u.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get data stream stats health from %s://%s:%s%s: %s",
+		return tr, fmt.Errorf("failed to get data stream stats health from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
 
@@ -104,21 +106,16 @@ func (t *TaskCollector) fetchAndDecodeAndAggregateTaskStats() (*AggregatedTaskSt
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP Request to %v failed with code %d", u.String(), res.StatusCode)
+		return tr, fmt.Errorf("HTTP Request to %v failed with code %d", u.String(), res.StatusCode)
 	}
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return tr, err
 	}
 
-	var tr TasksResponse
-	if err := json.Unmarshal(bts, &tr); err != nil {
-		return nil, err
-	}
-
-	stats := AggregateTasks(tr)
-	return stats, nil
+	err = json.Unmarshal(bts, &tr)
+	return tr, err
 }
 
 // TasksResponse is a representation of the Task management API.
@@ -140,7 +137,7 @@ type AggregatedTaskStats struct {
 func AggregateTasks(t TasksResponse) *AggregatedTaskStats {
 	actions := map[string]int64{}
 	for _, task := range t.Tasks {
-		actions[task.Action] += 1
+		actions[task.Action]++
 	}
 	agg := &AggregatedTaskStats{CountByAction: actions}
 	return agg
