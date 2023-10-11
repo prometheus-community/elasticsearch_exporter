@@ -57,9 +57,6 @@ type Snapshots struct {
 	client *http.Client
 	url    *url.URL
 
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
 	snapshotMetrics   []*snapshotMetric
 	repositoryMetrics []*repositoryMetric
 }
@@ -71,18 +68,6 @@ func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapsho
 		client: client,
 		url:    url,
 
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch snapshots endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch snapshots scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 		snapshotMetrics: []*snapshotMetric{
 			{
 				Type: prometheus.GaugeValue,
@@ -224,9 +209,10 @@ func (s *Snapshots) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range s.snapshotMetrics {
 		ch <- metric.Desc
 	}
-	ch <- s.up.Desc()
-	ch <- s.totalScrapes.Desc()
-	ch <- s.jsonParseFailures.Desc()
+	for _, metric := range s.repositoryMetrics {
+		ch <- metric.Desc
+	}
+
 }
 
 func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
@@ -252,12 +238,10 @@ func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		s.jsonParseFailures.Inc()
 		return err
 	}
 
 	if err := json.Unmarshal(bts, data); err != nil {
-		s.jsonParseFailures.Inc()
 		return err
 	}
 	return nil
@@ -289,24 +273,16 @@ func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResp
 
 // Collect gets Snapshots metric values
 func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
-	s.totalScrapes.Inc()
-	defer func() {
-		ch <- s.up
-		ch <- s.totalScrapes
-		ch <- s.jsonParseFailures
-	}()
 
 	// indices
 	snapshotsStatsResp, err := s.fetchAndDecodeSnapshotsStats()
 	if err != nil {
-		s.up.Set(0)
 		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode snapshot stats",
 			"err", err,
 		)
 		return
 	}
-	s.up.Set(1)
 
 	// Snapshots stats
 	for repositoryName, snapshotStats := range snapshotsStatsResp {
