@@ -209,15 +209,12 @@ func TestSnapshots(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			s := NewSnapshots(log.NewNopLogger(), http.DefaultClient, u)
+			c, err := NewSnapshots(log.NewNopLogger(), u, http.DefaultClient)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			// TODO: Convert to collector interface
-			// c, err := NewSnapshots(log.NewNopLogger(), u, http.DefaultClient)
-			// if err != nil {
-			// 	t.Fatal(err)
-			// }
-
-			if err := testutil.CollectAndCompare(s, strings.NewReader(tt.want)); err != nil {
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
