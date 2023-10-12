@@ -83,9 +83,6 @@ func main() {
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
-		esExportSnapshots = kingpin.Flag("es.snapshots",
-			"Export stats for the cluster snapshots.").
-			Default("false").Bool()
 		esExportSLM = kingpin.Flag("es.slm",
 			"Export stats for SLM snapshots.").
 			Default("false").Bool()
@@ -209,10 +206,6 @@ func main() {
 			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
 			os.Exit(1)
 		}
-	}
-
-	if *esExportSnapshots {
-		prometheus.MustRegister(collector.NewSnapshots(logger, httpClient, esURL))
 	}
 
 	if *esExportSLM {

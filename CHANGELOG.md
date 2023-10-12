@@ -1,3 +1,11 @@
+## master / unreleased
+
+BREAKING CHANGES:
+
+The flag `--es.snapshots` has been renamed to `--collector.snapshots`.
+
+* [CHANGE] Rename --es.snapshots to --collector.snapshots #XXX
+
 ## 1.6.0 / 2023-06-22
 
 BREAKING CHANGES:
