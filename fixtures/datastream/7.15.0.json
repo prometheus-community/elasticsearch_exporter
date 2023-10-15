@@ -1,0 +1,24 @@
+{
+  "_shards": {
+    "total": 30,
+    "successful": 30,
+    "failed": 0
+  },
+  "data_stream_count": 2,
+  "backing_indices": 7,
+  "total_store_size_bytes": 1103028116,
+  "data_streams": [
+    {
+      "data_stream": "foo",
+      "backing_indices": 5,
+      "store_size_bytes": 429205396,
+      "maximum_timestamp": 1656079894000
+    },
+    {
+      "data_stream": "bar",
+      "backing_indices": 2,
+      "store_size_bytes": 673822720,
+      "maximum_timestamp": 1656028796000
+    }
+  ]
+}

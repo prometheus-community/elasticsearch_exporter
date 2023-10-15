@@ -14,44 +14,65 @@
 package collector
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func TestDataStream(t *testing.T) {
-	tcs := map[string]string{
-		"7.15.0": `{"_shards":{"total":30,"successful":30,"failed":0},"data_stream_count":2,"backing_indices":7,"total_store_size_bytes":1103028116,"data_streams":[{"data_stream":"foo","backing_indices":5,"store_size_bytes":429205396,"maximum_timestamp":1656079894000},{"data_stream":"bar","backing_indices":2,"store_size_bytes":673822720,"maximum_timestamp":1656028796000}]}`,
+
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		{
+			name: "7.15.0",
+			file: "../fixtures/datastream/7.15.0.json",
+			want: `# HELP elasticsearch_data_stream_backing_indices_total Number of backing indices
+            # TYPE elasticsearch_data_stream_backing_indices_total counter
+            elasticsearch_data_stream_backing_indices_total{data_stream="bar"} 2
+            elasticsearch_data_stream_backing_indices_total{data_stream="foo"} 5
+            # HELP elasticsearch_data_stream_store_size_bytes Store size of data stream
+            # TYPE elasticsearch_data_stream_store_size_bytes counter
+            elasticsearch_data_stream_store_size_bytes{data_stream="bar"} 6.7382272e+08
+            elasticsearch_data_stream_store_size_bytes{data_stream="foo"} 4.29205396e+08
+			`,
+		},
 	}
-	for ver, out := range tcs {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out)
-		}))
-		defer ts.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
 
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
-		s := NewDataStream(log.NewNopLogger(), http.DefaultClient, u)
-		stats, err := s.fetchAndDecodeDataStreamStats()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode data stream stats: %s", err)
-		}
-		t.Logf("[%s] Data Stream Response: %+v", ver, stats)
-		dataStreamStats := stats.DataStreamStats[0]
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				io.Copy(w, f)
+			}))
+			defer ts.Close()
 
-		if dataStreamStats.BackingIndices != 5 {
-			t.Errorf("Bad number of backing indices")
-		}
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		if dataStreamStats.StoreSizeBytes != 429205396 {
-			t.Errorf("Bad store size bytes valuee")
-		}
+			c := NewDataStream(log.NewNopLogger(), http.DefaultClient, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
-
 }
