@@ -81,14 +81,14 @@ func (t *TaskCollector) Update(ctx context.Context, ch chan<- prometheus.Metric)
 	return nil
 }
 
-func (t *TaskCollector) fetchTasks(_ context.Context) (TasksResponse, error) {
+func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
 	u := t.u.ResolveReference(&url.URL{Path: "_tasks"})
 	q := u.Query()
 	q.Set("group_by", "none")
 	q.Set("actions", actionFilter)
 	u.RawQuery = q.Encode()
 
-	var tr TasksResponse
+	var tr tasksResponse
 	res, err := t.hc.Get(u.String())
 	if err != nil {
 		return tr, fmt.Errorf("failed to get data stream stats health from %s://%s:%s%s: %s",
@@ -118,27 +118,26 @@ func (t *TaskCollector) fetchTasks(_ context.Context) (TasksResponse, error) {
 	return tr, err
 }
 
-// TasksResponse is a representation of the Task management API.
-type TasksResponse struct {
-	Tasks []TaskResponse `json:"tasks"`
+// tasksResponse is a representation of the Task management API.
+type tasksResponse struct {
+	Tasks []taskResponse `json:"tasks"`
 }
 
-// TaskResponse is a representation of the individual task item returned by task API endpoint.
+// taskResponse is a representation of the individual task item returned by task API endpoint.
 //
 // We only parse a very limited amount of this API for use in aggregation.
-type TaskResponse struct {
+type taskResponse struct {
 	Action string `json:"action"`
 }
 
-type AggregatedTaskStats struct {
+type aggregatedTaskStats struct {
 	CountByAction map[string]int64
 }
 
-func AggregateTasks(t TasksResponse) *AggregatedTaskStats {
+func AggregateTasks(t tasksResponse) aggregatedTaskStats {
 	actions := map[string]int64{}
 	for _, task := range t.Tasks {
 		actions[task.Action]++
 	}
-	agg := &AggregatedTaskStats{CountByAction: actions}
-	return agg
+	return aggregatedTaskStats{CountByAction: actions}
 }
