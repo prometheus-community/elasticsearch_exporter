@@ -25,14 +25,9 @@ import (
 	"testing"
 	"time"
 
-<<<<<<< HEAD
-	"github.com/blang/semver/v4"
-	"github.com/go-kit/kit/log"
-=======
 	"github.com/go-kit/log"
 
 	"github.com/blang/semver/v4"
->>>>>>> upstream/master
 )
 
 const (

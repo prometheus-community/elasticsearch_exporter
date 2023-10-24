@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.43
 	github.com/aws/aws-sdk-go-v2/service/sts v1.23.2
 	github.com/blang/semver/v4 v4.0.0
+	github.com/go-kit/kit v0.13.0
 	github.com/go-kit/log v0.2.1
 	github.com/imdario/mergo v0.3.13
 	github.com/prometheus/client_golang v1.17.0
