@@ -1,8 +1,11 @@
 go:
-    cgo: false
+    # This must match .circle/config.yml.
+    version: 1.20
 repository:
-    path: github.com/justwatchcom/elasticsearch_exporter
+    path: github.com/prometheus-community/elasticsearch_exporter
 build:
+    binaries:
+        - name: elasticsearch_exporter
     flags: -a -tags netgo
     ldflags: |
         -s
@@ -19,27 +22,3 @@ tarball:
         - examples/grafana/dashboard.json
         - examples/kubernetes/deployment.yml
         - examples/prometheus/elasticsearch.rules
-crossbuild:
-    platforms:
-        - linux/amd64
-        - linux/386
-        - darwin/amd64
-        - darwin/386
-        - windows/amd64
-        - windows/386
-        - freebsd/amd64
-        - freebsd/386
-        - openbsd/amd64
-        - openbsd/386
-        - netbsd/amd64
-        - netbsd/386
-        - dragonfly/amd64
-        - linux/arm
-        - linux/arm64
-        - freebsd/arm
-        - openbsd/arm
-        - netbsd/arm
-        - linux/ppc64
-        - linux/ppc64le
-        - linux/mips64
-        - linux/mips64le

@@ -1,3 +1,16 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package clusterinfo
 
 import (
@@ -8,11 +21,18 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/kit/log"
+=======
+	"github.com/go-kit/log"
+
+	"github.com/blang/semver/v4"
+>>>>>>> upstream/master
 )
 
 const (
@@ -58,8 +78,11 @@ func (mockES) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type mockConsumer struct {
 	name string
+
+	mu   sync.RWMutex
 	data *Response
-	ch   chan *Response
+
+	ch chan *Response
 }
 
 func newMockConsumer(ctx context.Context, name string, t *testing.T) *mockConsumer {
@@ -71,14 +94,22 @@ func newMockConsumer(ctx context.Context, name string, t *testing.T) *mockConsum
 		for {
 			select {
 			case d := <-mc.ch:
+				mc.mu.Lock()
 				mc.data = d
 				t.Logf("consumer %s received data from channel: %+v\n", mc, mc.data)
+				mc.mu.Unlock()
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 	return mc
+}
+
+func (mc *mockConsumer) getData() Response {
+	mc.mu.RLock()
+	defer mc.mu.RUnlock()
+	return *mc.data
 }
 
 func (mc *mockConsumer) String() string {
@@ -182,7 +213,7 @@ func TestRetriever_Run(t *testing.T) {
 	retriever.Update()
 	time.Sleep(20 * time.Millisecond)
 	// ToDo: check mockConsumers received data
-	t.Logf("%+v\n", mc.data)
+	t.Logf("%+v\n", mc.getData())
 
 	// check for deadlocks
 	select {

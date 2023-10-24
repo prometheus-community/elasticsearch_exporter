@@ -1,24 +1,46 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package collector
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	// default settings (2.x) and map, which roles to consider
 	roles := map[string]bool{
-		"master": false,
-		"data":   false,
-		"ingest": false,
-		"client": true,
+		"master":                false,
+		"data":                  false,
+		"data_hot":              false,
+		"data_warm":             false,
+		"data_cold":             false,
+		"data_frozen":           false,
+		"data_content":          false,
+		"ml":                    false,
+		"remote_cluster_client": false,
+		"transform":             false,
+		"ingest":                false,
+		"client":                true,
 	}
 	// assumption: a 5.x node has at least one role, otherwise it's a 1.7 or 2.x node
 	if len(node.Roles) > 0 {
@@ -179,11 +201,11 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
-			Help: "Was the last scrape of the ElasticSearch nodes endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch nodes endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
-			Help: "Current total ElasticSearch node scrapes.",
+			Help: "Current total Elasticsearch node scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
@@ -492,7 +514,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
-				Type: prometheus.CounterValue,
+				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "translog_size_in_bytes"),
 					"Total translog size in bytes",
@@ -1351,6 +1373,20 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "jvm", "uptime_seconds"),
+					"JVM process uptime in seconds",
+					append(defaultNodeLabels, "type"), nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.JVM.Uptime) / 1000
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
+					return append(defaultNodeLabelValues(cluster, node), "mapped")
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "process", "cpu_percent"),
 					"Percent CPU used by process",
 					defaultNodeLabels, nil,
@@ -1423,43 +1459,15 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
+					prometheus.BuildFQName(namespace, "process", "cpu_seconds_total"),
 					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
+					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Process.CPU.Total) / 1000
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "total")
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
-					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
-				),
-				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.Sys) / 1000
-				},
-				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "sys")
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "process", "cpu_time_seconds_sum"),
-					"Process CPU time in seconds",
-					append(defaultNodeLabels, "type"), nil,
-				),
-				Value: func(node NodeStatsNodeResponse) float64 {
-					return float64(node.Process.CPU.User) / 1000
-				},
-				Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-					return append(defaultNodeLabelValues(cluster, node), "user")
+					return defaultNodeLabelValues(cluster, node)
 				},
 			},
 			{
@@ -1818,7 +1826,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(c.logger).Log(
+			level.Warn(c.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -1829,7 +1837,13 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
+	bts, err := io.ReadAll(res.Body)
+	if err != nil {
+		c.jsonParseFailures.Inc()
+		return nsr, err
+	}
+
+	if err := json.Unmarshal(bts, &nsr); err != nil {
 		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
@@ -1848,7 +1862,7 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
 		c.up.Set(0)
-		_ = level.Warn(c.logger).Log(
+		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
@@ -1860,8 +1874,8 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		// Handle the node labels metric
 		roles := getRoles(node)
 
-		for _, role := range []string{"master", "data", "client", "ingest"} {
-			if roles[role] {
+		for role, roleEnabled := range roles {
+			if roleEnabled {
 				metric := createRoleMetric(role)
 				ch <- prometheus.MustNewConstMetric(
 					metric.Desc,

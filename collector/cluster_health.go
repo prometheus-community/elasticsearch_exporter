@@ -1,19 +1,29 @@
+// Copyright 2021 The Prometheus Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package collector
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-)
-
-const (
-	namespace = "elasticsearch"
 )
 
 var (
@@ -58,11 +68,11 @@ func NewClusterHealth(logger log.Logger, client *http.Client, url *url.URL) *Clu
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "up"),
-			Help: "Was the last scrape of the ElasticSearch cluster health endpoint successful.",
+			Help: "Was the last scrape of the Elasticsearch cluster health endpoint successful.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "total_scrapes"),
-			Help: "Current total ElasticSearch cluster health scrapes.",
+			Help: "Current total Elasticsearch cluster health scrapes.",
 		}),
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures"),
@@ -235,7 +245,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(c.logger).Log(
+			level.Warn(c.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -246,7 +256,13 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 		return chr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&chr); err != nil {
+	bts, err := io.ReadAll(res.Body)
+	if err != nil {
+		c.jsonParseFailures.Inc()
+		return chr, err
+	}
+
+	if err := json.Unmarshal(bts, &chr); err != nil {
 		c.jsonParseFailures.Inc()
 		return chr, err
 	}
@@ -267,7 +283,7 @@ func (c *ClusterHealth) Collect(ch chan<- prometheus.Metric) {
 	clusterHealthResp, err := c.fetchAndDecodeClusterHealth()
 	if err != nil {
 		c.up.Set(0)
-		_ = level.Warn(c.logger).Log(
+		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode cluster health",
 			"err", err,
 		)
