@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -23,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/imdario/mergo"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -222,49 +224,80 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 
 	// Watermark bytes or ratio metrics
 	if strings.HasSuffix(merged.Cluster.Routing.Allocation.Disk.Watermark.High, "b") {
-		ch <- prometheus.MustNewConstMetric(
-			clusterSettingsDesc["floodStageBytes"],
-			prometheus.GaugeValue,
-			getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage),
-		)
+		flooodStageBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to parse flood_stage bytes", "err", err)
+		} else {
+			ch <- prometheus.MustNewConstMetric(
+				clusterSettingsDesc["floodStageBytes"],
+				prometheus.GaugeValue,
+				flooodStageBytes,
+			)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			clusterSettingsDesc["highBytes"],
-			prometheus.GaugeValue,
-			getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.High),
-		)
+		highBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to parse high bytes", "err", err)
+		} else {
+			ch <- prometheus.MustNewConstMetric(
+				clusterSettingsDesc["highBytes"],
+				prometheus.GaugeValue,
+				highBytes,
+			)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			clusterSettingsDesc["lowBytes"],
-			prometheus.GaugeValue,
-			getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.Low),
-		)
+		lowBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to parse low bytes", "err", err)
+		} else {
+			ch <- prometheus.MustNewConstMetric(
+				clusterSettingsDesc["lowBytes"],
+				prometheus.GaugeValue,
+				lowBytes,
+			)
+		}
 
 		return nil
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		clusterSettingsDesc["floodStageRatio"],
-		prometheus.GaugeValue,
-		getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage),
-	)
+	// Watermark ratio metrics
+	floodRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to parse flood_stage ratio", "err", err)
+	} else {
+		ch <- prometheus.MustNewConstMetric(
+			clusterSettingsDesc["floodStageRatio"],
+			prometheus.GaugeValue,
+			floodRatio,
+		)
+	}
 
-	ch <- prometheus.MustNewConstMetric(
-		clusterSettingsDesc["highRatio"],
-		prometheus.GaugeValue,
-		getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.High),
-	)
+	highRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to parse high ratio", "err", err)
+	} else {
+		ch <- prometheus.MustNewConstMetric(
+			clusterSettingsDesc["highRatio"],
+			prometheus.GaugeValue,
+			highRatio,
+		)
+	}
 
-	ch <- prometheus.MustNewConstMetric(
-		clusterSettingsDesc["lowRatio"],
-		prometheus.GaugeValue,
-		getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.Low),
-	)
+	lowRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to parse low ratio", "err", err)
+	} else {
+		ch <- prometheus.MustNewConstMetric(
+			clusterSettingsDesc["lowRatio"],
+			prometheus.GaugeValue,
+			lowRatio,
+		)
+	}
 
 	return nil
 }
 
-func getValueInBytes(value string) float64 {
+func getValueInBytes(value string) (float64, error) {
 	type UnitValue struct {
 		unit string
 		val  float64
@@ -285,29 +318,29 @@ func getValueInBytes(value string) float64 {
 
 			number, err := strconv.ParseFloat(numberStr, 64)
 			if err != nil {
-				return 0
+				return 0, err
 			}
-			return number * uv.val
+			return number * uv.val, nil
 		}
 	}
 
-	return 0
+	return 0, fmt.Errorf("failed to convert unit %s to bytes", value)
 }
 
-func getValueAsRatio(value string) float64 {
+func getValueAsRatio(value string) (float64, error) {
 	if strings.HasSuffix(value, "%") {
 		percentValue, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(value, "%")))
 		if err != nil {
-			return 0
+			return 0, err
 		}
 
-		return float64(percentValue) / 100
+		return float64(percentValue) / 100, nil
 	}
 
 	ratio, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
-	return ratio
+	return ratio, nil
 }

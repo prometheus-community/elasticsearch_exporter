@@ -514,7 +514,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
-				Type: prometheus.CounterValue,
+				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "translog_size_in_bytes"),
 					"Total translog size in bytes",
