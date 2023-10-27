@@ -45,16 +45,18 @@ type DataStream struct {
 	logger log.Logger
 	client *http.Client
 	url    *url.URL
+	dataStreamIncludes string
 
 	dataStreamMetrics []*dataStreamMetric
 }
 
 // NewDataStream defines DataStream Prometheus metrics
-func NewDataStream(logger log.Logger, client *http.Client, url *url.URL) *DataStream {
+func NewDataStream(logger log.Logger, client *http.Client, url *url.URL, dataStreamIncludes string) *DataStream {
 	return &DataStream{
 		logger: logger,
 		client: client,
 		url:    url,
+		dataStreamIncludes: dataStreamIncludes,
 
 		dataStreamMetrics: []*dataStreamMetric{
 			{
@@ -96,7 +98,11 @@ func (ds *DataStream) fetchAndDecodeDataStreamStats() (DataStreamStatsResponse, 
 	var dsr DataStreamStatsResponse
 
 	u := *ds.url
-	u.Path = path.Join(u.Path, "/_data_stream/*/_stats")
+	if (len(ds.dataStreamIncludes) == 0) {
+		u.Path = path.Join(u.Path, "/_data_stream/*/_stats")
+	} else {
+		u.Path = path.Join(u.Path, "_data_stream", ds.dataStreamIncludes, "_stats")
+	}
 	res, err := ds.client.Get(u.String())
 	if err != nil {
 		return dsr, fmt.Errorf("failed to get data stream stats health from %s://%s:%s%s: %s",

@@ -65,7 +65,7 @@ func TestDataStream(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewDataStream(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewDataStream(log.NewNopLogger(), http.DefaultClient, u, "")
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -41,6 +41,7 @@ type IndicesMappings struct {
 	logger log.Logger
 	client *http.Client
 	url    *url.URL
+	indicesIncludes string
 
 	up                              prometheus.Gauge
 	totalScrapes, jsonParseFailures prometheus.Counter
@@ -49,13 +50,14 @@ type IndicesMappings struct {
 }
 
 // NewIndicesMappings defines Indices IndexMappings Prometheus metrics
-func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *IndicesMappings {
+func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL, indicesIncludes string) *IndicesMappings {
 	subsystem := "indices_mappings_stats"
 
 	return &IndicesMappings{
 		logger: logger,
 		client: client,
 		url:    url,
+		indicesIncludes: indicesIncludes,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, subsystem, "up"),
@@ -157,7 +159,11 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 
 func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (*IndicesMappingsResponse, error) {
 	u := *im.url
-	u.Path = path.Join(u.Path, "/_all/_mappings")
+	if (len(im.indicesIncludes) == 0) {
+		u.Path = path.Join(u.Path, "/_all/_mappings")
+	} else {
+		u.Path = path.Join(u.Path, im.indicesIncludes, "_mappings")
+	}
 	return im.getAndParseURL(&u)
 }
 

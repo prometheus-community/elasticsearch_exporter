@@ -46,6 +46,7 @@ type Shards struct {
 	logger log.Logger
 	client *http.Client
 	url    *url.URL
+	indicesIncludes string
 
 	nodeShardMetrics  []*nodeShardMetric
 	jsonParseFailures prometheus.Counter
@@ -59,11 +60,12 @@ type nodeShardMetric struct {
 }
 
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
+func NewShards(logger log.Logger, client *http.Client, url *url.URL, indicesIncludes string) *Shards {
 	return &Shards{
 		logger: logger,
 		client: client,
 		url:    url,
+		indicesIncludes: indicesIncludes,
 
 		nodeShardMetrics: []*nodeShardMetric{
 			{
@@ -126,7 +128,11 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
 
 	u := *s.url
-	u.Path = path.Join(u.Path, "/_cat/shards")
+	if len(s.indicesIncludes) == 0 {
+		u.Path = path.Join(u.Path, "/_cat/shards")
+	} else {
+		u.Path = path.Join(u.Path, "/_cat/shards", s.indicesIncludes)
+	}
 	q := u.Query()
 	q.Set("format", "json")
 	u.RawQuery = q.Encode()

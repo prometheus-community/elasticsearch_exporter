@@ -68,6 +68,9 @@ func main() {
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Bool()
+		esExportIndicesIncludes = kingpin.Flag("es.indices_includes",
+			"Comma-separated list of data streams, indices, and aliases used to select indices to export (default to all).").
+			Default("").String()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
 			Default("false").Bool()
@@ -199,8 +202,8 @@ func main() {
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 	if *esExportIndices || *esExportShards {
-		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL))
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
+		prometheus.MustRegister(collector.NewShards(logger, httpClient, esURL, *esExportIndicesIncludes))
+		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases, *esExportIndicesIncludes)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
@@ -213,15 +216,15 @@ func main() {
 	}
 
 	if *esExportDataStream {
-		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL, *esExportIndicesIncludes))
 	}
 
 	if *esExportIndicesSettings {
-		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL, *esExportIndicesIncludes))
 	}
 
 	if *esExportIndicesMappings {
-		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
+		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL, *esExportIndicesIncludes))
 	}
 
 	if *esExportILM {
