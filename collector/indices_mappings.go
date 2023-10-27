@@ -38,9 +38,9 @@ type indicesMappingsMetric struct {
 
 // IndicesMappings information struct
 type IndicesMappings struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger          log.Logger
+	client          *http.Client
+	url             *url.URL
 	indicesIncludes string
 
 	up                              prometheus.Gauge
@@ -54,9 +54,9 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL, in
 	subsystem := "indices_mappings_stats"
 
 	return &IndicesMappings{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:          logger,
+		client:          client,
+		url:             url,
 		indicesIncludes: indicesIncludes,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -159,7 +159,7 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 
 func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (*IndicesMappingsResponse, error) {
 	u := *im.url
-	if (len(im.indicesIncludes) == 0) {
+	if len(im.indicesIncludes) == 0 {
 		u.Path = path.Join(u.Path, "/_all/_mappings")
 	} else {
 		u.Path = path.Join(u.Path, im.indicesIncludes, "_mappings")

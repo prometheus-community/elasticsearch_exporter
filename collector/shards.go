@@ -43,9 +43,9 @@ type ShardResponse struct {
 
 // Shards information struct
 type Shards struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger          log.Logger
+	client          *http.Client
+	url             *url.URL
 	indicesIncludes string
 
 	nodeShardMetrics  []*nodeShardMetric
@@ -62,9 +62,9 @@ type nodeShardMetric struct {
 // NewShards defines Shards Prometheus metrics
 func NewShards(logger log.Logger, client *http.Client, url *url.URL, indicesIncludes string) *Shards {
 	return &Shards{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:          logger,
+		client:          client,
+		url:             url,
 		indicesIncludes: indicesIncludes,
 
 		nodeShardMetrics: []*nodeShardMetric{

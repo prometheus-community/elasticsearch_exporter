@@ -121,13 +121,13 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 	}
 
 	indices := &Indices{
-		logger:        logger,
-		client:        client,
-		url:           url,
-		shards:        shards,
-		aliases:       includeAliases,
+		logger:          logger,
+		client:          client,
+		url:             url,
+		shards:          shards,
+		aliases:         includeAliases,
 		indicesIncludes: indicesIncludes,
-		clusterInfoCh: make(chan *clusterinfo.Response),
+		clusterInfoCh:   make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
 		},
@@ -1105,12 +1105,12 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
 	u := *i.url
-	if (len(i.indicesIncludes) == 0) {
+	if len(i.indicesIncludes) == 0 {
 		u.Path = path.Join(u.Path, "/_all/_stats")
 	} else {
 		u.Path = path.Join(u.Path, i.indicesIncludes, "_stats")
 	}
-	
+
 	if i.shards {
 		u.RawQuery = "ignore_unavailable=true&level=shards"
 	} else {
