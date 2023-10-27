@@ -5,6 +5,7 @@ BREAKING CHANGES:
 The flag `--es.snapshots` has been renamed to `--collector.snapshots`.
 
 * [CHANGE] Rename --es.snapshots to --collector.snapshots #XXX
+* [FEATURE] Add option --es.indices_includes to select exported indices #799
 
 ## 1.6.0 / 2023-06-22
 
