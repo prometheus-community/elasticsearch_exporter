@@ -310,6 +310,42 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultNodeLabelValues,
 			},
 			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_usage_nanos"),
+					"The total CPU time (in nanoseconds) consumed by all tasks in the same cgroup as the Elasticsearch process",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPUAcct.Usage)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_quota_micros"),
+					"The total amount of time (in microseconds) for which all tasks in the same cgroup as the Elasticsearch process can run during one period cfs_period_micros",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPU.Quota)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_elapsed_periods"),
+					"The number of reporting periods (as specified by cfs_period_micros) that have elapsed",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPU.Stat.ElapsedPeriods)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "fielddata_memory_size_bytes"),

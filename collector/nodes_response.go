@@ -275,10 +275,11 @@ type NodeStatsOSResponse struct {
 	Uptime    int64 `json:"uptime_in_millis"`
 	// LoadAvg was an array of per-cpu values pre-2.0, and is a string in 2.0
 	// Leaving this here in case we want to implement parsing logic later
-	LoadAvg json.RawMessage         `json:"load_average"`
-	CPU     NodeStatsOSCPUResponse  `json:"cpu"`
-	Mem     NodeStatsOSMemResponse  `json:"mem"`
-	Swap    NodeStatsOSSwapResponse `json:"swap"`
+	LoadAvg json.RawMessage           `json:"load_average"`
+	CPU     NodeStatsOSCPUResponse    `json:"cpu"`
+	Mem     NodeStatsOSMemResponse    `json:"mem"`
+	Swap    NodeStatsOSSwapResponse   `json:"swap"`
+	Cgroup  NodeStatsOSCgroupResponse `json:"cgroup"`
 }
 
 // NodeStatsOSMemResponse defines node stats operating system memory usage structure
@@ -306,6 +307,41 @@ type NodeStatsOSCPULoadResponse struct {
 	Load1  float64 `json:"1m"`
 	Load5  float64 `json:"5m"`
 	Load15 float64 `json:"15m"`
+}
+
+// NodeStatsOSCgroupResponse defines node stats cgroup structure
+type NodeStatsOSCgroupResponse struct {
+	CPUAcct NodeStatsOSCgroupCPUAcctResponse `json:"cpuacct"`
+	CPU     NodeStatsOSCgroupCPUResponse     `json:"cpu"`
+	Memory  NodeStatsOSCgroupMemoryResponse  `json:"memory"`
+}
+
+// NodeStatsOSCgroupCPUAcctResponse defines node stats cgroup acct structure
+type NodeStatsOSCgroupCPUAcctResponse struct {
+	Usage        int64  `json:"usage_nanos"`
+	ControlGroup string `json:"control_group"`
+}
+
+// NodeStatsOSCgroupCPUResponse defines node stats cgroup cpu structure
+type NodeStatsOSCgroupCPUResponse struct {
+	Quota        int64                            `json:"cfs_quota_micros"`
+	Stat         NodeStatsOSCgroupCPUStatResponse `json:"stat"`
+	Period       int64                            `json:"cfs_period_micros"`
+	ControlGroup string                           `json:"control_group"`
+}
+
+// NodeStatsOSCgroupCPUStatResponse defines node stats cgroup cpu stat structure
+type NodeStatsOSCgroupCPUStatResponse struct {
+	ElapsedPeriods int64 `json:"number_of_elapsed_periods"`
+	TimesThrottled int64 `json:"number_of_times_throttled"`
+	ThrottledTime  int64 `json:"time_throttled_nanos"`
+}
+
+// NodeStatsOSCgroupMemoryResponse defines node stats cgroup memory structure
+type NodeStatsOSCgroupMemoryResponse struct {
+	Limit        string `json:"limit_in_bytes"`
+	Usage        string `json:"usage_in_bytes"`
+	ControlGroup string `json:"control_group"`
 }
 
 // NodeStatsProcessResponse is a representation of a process statistics, memory consumption, cpu usage, open file descriptors
