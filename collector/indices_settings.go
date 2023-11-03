@@ -105,6 +105,21 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					return val
 				},
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "shards"),
+					"index setting number_of_shards",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfShard, 64)
+					if err != nil {
+						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
 		},
 	}
 }
