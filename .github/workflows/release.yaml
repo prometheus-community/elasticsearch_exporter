@@ -14,7 +14,7 @@ jobs:
       if: "!startswith(github.ref, 'refs/tags/v')"
       run: exit 78
     - name: build
-      uses: sysdiglabs/exporter-builder@v0.6
+      uses: sysdiglabs/exporter-builder@v1.1
       with:
         exporter: elasticsearch-exporter
         artifactory_token: ${{ secrets.ARTI_TOKEN }}
@@ -22,4 +22,4 @@ jobs:
         sysdig_secure_token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
         tag_name: ${{ github.event.release.tag_name }}
         target: ${{ matrix.docker }}
-        repository: artifactory.internal.sysdig.com
+        repository: us-docker.pkg.dev
