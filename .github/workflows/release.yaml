@@ -17,8 +17,8 @@ jobs:
       uses: sysdiglabs/exporter-builder@v1.1
       with:
         exporter: elasticsearch-exporter
-        artifactory_token: ${{ secrets.ARTI_TOKEN }}
-        artifactory_username: david.lorite@sysdig.com
+        artifactory_token: ${{ secrets.GAR_DEV_RW_JSON_KEY }}
+        artifactory_username: _json_key
         sysdig_secure_token: ${{ secrets.SYSDIG_SECURE_TOKEN }}
         tag_name: ${{ github.event.release.tag_name }}
         target: ${{ matrix.docker }}
