@@ -87,7 +87,7 @@ func main() {
 			"Export stats for SLM snapshots.").
 			Default("false").Bool()
 		esIndicesSelector = kingpin.Flag("es.indices_selector",
-			"Selcted indices by name for which metrics should be exposed, using prefix with wildcards and/or commas as multi-selection delimiter.").
+			"Select indices by name for which metrics should be exposed, using prefix with wildcards and/or commas as multi-selection delimiter.").
 			Default("_all").String()
 		esExportDataStream = kingpin.Flag("es.data_stream",
 			"Export stas for Data Streams.").
