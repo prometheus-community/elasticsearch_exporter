@@ -29,9 +29,10 @@ import (
 
 // IndicesSettings information struct
 type IndicesSettings struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger          log.Logger
+	client          *http.Client
+	url             *url.URL
+	indicesSelector string
 
 	up              prometheus.Gauge
 	readOnlyIndices prometheus.Gauge
@@ -52,11 +53,12 @@ type indicesSettingsMetric struct {
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
-func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *IndicesSettings {
+func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL, indicesSelector string) *IndicesSettings {
 	return &IndicesSettings{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger:          logger,
+		client:          client,
+		url:             url,
+		indicesSelector: indicesSelector,
 
 		up: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
@@ -154,7 +156,8 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 func (cs *IndicesSettings) fetchAndDecodeIndicesSettings() (IndicesSettingsResponse, error) {
 
 	u := *cs.url
-	u.Path = path.Join(u.Path, "/_all/_settings")
+	indicesSettingsQueryPath := fmt.Sprintf("/%s/_settings", cs.indicesSelector)
+	u.Path = path.Join(u.Path, indicesSettingsQueryPath)
 	var asr IndicesSettingsResponse
 	err := cs.getAndParseURL(&u, &asr)
 	if err != nil {

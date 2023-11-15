@@ -60,6 +60,7 @@ elasticsearch_exporter --help
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`). | false |
 | es.snapshots            | 1.0.4rc1              | If true, query stats for the cluster snapshots. | false |
 | es.slm                  |                       | If true, query stats for SLM. | false |
+| es.indices_selector       |                       | If set, Only the selcted indices will be queried [settings, stats, mappings] based on the provided pattern. `Example: prefix_1_*,prefix_2_*` | _all |
 | es.data_stream          |                       | If true, query state for Data Steams. | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s) | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection. | |
