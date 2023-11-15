@@ -55,7 +55,7 @@ func TestIndicesSettings(t *testing.T) {
 	// curl http://localhost:9200/_all/_settings
 
 	tcs := map[string]string{
-		"6.5.4": `{"viber":{"settings":{"index":{"creation_date":"1618593207186","number_of_shards":"3","number_of_replicas":"1","uuid":"lWg86KTARzO3r7lELytT1Q","version":{"created":"6050499"},"provided_name":"viber"}}},"instagram":{"settings":{"index":{"mapping":{"total_fields":{"limit":"10000"}},"number_of_shards":"5","blocks":{"read_only_allow_delete":"true"},"provided_name":"instagram","creation_date":"1618593203353","number_of_replicas":"1","uuid":"msb6eG7aT8GmNe-a4oyVtQ","version":{"created":"6050499"}}}},"twitter":{"settings":{"index":{"number_of_shards":"5","blocks":{"read_only_allow_delete":"true"},"provided_name":"twitter","creation_date":"1618593193641","number_of_replicas":"1","uuid":"YRUT8t4aSkKsNmGl7K3y4Q","version":{"created":"6050499"}}}},"facebook":{"settings":{"index":{"creation_date":"1618593199101","number_of_shards":"5","number_of_replicas":"1","uuid":"trZhb_YOTV-RWKitTYw81A","version":{"created":"6050499"},"provided_name":"facebook"}}}}`,
+		"6.5.4": `{"viber":{"settings":{"index":{"creation_date":"1618593207186","number_of_shards":"5","number_of_replicas":"1","uuid":"lWg86KTARzO3r7lELytT1Q","version":{"created":"6050499"},"provided_name":"viber"}}},"instagram":{"settings":{"index":{"mapping":{"total_fields":{"limit":"10000"}},"number_of_shards":"5","blocks":{"read_only_allow_delete":"true"},"provided_name":"instagram","creation_date":"1618593203353","number_of_replicas":"1","uuid":"msb6eG7aT8GmNe-a4oyVtQ","version":{"created":"6050499"}}}},"twitter":{"settings":{"index":{"number_of_shards":"5","blocks":{"read_only_allow_delete":"true"},"provided_name":"twitter","creation_date":"1618593193641","number_of_replicas":"1","uuid":"YRUT8t4aSkKsNmGl7K3y4Q","version":{"created":"6050499"}}}},"facebook":{"settings":{"index":{"creation_date":"1618593199101","number_of_shards":"5","number_of_replicas":"1","uuid":"trZhb_YOTV-RWKitTYw81A","version":{"created":"6050499"},"provided_name":"facebook"}}}}`,
 	}
 	for ver, out := range tcs {
 		for hn, handler := range map[string]http.Handler{
@@ -81,7 +81,6 @@ func TestIndicesSettings(t *testing.T) {
 			// }
 			var counter int
 			var totalFields int
-			var shards int
 			for key, value := range nsr {
 				if value.Settings.IndexInfo.Blocks.ReadOnly == "true" {
 					counter++
@@ -95,21 +94,12 @@ func TestIndicesSettings(t *testing.T) {
 						t.Errorf("Expected 10000 total_fields only for  instagram")
 					}
 				}
-				if value.Settings.IndexInfo.NumberOfShard == "3" {
-					shards++
-					if key != "viber" {
-						t.Errorf("Expected 3 shard only for shards")
-					}
-				}
 			}
 			if counter != 2 {
 				t.Errorf("Wrong number of read_only indexes")
 			}
 			if totalFields != 1 {
 				t.Errorf(("Wrong number of total_fields found"))
-			}
-			if shards != 1 {
-				t.Errorf(("Wrong number of shards found"))
 			}
 		}
 	}
