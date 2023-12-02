@@ -14,13 +14,16 @@
 package collector
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func TestILMMetrics(t *testing.T) {
@@ -61,57 +64,48 @@ func TestILMMetrics(t *testing.T) {
 	// 	}
 	// 	'
 	//  curl http://localhost:9200/_all/_ilm/explain
-	tcs := map[string]string{
-		"6.6.0": `{
-			"indices": {
-			  "twitter": { "index": "twitter", "managed": false },
-			  "facebook": {
-				"index": "facebook",
-				"managed": true,
-				"policy": "my_policy",
-				"lifecycle_date_millis": 1660799138565,
-				"phase": "new",
-				"phase_time_millis": 1660799138651,
-				"action": "complete",
-				"action_time_millis": 1660799138651,
-				"step": "complete",
-				"step_time_millis": 1660799138651
-			  }
-			}
-		  }`,
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		{
+			name: "6.6.0",
+			file: "../fixtures/ilm_indices/6.6.0.json",
+			want: `
+# HELP elasticsearch_ilm_index_status Status of ILM policy for index
+# TYPE elasticsearch_ilm_index_status gauge
+elasticsearch_ilm_index_status{action="",index="twitter",phase="",step=""} 0
+elasticsearch_ilm_index_status{action="complete",index="facebook",phase="new",step="complete"} 1
+			`,
+		},
 	}
-	for ver, out := range tcs {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out)
-		}))
-		defer ts.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
 
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
-		c := NewIlmIndicies(log.NewNopLogger(), http.DefaultClient, u)
-		chr, err := c.fetchAndDecodeIlm()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode indices ilm metrics: %s", err)
-		}
-		t.Logf("[%s] indices ilm metrics Response: %+v", ver, chr)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				io.Copy(w, f)
+			}))
+			defer ts.Close()
 
-		if chr.Indices["twitter"].Managed != false {
-			t.Errorf("Invalid ilm metrics at twitter.managed")
-		}
-		if chr.Indices["facebook"].Managed != true {
-			t.Errorf("Invalid ilm metrics at facebook.managed")
-		}
-		if chr.Indices["facebook"].Phase != "new" {
-			t.Errorf("Invalid ilm metrics at facebook.phase")
-		}
-		if chr.Indices["facebook"].Action != "complete" {
-			t.Errorf("Invalid ilm metrics at facebook.action")
-		}
-		if chr.Indices["facebook"].Step != "complete" {
-			t.Errorf("Invalid ilm metrics at facebook.step")
-		}
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
 
+			c := NewIlmIndicies(log.NewNopLogger(), http.DefaultClient, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }

@@ -1,0 +1,20 @@
+{
+  "indices": {
+    "twitter": {
+      "index": "twitter",
+      "managed": false
+    },
+    "facebook": {
+      "index": "facebook",
+      "managed": true,
+      "policy": "my_policy",
+      "lifecycle_date_millis": 1660799138565,
+      "phase": "new",
+      "phase_time_millis": 1660799138651,
+      "action": "complete",
+      "action_time_millis": 1660799138651,
+      "step": "complete",
+      "step_time_millis": 1660799138651
+    }
+  }
+}
