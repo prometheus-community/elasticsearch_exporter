@@ -1,10 +1,11 @@
-## master / unreleased
+## 1.7.0 / 2023-12-02
 
 BREAKING CHANGES:
 
 The flag `--es.snapshots` has been renamed to `--collector.snapshots`.
 
-* [CHANGE] Rename --es.snapshots to --collector.snapshots #XXX
+* [CHANGE] Rename --es.snapshots to --collector.snapshots #789
+* [FEATURE] Add watermark metrics #611
 
 ## 1.6.0 / 2023-06-22
 
