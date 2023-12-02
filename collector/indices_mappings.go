@@ -42,9 +42,6 @@ type IndicesMappings struct {
 	client *http.Client
 	url    *url.URL
 
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
 	metrics []*indicesMappingsMetric
 }
 
@@ -57,18 +54,6 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 		client: client,
 		url:    url,
 
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "up"),
-			Help: "Was the last scrape of the Elasticsearch Indices Mappings endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "scrapes_total"),
-			Help: "Current total Elasticsearch Indices Mappings scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures_total"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 		metrics: []*indicesMappingsMetric{
 			{
 				Type: prometheus.GaugeValue,
@@ -117,10 +102,6 @@ func (im *IndicesMappings) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range im.metrics {
 		ch <- metric.Desc
 	}
-
-	ch <- im.up.Desc()
-	ch <- im.totalScrapes.Desc()
-	ch <- im.jsonParseFailures.Desc()
 }
 
 func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse, error) {
@@ -148,7 +129,6 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 
 	var imr IndicesMappingsResponse
 	if err := json.Unmarshal(body, &imr); err != nil {
-		im.jsonParseFailures.Inc()
 		return nil, err
 	}
 
@@ -163,24 +143,14 @@ func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (*IndicesMappingsResp
 
 // Collect gets all indices mappings metric values
 func (im *IndicesMappings) Collect(ch chan<- prometheus.Metric) {
-
-	im.totalScrapes.Inc()
-	defer func() {
-		ch <- im.up
-		ch <- im.totalScrapes
-		ch <- im.jsonParseFailures
-	}()
-
 	indicesMappingsResponse, err := im.fetchAndDecodeIndicesMappings()
 	if err != nil {
-		im.up.Set(0)
 		level.Warn(im.logger).Log(
 			"msg", "failed to fetch and decode cluster mappings stats",
 			"err", err,
 		)
 		return
 	}
-	im.up.Set(1)
 
 	for _, metric := range im.metrics {
 		for indexName, mappings := range *indicesMappingsResponse {
