@@ -14,40 +14,66 @@
 package collector
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func TestILMStatus(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION
 	//  curl http://localhost:9200/_ilm/status
-	tcs := map[string]string{
-		"6.6.0": `{ "operation_mode": "RUNNING" }`,
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		{
+			name: "6.6.0",
+			file: "../fixtures/ilm_status/6.6.0.json",
+			want: `
+# HELP elasticsearch_ilm_status Current status of ilm. Status can be STOPPED, RUNNING, STOPPING.
+# TYPE elasticsearch_ilm_status gauge
+elasticsearch_ilm_status{operation_mode="RUNNING"} 1
+elasticsearch_ilm_status{operation_mode="STOPPED"} 0
+elasticsearch_ilm_status{operation_mode="STOPPING"} 0
+      `,
+		},
 	}
-	for ver, out := range tcs {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out)
-		}))
-		defer ts.Close()
 
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
-		c := NewIlmStatus(log.NewNopLogger(), http.DefaultClient, u)
-		chr, err := c.fetchAndDecodeIlm()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode ilm status: %s", err)
-		}
-		t.Logf("[%s] ILM Status Response: %+v", ver, chr)
-		if chr.OperationMode != "RUNNING" {
-			t.Errorf("Invalid ilm status")
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				io.Copy(w, f)
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c := NewIlmStatus(log.NewNopLogger(), http.DefaultClient, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
