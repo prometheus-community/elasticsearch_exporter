@@ -1,0 +1,14 @@
+{
+  "license": {
+    "status": "active",
+    "uid": "redacted",
+    "type": "basic",
+    "issue_date": "2023-12-10T08:17:27.064Z",
+    "issue_date_in_millis": 1702196247064,
+    "max_nodes": 1000,
+    "max_resource_units": null,
+    "issued_to": "redacted",
+    "issuer": "elasticsearch",
+    "start_date_in_millis": -1
+  }
+}

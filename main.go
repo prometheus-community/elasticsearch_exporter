@@ -92,6 +92,9 @@ func main() {
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
+		esExportLicense = kingpin.Flag("es.license",
+			"Export license information").
+			Default("false").Bool()
 		esCA = kingpin.Flag("es.ca",
 			"Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.").
 			Default("").String()
@@ -227,6 +230,10 @@ func main() {
 	if *esExportILM {
 		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
 		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
+	}
+
+	if *esExportLicense {
+		prometheus.MustRegister(collector.NewClusterLicense(logger, httpClient, esURL))
 	}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.

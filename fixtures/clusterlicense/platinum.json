@@ -1,0 +1,15 @@
+{
+  "license": {
+    "status": "active",
+    "uid": "redacted",
+    "type": "platinum",
+    "issue_date": "2021-04-24T00:00:00.000Z",
+    "issue_date_in_millis": 1619222400000,
+    "expiry_date": "2024-04-30T23:59:59.999Z",
+    "expiry_date_in_millis": 1714521599999,
+    "max_nodes": 10,
+    "issued_to": "redacted",
+    "issuer": "API",
+    "start_date_in_millis": 1619222400000
+  }
+}
