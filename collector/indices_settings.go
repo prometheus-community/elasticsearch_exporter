@@ -118,7 +118,7 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					if err != nil {
 						return float64(defaultDateCreation)
 					}
-					return val
+					return val/1000.0
 				},
 			},
 		},
