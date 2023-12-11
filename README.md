@@ -187,6 +187,7 @@ Further Information
 | elasticsearch_indices_search_query_total                             | counter    | 1           | Total number of queries                                                                             |
 | elasticsearch_indices_segments_count                                 | gauge      | 1           | Count of index segments on this node                                                                |
 | elasticsearch_indices_segments_memory_bytes                          | gauge      | 1           | Current memory size of segments in bytes                                                            |
+| elasticsearch_indices_settings_creation_timestamp_seconds            | gauge      | 1           | Timestamp of the index creation in seconds                                                                     |
 | elasticsearch_indices_settings_stats_read_only_indices               | gauge      | 1           | Count of indices that have read_only_allow_delete=true                                              |
 | elasticsearch_indices_settings_total_fields                          | gauge      |             | Index setting value for index.mapping.total_fields.limit (total allowable mapped fields in a index) |
 | elasticsearch_indices_settings_replicas                              | gauge      |             | Index setting value for index.replicas                                                              |

@@ -43,6 +43,7 @@ type IndicesSettings struct {
 var (
 	defaultIndicesTotalFieldsLabels = []string{"index"}
 	defaultTotalFieldsValue         = 1000 //es default configuration for total fields
+	defaultDateCreation             = 0    //es index default creation date
 )
 
 type indicesSettingsMetric struct {
@@ -103,6 +104,21 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 						return float64(defaultTotalFieldsValue)
 					}
 					return val
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "creation_timestamp_seconds"),
+					"index setting creation_date",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.CreationDate, 64)
+					if err != nil {
+						return float64(defaultDateCreation)
+					}
+					return val / 1000.0
 				},
 			},
 		},
