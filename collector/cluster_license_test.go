@@ -36,8 +36,8 @@ func TestClusterLicense(t *testing.T) {
 		want string
 	}{
 		{
-			name: "basic",
-			file: "../fixtures/clusterlicense/basic.json",
+			name: "7.17.10-basic",
+			file: "../fixtures/clusterlicense/7.17.10-basic.json",
 			want: `
             # HELP elasticsearch_cluster_license_expiry_date_seconds License expiry date since unix epoch in seconds.
             # TYPE elasticsearch_cluster_license_expiry_date_seconds gauge
@@ -54,8 +54,8 @@ func TestClusterLicense(t *testing.T) {
             `,
 		},
 		{
-			name: "platinum",
-			file: "../fixtures/clusterlicense/platinum.json",
+			name: "7.17.10-platinum",
+			file: "../fixtures/clusterlicense/7.17.10-platinum.json",
 			want: `
             # HELP elasticsearch_cluster_license_expiry_date_seconds License expiry date since unix epoch in seconds.
             # TYPE elasticsearch_cluster_license_expiry_date_seconds gauge
