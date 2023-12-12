@@ -5,6 +5,7 @@ BREAKING CHANGES:
 The flag `--es.snapshots` has been renamed to `--collector.snapshots`.
 
 * [CHANGE] Rename --es.snapshots to --collector.snapshots #789
+* [CHANGE] Add cluster label to `elasticsearch_node_shards_total` metric #639
 * [FEATURE] Add watermark metrics #611
 * [FEATURE] Add `elasticsearch_indices_settings_creation_timestamp_seconds` metric #816
 
