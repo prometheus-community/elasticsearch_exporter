@@ -54,22 +54,22 @@ var (
 var (
 	licenseMaxNodes = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "cluster_license", "max_nodes"),
-		"The max amount of nodes allowed by the license",
+		"The max amount of nodes allowed by the license.",
 		defaultClusterLicenseLabels, nil,
 	)
 	licenseIssueDate = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "cluster_license", "issue_date_in_millis"),
-		"License issue date in milliseconds",
+		prometheus.BuildFQName(namespace, "cluster_license", "issue_date_seconds"),
+		"License issue date since unix epoch in seconds.",
 		defaultClusterLicenseLabels, nil,
 	)
 	licenseExpiryDate = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "cluster_license", "expiry_date_in_millis"),
-		"License expiry date in milliseconds",
+		prometheus.BuildFQName(namespace, "cluster_license", "expiry_date_seconds"),
+		"License expiry date since unix epoch in seconds.",
 		defaultClusterLicenseLabels, nil,
 	)
 	licenseStartDate = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "cluster_license", "start_date_in_millis"),
-		"License start date in milliseconds",
+		prometheus.BuildFQName(namespace, "cluster_license", "start_date_seconds"),
+		"License start date since unix epoch in seconds.",
 		defaultClusterLicenseLabels, nil,
 	)
 )
@@ -137,21 +137,21 @@ func (c *ClusterLicense) Update(ctx context.Context, ch chan<- prometheus.Metric
 	ch <- prometheus.MustNewConstMetric(
 		licenseIssueDate,
 		prometheus.GaugeValue,
-		float64(clr.License.IssueDateInMillis),
+		float64(clr.License.IssueDateInMillis/1000),
 		defaultClusterLicenseLabelsValues(clr)...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		licenseExpiryDate,
 		prometheus.GaugeValue,
-		float64(clr.License.ExpiryDateInMillis),
+		float64(clr.License.ExpiryDateInMillis/1000),
 		defaultClusterLicenseLabelsValues(clr)...,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		licenseStartDate,
 		prometheus.GaugeValue,
-		float64(clr.License.StartDateInMillis),
+		float64(clr.License.StartDateInMillis/1000),
 		defaultClusterLicenseLabelsValues(clr)...,
 	)
 

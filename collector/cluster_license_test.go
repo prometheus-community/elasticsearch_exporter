@@ -39,36 +39,36 @@ func TestClusterLicense(t *testing.T) {
 			name: "basic",
 			file: "../fixtures/clusterlicense/basic.json",
 			want: `
-            # HELP elasticsearch_cluster_license_expiry_date_in_millis License expiry date in milliseconds
-            # TYPE elasticsearch_cluster_license_expiry_date_in_millis gauge
-            elasticsearch_cluster_license_expiry_date_in_millis{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 0
-            # HELP elasticsearch_cluster_license_issue_date_in_millis License issue date in milliseconds
-            # TYPE elasticsearch_cluster_license_issue_date_in_millis gauge
-            elasticsearch_cluster_license_issue_date_in_millis{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 1.702196247064e+12
-            # HELP elasticsearch_cluster_license_max_nodes The max amount of nodes allowed by the license
+            # HELP elasticsearch_cluster_license_expiry_date_seconds License expiry date since unix epoch in seconds.
+            # TYPE elasticsearch_cluster_license_expiry_date_seconds gauge
+            elasticsearch_cluster_license_expiry_date_seconds{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 0
+            # HELP elasticsearch_cluster_license_issue_date_seconds License issue date since unix epoch in seconds.
+            # TYPE elasticsearch_cluster_license_issue_date_seconds gauge
+            elasticsearch_cluster_license_issue_date_seconds{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 1.702196247e+09
+            # HELP elasticsearch_cluster_license_max_nodes The max amount of nodes allowed by the license.
             # TYPE elasticsearch_cluster_license_max_nodes gauge
             elasticsearch_cluster_license_max_nodes{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 1000
-            # HELP elasticsearch_cluster_license_start_date_in_millis License start date in milliseconds
-            # TYPE elasticsearch_cluster_license_start_date_in_millis gauge
-            elasticsearch_cluster_license_start_date_in_millis{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} -1
+            # HELP elasticsearch_cluster_license_start_date_seconds License start date since unix epoch in seconds.
+            # TYPE elasticsearch_cluster_license_start_date_seconds gauge
+            elasticsearch_cluster_license_start_date_seconds{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 0
             `,
 		},
 		{
 			name: "platinum",
 			file: "../fixtures/clusterlicense/platinum.json",
 			want: `
-            # HELP elasticsearch_cluster_license_expiry_date_in_millis License expiry date in milliseconds
-            # TYPE elasticsearch_cluster_license_expiry_date_in_millis gauge
-            elasticsearch_cluster_license_expiry_date_in_millis{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.714521599999e+12
-            # HELP elasticsearch_cluster_license_issue_date_in_millis License issue date in milliseconds
-            # TYPE elasticsearch_cluster_license_issue_date_in_millis gauge
-            elasticsearch_cluster_license_issue_date_in_millis{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.6192224e+12
-            # HELP elasticsearch_cluster_license_max_nodes The max amount of nodes allowed by the license
+            # HELP elasticsearch_cluster_license_expiry_date_seconds License expiry date since unix epoch in seconds.
+            # TYPE elasticsearch_cluster_license_expiry_date_seconds gauge
+            elasticsearch_cluster_license_expiry_date_seconds{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.714521599e+09
+            # HELP elasticsearch_cluster_license_issue_date_seconds License issue date since unix epoch in seconds.
+            # TYPE elasticsearch_cluster_license_issue_date_seconds gauge
+            elasticsearch_cluster_license_issue_date_seconds{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.6192224e+09
+            # HELP elasticsearch_cluster_license_max_nodes The max amount of nodes allowed by the license.
             # TYPE elasticsearch_cluster_license_max_nodes gauge
             elasticsearch_cluster_license_max_nodes{issued_to="redacted",issuer="API",status="active",type="platinum"} 10
-            # HELP elasticsearch_cluster_license_start_date_in_millis License start date in milliseconds
-            # TYPE elasticsearch_cluster_license_start_date_in_millis gauge
-            elasticsearch_cluster_license_start_date_in_millis{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.6192224e+12
+            # HELP elasticsearch_cluster_license_start_date_seconds License start date since unix epoch in seconds.
+            # TYPE elasticsearch_cluster_license_start_date_seconds gauge
+            elasticsearch_cluster_license_start_date_seconds{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.6192224e+09
             `,
 		},
 	}
