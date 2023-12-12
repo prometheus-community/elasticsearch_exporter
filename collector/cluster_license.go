@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,13 +27,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-type clusterLicenseMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(clusterLicenseStats clusterLicenseResponse) float64
-	Labels func(clusterLicenseStats clusterLicenseResponse) []string
-}
 
 type clusterLicenseResponse struct {
 	License struct {
@@ -51,103 +45,69 @@ type clusterLicenseResponse struct {
 }
 
 var (
-	defaultClusterLicenseLabels = []string{"cluster_license_type"}
-	defaultClusterLicenseValues = func(clusterLicense clusterLicenseResponse) []string {
-		return []string{clusterLicense.License.Type}
+	defaultClusterLicenseLabels       = []string{"issued_to", "issuer", "type", "status"}
+	defaultClusterLicenseLabelsValues = func(clusterLicense clusterLicenseResponse) []string {
+		return []string{clusterLicense.License.IssuedTo, clusterLicense.License.Issuer, clusterLicense.License.Type, clusterLicense.License.Status}
 	}
 )
+
+var (
+	licenseMaxNodes = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_license", "max_nodes"),
+		"The max amount of nodes allowed by the license",
+		defaultClusterLicenseLabels, nil,
+	)
+	licenseIssueDate = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_license", "issue_date_in_millis"),
+		"License issue date in milliseconds",
+		defaultClusterLicenseLabels, nil,
+	)
+	licenseExpiryDate = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_license", "expiry_date_in_millis"),
+		"License expiry date in milliseconds",
+		defaultClusterLicenseLabels, nil,
+	)
+	licenseStartDate = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "cluster_license", "start_date_in_millis"),
+		"License start date in milliseconds",
+		defaultClusterLicenseLabels, nil,
+	)
+)
+
+func init() {
+	registerCollector("cluster_license", defaultDisabled, NewClusterLicense)
+}
 
 // License Information Struct
 type ClusterLicense struct {
 	logger log.Logger
-	client *http.Client
-	url    *url.URL
-
-	clusterLicenseMetrics []*clusterLicenseMetric
+	hc     *http.Client
+	u      *url.URL
 }
 
-// NewClusterLicense defines ClusterLicense Prometheus metrics
-func NewClusterLicense(logger log.Logger, client *http.Client, url *url.URL) *ClusterLicense {
+func NewClusterLicense(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterLicense{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		clusterLicenseMetrics: []*clusterLicenseMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "cluster_license", "max_nodes"),
-					"The max amount of nodes allowed by the license",
-					defaultClusterLicenseLabels, nil,
-				),
-				Value: func(clusterLicenseStats clusterLicenseResponse) float64 {
-					return float64(clusterLicenseStats.License.MaxNodes)
-				},
-				Labels: defaultClusterLicenseValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "cluster_license", "issue_date_in_millis"),
-					"License issue date in milliseconds",
-					defaultClusterLicenseLabels, nil,
-				),
-				Value: func(clusterLicenseStats clusterLicenseResponse) float64 {
-					return float64(clusterLicenseStats.License.IssueDateInMillis)
-				},
-				Labels: defaultClusterLicenseValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "cluster_license", "expiry_date_in_millis"),
-					"License expiry date in milliseconds",
-					defaultClusterLicenseLabels, nil,
-				),
-				Value: func(clusterLicenseStats clusterLicenseResponse) float64 {
-					return float64(clusterLicenseStats.License.ExpiryDateInMillis)
-				},
-				Labels: defaultClusterLicenseValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "cluster_license", "start_date_in_millis"),
-					"License start date in milliseconds",
-					defaultClusterLicenseLabels, nil,
-				),
-				Value: func(clusterLicenseStats clusterLicenseResponse) float64 {
-					return float64(clusterLicenseStats.License.StartDateInMillis)
-				},
-				Labels: defaultClusterLicenseValues,
-			},
-		},
-	}
+		u:      u,
+		hc:     hc,
+	}, nil
 }
 
-// Describe adds License metrics descriptions
-func (cl *ClusterLicense) Describe(ch chan<- *prometheus.Desc) {
-	for _, metric := range cl.clusterLicenseMetrics {
-		ch <- metric.Desc
-	}
-}
-
-func (cl *ClusterLicense) fetchAndDecodeClusterLicense() (clusterLicenseResponse, error) {
+func (c *ClusterLicense) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 	var clr clusterLicenseResponse
 
-	u := *cl.url
+	u := *c.u
 	u.Path = path.Join(u.Path, "/_license")
-	res, err := cl.client.Get(u.String())
+	res, err := c.hc.Get(u.String())
+
 	if err != nil {
-		return clr, fmt.Errorf("failed to get license stats from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+		return err
 	}
 
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(cl.logger).Log(
+			level.Warn(c.logger).Log(
 				"msg", "failed to close http.Client",
 				"err", err,
 			)
@@ -155,39 +115,45 @@ func (cl *ClusterLicense) fetchAndDecodeClusterLicense() (clusterLicenseResponse
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return clr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		return clr, err
+		return err
 	}
 
 	if err := json.Unmarshal(bts, &clr); err != nil {
-		return clr, err
+		return err
 	}
 
-	return clr, nil
-}
+	ch <- prometheus.MustNewConstMetric(
+		licenseMaxNodes,
+		prometheus.GaugeValue,
+		float64(clr.License.MaxNodes),
+		defaultClusterLicenseLabelsValues(clr)...,
+	)
 
-// Collect gets ClusterLicense metric values
-func (cl *ClusterLicense) Collect(ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(
+		licenseIssueDate,
+		prometheus.GaugeValue,
+		float64(clr.License.IssueDateInMillis),
+		defaultClusterLicenseLabelsValues(clr)...,
+	)
 
-	clusterLicenseResp, err := cl.fetchAndDecodeClusterLicense()
-	if err != nil {
-		level.Warn(cl.logger).Log(
-			"msg", "failed to fetch and decode license stats",
-			"err", err,
-		)
-		return
-	}
+	ch <- prometheus.MustNewConstMetric(
+		licenseExpiryDate,
+		prometheus.GaugeValue,
+		float64(clr.License.ExpiryDateInMillis),
+		defaultClusterLicenseLabelsValues(clr)...,
+	)
 
-	for _, metric := range cl.clusterLicenseMetrics {
-		ch <- prometheus.MustNewConstMetric(
-			metric.Desc,
-			metric.Type,
-			metric.Value(clusterLicenseResp),
-			metric.Labels(clusterLicenseResp)...,
-		)
-	}
+	ch <- prometheus.MustNewConstMetric(
+		licenseStartDate,
+		prometheus.GaugeValue,
+		float64(clr.License.StartDateInMillis),
+		defaultClusterLicenseLabelsValues(clr)...,
+	)
+
+	return nil
 }

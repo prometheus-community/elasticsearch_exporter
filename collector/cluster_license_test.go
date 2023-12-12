@@ -26,7 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-func TestIndicesHealth(t *testing.T) {
+func TestClusterLicense(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION
 	//  curl http://localhost:9200/_license
@@ -41,16 +41,16 @@ func TestIndicesHealth(t *testing.T) {
 			want: `
             # HELP elasticsearch_cluster_license_expiry_date_in_millis License expiry date in milliseconds
             # TYPE elasticsearch_cluster_license_expiry_date_in_millis gauge
-            elasticsearch_cluster_license_expiry_date_in_millis{cluster_license_type="basic"} 0
+            elasticsearch_cluster_license_expiry_date_in_millis{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 0
             # HELP elasticsearch_cluster_license_issue_date_in_millis License issue date in milliseconds
             # TYPE elasticsearch_cluster_license_issue_date_in_millis gauge
-            elasticsearch_cluster_license_issue_date_in_millis{cluster_license_type="basic"} 1.702196247064e+12
+            elasticsearch_cluster_license_issue_date_in_millis{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 1.702196247064e+12
             # HELP elasticsearch_cluster_license_max_nodes The max amount of nodes allowed by the license
             # TYPE elasticsearch_cluster_license_max_nodes gauge
-            elasticsearch_cluster_license_max_nodes{cluster_license_type="basic"} 1000
+            elasticsearch_cluster_license_max_nodes{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} 1000
             # HELP elasticsearch_cluster_license_start_date_in_millis License start date in milliseconds
             # TYPE elasticsearch_cluster_license_start_date_in_millis gauge
-            elasticsearch_cluster_license_start_date_in_millis{cluster_license_type="basic"} -1
+            elasticsearch_cluster_license_start_date_in_millis{issued_to="redacted",issuer="elasticsearch",status="active",type="basic"} -1
             `,
 		},
 		{
@@ -59,16 +59,16 @@ func TestIndicesHealth(t *testing.T) {
 			want: `
             # HELP elasticsearch_cluster_license_expiry_date_in_millis License expiry date in milliseconds
             # TYPE elasticsearch_cluster_license_expiry_date_in_millis gauge
-            elasticsearch_cluster_license_expiry_date_in_millis{cluster_license_type="platinum"} 1.714521599999e+12
+            elasticsearch_cluster_license_expiry_date_in_millis{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.714521599999e+12
             # HELP elasticsearch_cluster_license_issue_date_in_millis License issue date in milliseconds
             # TYPE elasticsearch_cluster_license_issue_date_in_millis gauge
-            elasticsearch_cluster_license_issue_date_in_millis{cluster_license_type="platinum"} 1.6192224e+12
+            elasticsearch_cluster_license_issue_date_in_millis{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.6192224e+12
             # HELP elasticsearch_cluster_license_max_nodes The max amount of nodes allowed by the license
             # TYPE elasticsearch_cluster_license_max_nodes gauge
-            elasticsearch_cluster_license_max_nodes{cluster_license_type="platinum"} 10
+            elasticsearch_cluster_license_max_nodes{issued_to="redacted",issuer="API",status="active",type="platinum"} 10
             # HELP elasticsearch_cluster_license_start_date_in_millis License start date in milliseconds
             # TYPE elasticsearch_cluster_license_start_date_in_millis gauge
-            elasticsearch_cluster_license_start_date_in_millis{cluster_license_type="platinum"} 1.6192224e+12
+            elasticsearch_cluster_license_start_date_in_millis{issued_to="redacted",issuer="API",status="active",type="platinum"} 1.6192224e+12
             `,
 		},
 	}
@@ -92,9 +92,13 @@ func TestIndicesHealth(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewClusterLicense(log.NewNopLogger(), http.DefaultClient, u)
+			c, err := NewClusterLicense(log.NewNopLogger(), u, http.DefaultClient)
 
-			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
