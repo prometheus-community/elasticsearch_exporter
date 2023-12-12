@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -31,6 +32,22 @@ type clusterLicenseMetric struct {
 	Desc   *prometheus.Desc
 	Value  func(clusterLicenseStats clusterLicenseResponse) float64
 	Labels func(clusterLicenseStats clusterLicenseResponse) []string
+}
+
+type clusterLicenseResponse struct {
+	License struct {
+		Status             string    `json:"status"`
+		UID                string    `json:"uid"`
+		Type               string    `json:"type"`
+		IssueDate          time.Time `json:"issue_date"`
+		IssueDateInMillis  int64     `json:"issue_date_in_millis"`
+		ExpiryDate         time.Time `json:"expiry_date"`
+		ExpiryDateInMillis int64     `json:"expiry_date_in_millis"`
+		MaxNodes           int       `json:"max_nodes"`
+		IssuedTo           string    `json:"issued_to"`
+		Issuer             string    `json:"issuer"`
+		StartDateInMillis  int64     `json:"start_date_in_millis"`
+	} `json:"license"`
 }
 
 var (
