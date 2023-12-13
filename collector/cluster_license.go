@@ -75,7 +75,7 @@ var (
 )
 
 func init() {
-	registerCollector("cluster_license", defaultDisabled, NewClusterLicense)
+	registerCollector("cluster-license", defaultDisabled, NewClusterLicense)
 }
 
 // License Information Struct
