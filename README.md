@@ -90,6 +90,7 @@ Setting | Privilege Required | Description
 :---- | :---- | :----
 exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
 es.cluster_settings | `cluster` `monitor` |
+collector.clustersettings| `cluster` `monitor` | As of v1.6.0, this flag has replaced "es.cluster_settings"
 es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
 es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
