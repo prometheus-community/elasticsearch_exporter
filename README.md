@@ -87,8 +87,8 @@ ES 7.x supports RBACs. The following security privileges are required for the el
 
 Setting | Privilege Required | Description
 :---- | :---- | :----
+collector.clustersettings| `cluster` `monitor` |
 exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
-collector.clustersettings| `cluster` `monitor` | 
 es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
 es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
