@@ -96,6 +96,7 @@ var (
 	defaultRoleLabels               = []string{"cluster", "host", "name"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
+	defaultPipelineLabels           = append(defaultNodeLabels, "pipeline")
 	defaultFilesystemDataLabels     = append(defaultNodeLabels, "mount", "path")
 	defaultFilesystemIODeviceLabels = append(defaultNodeLabels, "device")
 	defaultCacheLabels              = append(defaultNodeLabels, "cache")
@@ -143,6 +144,20 @@ type gcCollectionMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, collector string) []string
 }
 
+type ingestMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(ingestStats NodeStatsIngestTotalResponse) float64
+	Labels func(cluster string, node NodeStatsNodeResponse) []string
+}
+
+type ingestPipelineMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(pipelineStats NodeStatsIngestPipelinesResponse) float64
+	Labels func(cluster string, node NodeStatsNodeResponse, pipeline string) []string
+}
+
 type breakerMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
@@ -184,6 +199,8 @@ type Nodes struct {
 
 	nodeMetrics               []*nodeMetric
 	gcCollectionMetrics       []*gcCollectionMetric
+	ingestMetrics             []*ingestMetric
+	ingestPipelineMetrics     []*ingestPipelineMetric
 	breakerMetrics            []*breakerMetric
 	threadPoolMetrics         []*threadPoolMetric
 	filesystemDataMetrics     []*filesystemDataMetric
@@ -1549,6 +1566,114 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				},
 			},
 		},
+		ingestMetrics: []*ingestMetric{
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total"),
+					"Total number of documents ingested during the lifetime of this node.",
+					defaultNodeLabels, nil,
+				),
+				Value: func(ingestStats NodeStatsIngestTotalResponse) float64 {
+					return float64(ingestStats.Count)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "time_in_millis"),
+					"Total time, in milliseconds, spent preprocessing ingest documents during the lifetime of this node.",
+					defaultNodeLabels, nil,
+				),
+				Value: func(ingestStats NodeStatsIngestTotalResponse) float64 {
+					return float64(ingestStats.TimeInMs)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "current"),
+					"Total number of documents currently being ingested.",
+					defaultNodeLabels, nil,
+				),
+				Value: func(ingestStats NodeStatsIngestTotalResponse) float64 {
+					return float64(ingestStats.Current)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "failed"),
+					"Total number of failed ingest operations during the lifetime of this node.",
+					defaultNodeLabels, nil,
+				),
+				Value: func(ingestStats NodeStatsIngestTotalResponse) float64 {
+					return float64(ingestStats.Failed)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+		},
+		ingestPipelineMetrics: []*ingestPipelineMetric{
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest_pipelines", "count"),
+					"Number of documents preprocessed by the ingest pipeline.",
+					defaultPipelineLabels, nil,
+				),
+				Value: func(pipelineStats NodeStatsIngestPipelinesResponse) float64 {
+					return float64(pipelineStats.Count)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse, pipeline string) []string {
+					return append(defaultNodeLabelValues(cluster, node), pipeline)
+				},
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest_pipelines", "time_in_millis"),
+					"Total time, in milliseconds, spent preprocessing documents in the ingest pipeline.",
+					defaultPipelineLabels, nil,
+				),
+				Value: func(pipelineStats NodeStatsIngestPipelinesResponse) float64 {
+					return float64(pipelineStats.TimeInMs)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse, pipeline string) []string {
+					return append(defaultNodeLabelValues(cluster, node), pipeline)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest_pipelines", "current"),
+					"Total number of current operations for the ingest pipeline.",
+					defaultPipelineLabels, nil,
+				),
+				Value: func(pipelineStats NodeStatsIngestPipelinesResponse) float64 {
+					return float64(pipelineStats.Current)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse, pipeline string) []string {
+					return append(defaultNodeLabelValues(cluster, node), pipeline)
+				},
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest_pipelines", "failed"),
+					"Total number of failed operations for the ingest pipeline.",
+					defaultPipelineLabels, nil,
+				),
+				Value: func(pipelineStats NodeStatsIngestPipelinesResponse) float64 {
+					return float64(pipelineStats.Failed)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse, pipeline string) []string {
+					return append(defaultNodeLabelValues(cluster, node), pipeline)
+				},
+			},
+		},
 		breakerMetrics: []*breakerMetric{
 			{
 				Type: prometheus.GaugeValue,
@@ -1903,6 +2028,28 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Type,
 					metric.Value(gcStats),
 					metric.Labels(nodeStatsResp.ClusterName, node, collector)...,
+				)
+			}
+		}
+
+		// Ingest stats
+		for _, metric := range c.ingestMetrics {
+			ch <- prometheus.MustNewConstMetric(
+				metric.Desc,
+				metric.Type,
+				metric.Value(node.Ingest.Total),
+				metric.Labels(nodeStatsResp.ClusterName, node)...,
+			)
+		}
+
+		// Pipeline stats
+		for pipeline, ppstats := range node.Ingest.Pipelines {
+			for _, metric := range c.ingestPipelineMetrics {
+				ch <- prometheus.MustNewConstMetric(
+					metric.Desc,
+					metric.Type,
+					metric.Value(ppstats),
+					metric.Labels(nodeStatsResp.ClusterName, node, pipeline)...,
 				)
 			}
 		}
