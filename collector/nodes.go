@@ -1908,6 +1908,9 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.filesystemIODeviceMetrics {
 		ch <- metric.Desc
 	}
+	for _, metric := range c.fileCacheMetrics {
+		ch <- metric.Desc
+	}
 	ch <- c.up.Desc()
 	ch <- c.totalScrapes.Desc()
 	ch <- c.jsonParseFailures.Desc()
