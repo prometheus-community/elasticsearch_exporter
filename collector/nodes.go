@@ -1957,6 +1957,9 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.filesystemIODeviceMetrics {
 		ch <- metric.Desc
 	}
+	for _, metric := range c.fileCacheMetrics {
+		ch <- metric.Desc
+	}
 }
 
 func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
