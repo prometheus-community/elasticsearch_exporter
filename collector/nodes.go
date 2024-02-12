@@ -2065,5 +2065,16 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
+		// File cache Stats
+		for _, metric := range c.fileCacheMetrics {
+			ch <- prometheus.MustNewConstMetric(
+				metric.Desc,
+				metric.Type,
+				metric.Value(node.FileCache),
+				metric.Labels(nodeStatsResp.ClusterName, node)...,
+			)
+		}
+
 	}
+
 }
