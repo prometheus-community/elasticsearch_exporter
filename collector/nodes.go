@@ -196,6 +196,7 @@ type Nodes struct {
 	threadPoolMetrics         []*threadPoolMetric
 	filesystemDataMetrics     []*filesystemDataMetric
 	filesystemIODeviceMetrics []*filesystemIODeviceMetric
+	fileCacheMetrics          []*fileCacheMetric
 }
 
 // NewNodes defines Nodes Prometheus metrics
