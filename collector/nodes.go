@@ -1790,6 +1790,104 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				Labels: defaultFilesystemIODeviceLabelValues,
 			},
 		},
+		fileCacheMetrics: []*fileCacheMetric{
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "active_in_bytes"),
+					"file_cache active memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.ActiveInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "total_in_bytes"),
+					"file_cache total memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.TotalInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "used_in_bytes"),
+					"file_cache used memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.UsedInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "evictions_in_bytes"),
+					"file_cache evicted memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.EvictionsInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "active_percent"),
+					"file_cache active memory as percent",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.ActivePercent)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "used_percent"),
+					"file_cache used memory as percent",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.UsedPercent)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "hit_count"),
+					"file_cache hit count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.HitCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "miss_count"),
+					"file_cache hit count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.MissCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+		},
 	}
 }
 
