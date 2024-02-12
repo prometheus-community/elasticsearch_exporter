@@ -171,6 +171,13 @@ type filesystemIODeviceMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, device string) []string
 }
 
+type fileCacheMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(fileCacheStats NodeStatsFileCacheResponse) float64
+	Labels func(cluster string, node NodeStatsNodeResponse) []string
+}
+
 // Nodes information struct
 type Nodes struct {
 	logger log.Logger
