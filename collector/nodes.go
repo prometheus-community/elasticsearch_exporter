@@ -38,6 +38,7 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 		"data_content":          false,
 		"ml":                    false,
 		"remote_cluster_client": false,
+		"search":                false,
 		"transform":             false,
 		"ingest":                false,
 		"client":                true,
