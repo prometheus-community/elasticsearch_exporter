@@ -40,6 +40,7 @@ type NodeStatsNodeResponse struct {
 	HTTP             map[string]interface{}                     `json:"http"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
+	FileCache        NodeStatsFileCacheResponse                 `json:"file_cache"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
