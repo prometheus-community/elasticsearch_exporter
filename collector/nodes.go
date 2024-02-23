@@ -1921,7 +1921,7 @@ func NewNodes(logger *slog.Logger, client *http.Client, url *url.URL, all bool, 
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "filecache", "miss_count"),
-					"file_cache hit count",
+					"file_cache miss count",
 					defaultNodeLabels, nil,
 				),
 				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
