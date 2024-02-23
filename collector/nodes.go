@@ -77,7 +77,7 @@ var nodesRolesMetric = prometheus.NewDesc(
 )
 
 var (
-	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
+	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node", "es_search_node"}
 	defaultRoleLabels               = []string{"cluster", "host", "name"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
