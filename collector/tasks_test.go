@@ -47,11 +47,11 @@ func TestTasks(t *testing.T) {
 	tcs := map[string]string{
 		"7.17": `{"tasks":[{"node":"9lWCm1y_QkujaAg75bVx7A","id":70,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464655,"running_time_in_nanos":308640039,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":73,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464683,"running_time_in_nanos":280672000,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":76,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464711,"running_time_in_nanos":253247906,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":93,"type":"transport","action":"indices:admin/index_template/put","start_time_in_millis":1695900464904,"running_time_in_nanos":60230460,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":50,"type":"transport","action":"indices:data/write/index","start_time_in_millis":1695900464229,"running_time_in_nanos":734480468,"cancellable":false,"headers":{}},{"node":"9lWCm1y_QkujaAg75bVx7A","id":51,"type":"transport","action":"indices:admin/auto_create","start_time_in_millis":1695900464235,"running_time_in_nanos":729223933,"cancellable":false,"headers":{}}]}`,
 	}
-	want := `# HELP elasticsearch_task_stats_action_total Number of tasks of a certain action
-# TYPE elasticsearch_task_stats_action_total gauge
-elasticsearch_task_stats_action_total{action="indices:admin/auto_create"} 1
-elasticsearch_task_stats_action_total{action="indices:admin/index_template/put"} 4
-elasticsearch_task_stats_action_total{action="indices:data/write/index"} 1
+	want := `# HELP elasticsearch_task_stats_action Number of tasks of a certain action
+# TYPE elasticsearch_task_stats_action gauge
+elasticsearch_task_stats_action{action="indices:admin/auto_create"} 1
+elasticsearch_task_stats_action{action="indices:admin/index_template/put"} 4
+elasticsearch_task_stats_action{action="indices:data/write/index"} 1
 `
 	for ver, out := range tcs {
 		t.Run(ver, func(t *testing.T) {
