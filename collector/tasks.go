@@ -32,7 +32,7 @@ import (
 var actionFilter string
 
 var taskActionDesc = prometheus.NewDesc(
-	prometheus.BuildFQName(namespace, "task_stats", "action_total"),
+	prometheus.BuildFQName(namespace, "task_stats", "action"),
 	"Number of tasks of a certain action",
 	[]string{"action"}, nil)
 
