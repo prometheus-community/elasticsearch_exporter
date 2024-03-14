@@ -138,7 +138,7 @@ type basicAuth struct {
 	Next http.Handler
 }
 
-func (h *basicAuth) checkAuth(w http.ResponseWriter, r *http.Request) bool {
+func (h *basicAuth) checkAuth(_ http.ResponseWriter, r *http.Request) bool {
 	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 	if len(s) != 2 {
 		return false
