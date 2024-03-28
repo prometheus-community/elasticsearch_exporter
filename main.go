@@ -25,6 +25,7 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/go-kit/log/level"
+	"github.com/google/uuid"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
@@ -36,6 +37,17 @@ import (
 )
 
 const name = "elasticsearch_exporter"
+
+type withDefaultHeader struct {
+	rt http.RoundTripper
+}
+
+func (h *withDefaultHeader) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("X-Opaque-Id", uuid.New().String())
+	req.Header.Add("x-request-path", "/o11y/prometheus/es_exporter")
+	req.Header.Add("x-request-from-head-app-name", "elasticsearch_exporter")
+	return h.rt.RoundTrip(req)
+}
 
 type transportWithAPIKey struct {
 	underlyingTransport http.RoundTripper
@@ -163,8 +175,10 @@ func main() {
 	}
 
 	httpClient := &http.Client{
-		Timeout:   *esTimeout,
-		Transport: httpTransport,
+		Timeout: *esTimeout,
+		Transport: &withDefaultHeader{
+			rt: httpTransport,
+		},
 	}
 
 	if *awsRegion != "" {
