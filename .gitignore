@@ -4,3 +4,4 @@ elasticsearch_exporter
 *-stamp
 .tarballs
 /vendor
+vendor/
