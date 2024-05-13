@@ -27,6 +27,7 @@ import (
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
+	collectorVersion "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -161,7 +162,7 @@ func main() {
 	}
 
 	// version metric
-	prometheus.MustRegister(version.NewCollector(name))
+	prometheus.MustRegister(collectorVersion.NewCollector(name))
 
 	// create the exporter
 	exporter, err := collector.NewElasticsearchCollector(
