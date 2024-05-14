@@ -78,7 +78,7 @@ func main() {
 			"Export informational alias metrics.").
 			Default("true").Bool()
 		esExportILM = kingpin.Flag("es.ilm",
-			"Export index lifecycle politics for indices in the cluster.").
+			"Export index lifecycle policies for indices in the cluster.").
 			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
