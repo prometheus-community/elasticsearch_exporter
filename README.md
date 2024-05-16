@@ -93,8 +93,8 @@ es.indices | `indices` `monitor` (per index or `*`) | All actions that are requi
 es.indices_settings | `indices` `monitor` (per index or `*`) |
 es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
 es.shards | not sure if `indices` or `cluster` `monitor` or both |
-es.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
-es.slm | `read_slm`
+collector.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
+es.slm | `manage_slm`
 es.data_stream | `monitor` or `manage` (per index or `*`) |
 
 Further Information
