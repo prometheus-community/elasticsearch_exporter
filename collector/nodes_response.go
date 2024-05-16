@@ -40,6 +40,7 @@ type NodeStatsNodeResponse struct {
 	HTTP             map[string]interface{}                     `json:"http"`
 	Transport        NodeStatsTransportResponse                 `json:"transport"`
 	Process          NodeStatsProcessResponse                   `json:"process"`
+	Ingest           NodeIngestResponse                         `json:"ingest"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
@@ -383,4 +384,17 @@ type ClusterHealthResponse struct {
 	Status                  string `json:"status"`
 	TimedOut                bool   `json:"timed_out"`
 	UnassignedShards        int64  `json:"unassigned_shards"`
+}
+
+// NodeIngestResponse is a representation of a node ingest stats
+type NodeIngestResponse struct {
+	Total NodeIngestStatsResponse `json:"total"`
+}
+
+// NodeIngestStatsResponse is a representation of a node ingest stats
+type NodeIngestStatsResponse struct {
+	Count        int64 `json:"count"`
+	TimeInMillis int64 `json:"time_in_millis"`
+	Current      int64 `json:"current"`
+	Failed       int64 `json:"failed"`
 }
