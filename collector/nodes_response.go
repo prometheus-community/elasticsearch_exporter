@@ -149,6 +149,7 @@ type NodeStatsIndicesResponse struct {
 	Segments     NodeStatsIndicesSegmentsResponse
 	Refresh      NodeStatsIndicesRefreshResponse
 	Translog     NodeStatsIndicesTranslogResponse
+	Suggest      NodeStatsIndicesSuggestResponse
 	Completion   NodeStatsIndicesCompletionResponse
 }
 
@@ -168,6 +169,13 @@ type NodeStatsIndicesRefreshResponse struct {
 type NodeStatsIndicesTranslogResponse struct {
 	Operations int64 `json:"operations"`
 	Size       int64 `json:"size_in_bytes"`
+}
+
+// NodeStatsIndicesSuggestResponse defines node stats suggest information structure for indices
+type NodeStatsIndicesSuggestResponse struct {
+	Total   int64 `json:"total"`
+	Time    int64 `json:"time_in_millis"`
+	Current int64 `json:"current"`
 }
 
 // NodeStatsIndicesCompletionResponse defines node stats completion information structure for indices
@@ -271,14 +279,13 @@ type NodeStatsIndicesCacheResponse struct {
 
 // NodeStatsOSResponse is a representation of a  operating system stats, load average, mem, swap
 type NodeStatsOSResponse struct {
-	Timestamp int64 `json:"timestamp"`
-	Uptime    int64 `json:"uptime_in_millis"`
-	// LoadAvg was an array of per-cpu values pre-2.0, and is a string in 2.0
-	// Leaving this here in case we want to implement parsing logic later
-	LoadAvg json.RawMessage         `json:"load_average"`
-	CPU     NodeStatsOSCPUResponse  `json:"cpu"`
-	Mem     NodeStatsOSMemResponse  `json:"mem"`
-	Swap    NodeStatsOSSwapResponse `json:"swap"`
+	Timestamp  int64                   `json:"timestamp"`
+	Uptime     int64                   `json:"uptime_in_millis"`
+	LoadAvg    *json.RawMessage        `json:"load_average"`
+	CPU        NodeStatsOSCPUResponse  `json:"cpu"`
+	CPUPercent *int64                  `json:"cpu_percent"`
+	Mem        NodeStatsOSMemResponse  `json:"mem"`
+	Swap       NodeStatsOSSwapResponse `json:"swap"`
 }
 
 // NodeStatsOSMemResponse defines node stats operating system memory usage structure
