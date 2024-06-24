@@ -23,23 +23,24 @@ type nodeStatsResponse struct {
 
 // NodeStatsNodeResponse defines node stats information structure for nodes
 type NodeStatsNodeResponse struct {
-	Name             string                                     `json:"name"`
-	Host             string                                     `json:"host"`
-	Timestamp        int64                                      `json:"timestamp"`
-	TransportAddress string                                     `json:"transport_address"`
-	Hostname         string                                     `json:"hostname"`
-	Roles            []string                                   `json:"roles"`
-	Attributes       map[string]string                          `json:"attributes"`
-	Indices          NodeStatsIndicesResponse                   `json:"indices"`
-	OS               NodeStatsOSResponse                        `json:"os"`
-	Network          NodeStatsNetworkResponse                   `json:"network"`
-	FS               NodeStatsFSResponse                        `json:"fs"`
-	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
-	JVM              NodeStatsJVMResponse                       `json:"jvm"`
-	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
-	HTTP             map[string]interface{}                     `json:"http"`
-	Transport        NodeStatsTransportResponse                 `json:"transport"`
-	Process          NodeStatsProcessResponse                   `json:"process"`
+	Name             string                                       `json:"name"`
+	Host             string                                       `json:"host"`
+	Timestamp        int64                                        `json:"timestamp"`
+	TransportAddress string                                       `json:"transport_address"`
+	Hostname         string                                       `json:"hostname"`
+	Roles            []string                                     `json:"roles"`
+	Attributes       map[string]string                            `json:"attributes"`
+	Indices          NodeStatsIndicesResponse                     `json:"indices"`
+	OS               NodeStatsOSResponse                          `json:"os"`
+	Network          NodeStatsNetworkResponse                     `json:"network"`
+	FS               NodeStatsFSResponse                          `json:"fs"`
+	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse   `json:"thread_pool"`
+	JVM              NodeStatsJVMResponse                         `json:"jvm"`
+	Breakers         map[string]NodeStatsBreakersResponse         `json:"breakers"`
+	HTTP             map[string]interface{}                       `json:"http"`
+	Transport        NodeStatsTransportResponse                   `json:"transport"`
+	Process          NodeStatsProcessResponse                     `json:"process"`
+	IndexingPressure map[string]NodeStatsIndexingPressureResponse `json:"indexing_pressure"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
@@ -48,6 +49,17 @@ type NodeStatsBreakersResponse struct {
 	LimitSize     int64   `json:"limit_size_in_bytes"`
 	Overhead      float64 `json:"overhead"`
 	Tripped       int64   `json:"tripped"`
+}
+
+// NodeStatsIndexingPressureResponse is a representation of a elasticsearch indexing pressure
+type NodeStatsIndexingPressureResponse struct {
+	Current      NodeStatsIndexingPressureCurrentResponse `json:"current"`
+	LimitInBytes int64                                    `json:"limit_in_bytes"`
+}
+
+// NodeStatsIndexingPressureMemoryCurrentResponse is a representation of a elasticsearch indexing pressure current memory usage
+type NodeStatsIndexingPressureCurrentResponse struct {
+	AllInBytes int64 `json:"all_in_bytes"`
 }
 
 // NodeStatsJVMResponse is a representation of a JVM stats, memory pool information, garbage collection, buffer pools, number of loaded/unloaded classes

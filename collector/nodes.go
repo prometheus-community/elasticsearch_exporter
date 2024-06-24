@@ -96,6 +96,7 @@ var (
 	defaultRoleLabels               = []string{"cluster", "host", "name"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
+	defaultIndexingPressureLabels   = append(defaultNodeLabels, "indexing_pressure")
 	defaultFilesystemDataLabels     = append(defaultNodeLabels, "mount", "path")
 	defaultFilesystemIODeviceLabels = append(defaultNodeLabels, "device")
 	defaultCacheLabels              = append(defaultNodeLabels, "cache")
@@ -150,6 +151,13 @@ type breakerMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, breaker string) []string
 }
 
+type indexingPressureMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(indexingPressureStats NodeStatsIndexingPressureResponse) float64
+	Labels func(cluster string, node NodeStatsNodeResponse, indexingPressure string) []string
+}
+
 type threadPoolMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
@@ -185,6 +193,7 @@ type Nodes struct {
 	nodeMetrics               []*nodeMetric
 	gcCollectionMetrics       []*gcCollectionMetric
 	breakerMetrics            []*breakerMetric
+	indexingPressureMetrics   []*indexingPressureMetric
 	threadPoolMetrics         []*threadPoolMetric
 	filesystemDataMetrics     []*filesystemDataMetric
 	filesystemIODeviceMetrics []*filesystemIODeviceMetric
@@ -1607,6 +1616,36 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				},
 			},
 		},
+		indexingPressureMetrics: []*indexingPressureMetric{
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indexing_pressure", "current_all_in_bytes"),
+					"Memory consumed, in bytes, by indexing requests in the coordinating, primary, or replica stage.",
+					defaultIndexingPressureLabels, nil,
+				),
+				Value: func(indexingPressureMem NodeStatsIndexingPressureResponse) float64 {
+					return float64(indexingPressureMem.Current.AllInBytes)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse, indexingPressure string) []string {
+					return append(defaultNodeLabelValues(cluster, node), indexingPressure)
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indexing_pressure", "limit_in_bytes"),
+					"Configured memory limit, in bytes, for the indexing requests",
+					defaultIndexingPressureLabels, nil,
+				),
+				Value: func(indexingPressureStats NodeStatsIndexingPressureResponse) float64 {
+					return float64(indexingPressureStats.LimitInBytes)
+				},
+				Labels: func(cluster string, node NodeStatsNodeResponse, indexingPressure string) []string {
+					return append(defaultNodeLabelValues(cluster, node), indexingPressure)
+				},
+			},
+		},
 		threadPoolMetrics: []*threadPoolMetric{
 			{
 				Type: prometheus.CounterValue,
@@ -1915,6 +1954,18 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Type,
 					metric.Value(bstats),
 					metric.Labels(nodeStatsResp.ClusterName, node, breaker)...,
+				)
+			}
+		}
+
+		// Indexing Pressure stats
+		for indexingPressure, ipstats := range node.IndexingPressure {
+			for _, metric := range c.indexingPressureMetrics {
+				ch <- prometheus.MustNewConstMetric(
+					metric.Desc,
+					metric.Type,
+					metric.Value(ipstats),
+					metric.Labels(nodeStatsResp.ClusterName, node, indexingPressure)...,
 				)
 			}
 		}
