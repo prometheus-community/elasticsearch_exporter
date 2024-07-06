@@ -96,7 +96,7 @@ var (
 	defaultRoleLabels               = []string{"cluster", "host", "name"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
-	defaultIndexingPressureLabels   = append(defaultNodeLabels, "indexing_pressure")
+	defaultIndexingPressureLabels   = []string{"cluster", "host", "name", "indexing_pressure"}
 	defaultFilesystemDataLabels     = append(defaultNodeLabels, "mount", "path")
 	defaultFilesystemIODeviceLabels = append(defaultNodeLabels, "device")
 	defaultCacheLabels              = append(defaultNodeLabels, "cache")
@@ -1628,7 +1628,12 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					return float64(indexingPressureMem.Current.AllInBytes)
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse, indexingPressure string) []string {
-					return append(defaultNodeLabelValues(cluster, node), indexingPressure)
+					return []string{
+						cluster,
+						node.Host,
+						node.Name,
+						indexingPressure,
+					}
 				},
 			},
 			{
@@ -1642,7 +1647,12 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					return float64(indexingPressureStats.LimitInBytes)
 				},
 				Labels: func(cluster string, node NodeStatsNodeResponse, indexingPressure string) []string {
-					return append(defaultNodeLabelValues(cluster, node), indexingPressure)
+					return []string{
+						cluster,
+						node.Host,
+						node.Name,
+						indexingPressure,
+					}
 				},
 			},
 		},
