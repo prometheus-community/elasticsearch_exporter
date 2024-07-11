@@ -121,7 +121,6 @@ Further Information
 | elasticsearch_cluster_health_task_max_waiting_in_queue_millis        | gauge      | 1           | Max time in millis that a task is waiting in queue.                                                 |
 | elasticsearch_cluster_health_relocating_shards                       | gauge      | 1           | The number of shards that are currently moving from one node to another node.                       |
 | elasticsearch_cluster_health_status                                  | gauge      | 3           | Whether all primary and replica shards are allocated.                                               |
-| elasticsearch_cluster_health_timed_out                               | gauge      | 1           | Number of cluster health checks timed out                                                           |
 | elasticsearch_cluster_health_unassigned_shards                       | gauge      | 1           | The number of shards that exist in the cluster state, but cannot be found in the cluster itself.    |
 | elasticsearch_clustersettings_stats_max_shards_per_node              | gauge      | 0           | Current maximum number of shards per node setting.                                                  |
 | elasticsearch_clustersettings_allocation_threshold_enabled           | gauge      | 0           | Is disk allocation decider enabled.                                                                 |
