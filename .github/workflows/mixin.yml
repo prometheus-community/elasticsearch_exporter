@@ -6,8 +6,8 @@ on:
       - "elasticsearch-mixin/**"
 
 jobs:
-  lint:
-      name: lint
+  check-mixin:
+      name: check
       runs-on: ubuntu-latest
       steps:
         - name: Checkout repository
@@ -23,3 +23,7 @@ jobs:
             go install github.com/google/go-jsonnet/cmd/jsonnet-lint@v0.20.0
         - name: Lint
           run: bash ./scripts/lint-jsonnet.sh
+        - name: Compile mixin
+          run: bash ./scripts/compile-mixin.sh
+        - name: Verify compiled mixin matches repo
+          run: git diff --exit-code -- elasticsearch-mixin
