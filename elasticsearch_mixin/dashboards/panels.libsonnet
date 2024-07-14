@@ -24,6 +24,15 @@ local g = import 'g.libsonnet';
 
     ratioMax1(title, targets):
       self.ratio(title, targets)
-      + timeSeries.standardOptions.withMax(1),
+      + timeSeries.standardOptions.withMax(1)
+      + timeSeries.standardOptions.withMin(0),
+
+    bytes(title, targets):
+      self.base(title, targets)
+      + timeSeries.standardOptions.withUnit('bytes'),
+
+    seconds(title, targets):
+      self.base(title, targets)
+      + timeSeries.standardOptions.withUnit('s'),
   },
 }
