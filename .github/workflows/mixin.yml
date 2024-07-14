@@ -31,4 +31,4 @@ jobs:
           run: |
             git diff --exit-code -- ./elasticsearch-mixin || (echo "Compiled mixin does not match repo" && exit 1)
             # Check if there are any new untracked files
-            test -z "$(git status --porcelain)"
+            test -z "$(git status --porcelain)" || (echo "Untracked files found" && exit 1)
