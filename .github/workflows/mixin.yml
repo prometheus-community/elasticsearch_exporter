@@ -1,0 +1,25 @@
+---
+name: mixin
+on:
+  pull_request:
+    paths:
+      - "elasticsearch-mixin/**"
+
+jobs:
+  lint:
+      name: lint
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+        - name: Setup Go
+          uses: actions/setup-go@v5
+          with:
+            go-version: 1.22.5
+        - name: Install dependencies
+          run: |
+            go install github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+            go install github.com/google/go-jsonnet/cmd/jsonnetfmt@v0.20.0
+            go install github.com/google/go-jsonnet/cmd/jsonnet-lint@v0.20.0
+        - name: Lint
+          run: bash ./scripts/lint-jsonnet.sh

@@ -11,5 +11,5 @@ local var = g.dashboard.variable;
     + var.query.queryTypes.withLabelValues(
       'cluster',
       'elasticsearch_cluster_health_status',
-    )
+    ),
 }
