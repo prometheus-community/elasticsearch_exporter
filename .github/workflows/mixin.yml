@@ -28,4 +28,7 @@ jobs:
         - name: Compile mixin
           run: bash ./scripts/compile-mixin.sh
         - name: Verify compiled mixin matches repo
-          run: git diff --exit-code -- elasticsearch-mixin
+          run: |
+            git diff --exit-code -- ./elasticsearch-mixin || (echo "Compiled mixin does not match repo" && exit 1)
+            # Check if there are any new untracked files
+            test -z $(git status --porcelain)
