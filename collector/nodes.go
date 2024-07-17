@@ -230,6 +230,14 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
+					// LoadAvg was an array of per-cpu values pre-2.0, and is a float in 2.x
+					if node.OS.LoadAvg != nil {
+						// trying parse as float
+						var loadAvgAsFloat float64
+						if json.Unmarshal(*node.OS.LoadAvg, &loadAvgAsFloat) == nil {
+							return loadAvgAsFloat
+						}
+					}
 					return node.OS.CPU.LoadAvg.Load1
 				},
 				Labels: defaultNodeLabelValues,
@@ -266,6 +274,9 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 					defaultNodeLabels, nil,
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
+					if node.OS.CPUPercent != nil {
+						return float64(*node.OS.CPUPercent)
+					}
 					return float64(node.OS.CPU.Percent)
 				},
 				Labels: defaultNodeLabelValues,
@@ -531,6 +542,42 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Translog.Size)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "suggest_total"),
+					"Total suggest",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Suggest.Total)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "suggest_time_seconds"),
+					"Total suggest time in seconds",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Suggest.Time) / 1000
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "suggest_current"),
+					"Current suggest",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Suggest.Current)
 				},
 				Labels: defaultNodeLabelValues,
 			},

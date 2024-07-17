@@ -14,6 +14,7 @@
 package collector
 
 var testElasticsearchVersions = []string{
+	"2.4.6",
 	"5.4.2",
 	"5.6.16",
 	"6.5.4",
