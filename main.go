@@ -143,117 +143,13 @@ func main() {
 		esURL.User = url.UserPassword(esUsername, esPassword)
 	}
 
-	// returns nil if not provided and falls back to simple TCP.
-	tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
-
-	var httpTransport http.RoundTripper
-
-	httpTransport = &http.Transport{
-		TLSClientConfig: tlsConfig,
-		Proxy:           http.ProxyFromEnvironment,
-	}
-
-	esAPIKey := os.Getenv("ES_API_KEY")
-
-	if esAPIKey != "" {
-		httpTransport = &transportWithAPIKey{
-			underlyingTransport: httpTransport,
-			apiKey:              esAPIKey,
-		}
-	}
-
-	httpClient := &http.Client{
-		Timeout:   *esTimeout,
-		Transport: httpTransport,
-	}
-
-	if *awsRegion != "" {
-		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
-			os.Exit(1)
-		}
-	}
-
-	// version metric
-	prometheus.MustRegister(version.NewCollector(name))
-
-	// create the exporter
-	exporter, err := collector.NewElasticsearchCollector(
-		logger,
-		[]string{},
-		collector.WithElasticsearchURL(esURL),
-		collector.WithHTTPClient(httpClient),
-	)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
-		os.Exit(1)
-	}
-	prometheus.MustRegister(exporter)
-
-	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
-	// cluster info retriever
-	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
-
-	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
-
-	if *esExportIndices || *esExportShards {
-		sC := collector.NewShards(logger, httpClient, esURL)
-		prometheus.MustRegister(sC)
-		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
-		prometheus.MustRegister(iC)
-		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
-			os.Exit(1)
-		}
-		if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
-			level.Error(logger).Log("msg", "failed to register shards collector in cluster info")
-			os.Exit(1)
-		}
-	}
-
-	if *esExportSLM {
-		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
-	}
-
-	if *esExportDataStream {
-		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
-	}
-
-	if *esExportIndicesSettings {
-		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
-	}
-
-	if *esExportIndicesMappings {
-		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
-	}
-
-	if *esExportILM {
-		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
-		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
-	}
+	clusterRetrieverMap := make(map[string]*clusterinfo.Retriever)
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
-	// start the cluster info retriever
-	switch runErr := clusterInfoRetriever.Run(ctx); runErr {
-	case nil:
-		level.Info(logger).Log(
-			"msg", "started cluster info retriever",
-			"interval", (*esClusterInfoInterval).String(),
-		)
-	case clusterinfo.ErrInitialCallTimeout:
-		level.Info(logger).Log("msg", "initial cluster info call timed out")
-	default:
-		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
-		os.Exit(1)
-	}
-
-	// register cluster info retriever as prometheus collector
-	prometheus.MustRegister(clusterInfoRetriever)
+	probePath := "/probe"
 
 	http.Handle(*metricsPath, promhttp.Handler())
 	if *metricsPath != "/" && *metricsPath != "" {
@@ -263,8 +159,14 @@ func main() {
 			Version:     version.Info(),
 			Links: []web.LandingLinks{
 				{
-					Address: *metricsPath,
-					Text:    "Metrics",
+					Address:     *metricsPath,
+					Text:        "Metrics",
+					Description: "Metrics endpoint exposing elasticsearch-exporter metrics in the Prometheus exposition format.",
+				},
+				{
+					Address:     probePath,
+					Text:        "Probe",
+					Description: "Probe endpoint for testing the exporter against a specific Elasticsearch instance.",
 				},
 			},
 		}
@@ -275,6 +177,150 @@ func main() {
 		}
 		http.Handle("/", landingPage)
 	}
+
+	http.HandleFunc("/probe", func(w http.ResponseWriter, r *http.Request) {
+		params := r.URL.Query()
+		target := params.Get("target")
+
+		if target != "" {
+			targetURL, err := url.Parse(target)
+			if err != nil {
+				http.Error(w, "invalid target", http.StatusBadRequest)
+				return
+			}
+
+			targetUsername := os.Getenv("ES_USERNAME")
+			targetPassword := os.Getenv("ES_PASSWORD")
+
+			authModule := params.Get("auth_module")
+			if authModule != "" {
+				targetUsername = os.Getenv(fmt.Sprintf("ES_%s_USERNAME", authModule))
+				targetPassword = os.Getenv(fmt.Sprintf("ES_%s_PASSWORD", authModule))
+			}
+
+			if targetUsername != "" && targetPassword != "" {
+				targetURL.User = url.UserPassword(targetUsername, targetPassword)
+			}
+
+			esURL = targetURL
+		}
+
+		registry := prometheus.NewRegistry()
+		// returns nil if not provided and falls back to simple TCP.
+		tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
+
+		var httpTransport http.RoundTripper
+
+		httpTransport = &http.Transport{
+			TLSClientConfig: tlsConfig,
+			Proxy:           http.ProxyFromEnvironment,
+		}
+
+		esAPIKey := os.Getenv("ES_API_KEY")
+
+		if esAPIKey != "" {
+			httpTransport = &transportWithAPIKey{
+				underlyingTransport: httpTransport,
+				apiKey:              esAPIKey,
+			}
+		}
+
+		httpClient := &http.Client{
+			Timeout:   *esTimeout,
+			Transport: httpTransport,
+		}
+
+		if *awsRegion != "" {
+			httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
+				os.Exit(1)
+			}
+		}
+
+		// version metric
+		registry.MustRegister(version.NewCollector(name))
+
+		// create the exporter
+		exporter, err := collector.NewElasticsearchCollector(
+			logger,
+			[]string{},
+			collector.WithElasticsearchURL(esURL),
+			collector.WithHTTPClient(httpClient),
+		)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+			os.Exit(1)
+		}
+		registry.MustRegister(exporter)
+
+		// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
+		// cluster info retriever
+
+		clusterInfoRetriever, ok := clusterRetrieverMap[target]
+		if !ok {
+			clusterInfoRetriever = clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
+			clusterRetrieverMap[target] = clusterInfoRetriever
+
+			// start the cluster info retriever
+			switch runErr := clusterInfoRetriever.Run(ctx); runErr {
+			case nil:
+				level.Info(logger).Log(
+					"msg", fmt.Sprintf("[%s]started cluster info retriever", esURL.Host),
+					"interval", (*esClusterInfoInterval).String(),
+				)
+			case clusterinfo.ErrInitialCallTimeout:
+				level.Info(logger).Log("msg", fmt.Sprintf("[%s]initial cluster info call timed out", esURL.Host))
+			default:
+				level.Error(logger).Log("msg", fmt.Sprintf("[%s]failed to run cluster info retriever", esURL.Host), "err", err)
+			}
+		}
+
+		registry.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+		registry.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
+
+		if *esExportIndices || *esExportShards {
+			sC := collector.NewShards(logger, httpClient, esURL)
+			prometheus.MustRegister(sC)
+			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
+			prometheus.MustRegister(iC)
+			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
+				level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
+				os.Exit(1)
+			}
+			if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
+				level.Error(logger).Log("msg", "failed to register shards collector in cluster info")
+				os.Exit(1)
+			}
+		}
+
+		if *esExportSLM {
+			registry.MustRegister(collector.NewSLM(logger, httpClient, esURL))
+		}
+
+		if *esExportDataStream {
+			registry.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
+		}
+
+		if *esExportIndicesSettings {
+			registry.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+		}
+
+		if *esExportIndicesMappings {
+			registry.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
+		}
+
+		if *esExportILM {
+			registry.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
+			registry.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
+		}
+
+		// register cluster info retriever as prometheus collector
+		registry.MustRegister(clusterInfoRetriever)
+
+		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+		h.ServeHTTP(w, r)
+	})
 
 	// health endpoint
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
