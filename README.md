@@ -116,7 +116,7 @@ http://localhost:9114/probe?target=http://server1:9200&auth_module=TEST
 ```
 
 - target: es url
-- auth_module: es url对应的用户名密码环境变量 exp: ES_{auth_module}_USERNAME=elastic, ES_{auth_module}_PASSWORD
+- auth_module: The username and password environment variables for the es url. exp: `ES_{auth_module}_USERNAME`, `ES_{auth_module}_PASSWORD`
 
 ```
 elasticsearch_exporter:
