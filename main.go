@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"context"
@@ -194,6 +195,7 @@ func main() {
 
 			authModule := params.Get("auth_module")
 			if authModule != "" {
+				authModule = strings.ToUpper(authModule)
 				targetUsername = os.Getenv(fmt.Sprintf("ES_%s_USERNAME", authModule))
 				targetPassword = os.Getenv(fmt.Sprintf("ES_%s_PASSWORD", authModule))
 			}
