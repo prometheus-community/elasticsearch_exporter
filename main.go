@@ -236,7 +236,8 @@ func main() {
 			httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
-				os.Exit(1)
+				http.Error(w, "failed to create AWS transport", http.StatusInternalServerError)
+				return
 			}
 		}
 
@@ -252,7 +253,8 @@ func main() {
 		)
 		if err != nil {
 			level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
-			os.Exit(1)
+			http.Error(w, "failed to create Elasticsearch collector", http.StatusInternalServerError)
+			return
 		}
 		registry.MustRegister(exporter)
 
@@ -283,9 +285,9 @@ func main() {
 
 		if *esExportIndices || *esExportShards {
 			sC := collector.NewShards(logger, httpClient, esURL)
-			prometheus.MustRegister(sC)
+			registry.MustRegister(sC)
 			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
-			prometheus.MustRegister(iC)
+			registry.MustRegister(iC)
 			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 				level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
 				os.Exit(1)
