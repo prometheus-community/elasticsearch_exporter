@@ -186,6 +186,7 @@ func main() {
 		if target != "" {
 			targetURL, err := url.Parse(target)
 			if err != nil {
+				level.Error(logger).Log("invalid target", err)
 				http.Error(w, "invalid target", http.StatusBadRequest)
 				return
 			}
@@ -260,11 +261,27 @@ func main() {
 
 		// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
 		// cluster info retriever
-
 		clusterInfoRetriever, ok := clusterRetrieverMap[target]
 		if !ok {
 			clusterInfoRetriever = clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 			clusterRetrieverMap[target] = clusterInfoRetriever
+
+			if *esExportIndices || *esExportShards {
+				sC := collector.NewShards(logger, httpClient, esURL)
+				registry.MustRegister(sC)
+				iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
+				registry.MustRegister(iC)
+				if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
+					level.Error(logger).Log("msg", "failed to register indices collector in cluster info", registerErr)
+					http.Error(w, "failed to register indices collector in cluster info", http.StatusInternalServerError)
+					return
+				}
+				if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
+					level.Error(logger).Log("msg", "failed to register shards collector in cluster info", registerErr)
+					http.Error(w, "failed to register shards collector in cluster info", http.StatusInternalServerError)
+					return
+				}
+			}
 
 			// start the cluster info retriever
 			switch runErr := clusterInfoRetriever.Run(ctx); runErr {
@@ -282,21 +299,6 @@ func main() {
 
 		registry.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 		registry.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
-
-		if *esExportIndices || *esExportShards {
-			sC := collector.NewShards(logger, httpClient, esURL)
-			registry.MustRegister(sC)
-			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
-			registry.MustRegister(iC)
-			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-				level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
-				os.Exit(1)
-			}
-			if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
-				level.Error(logger).Log("msg", "failed to register shards collector in cluster info")
-				os.Exit(1)
-			}
-		}
 
 		if *esExportSLM {
 			registry.MustRegister(collector.NewSLM(logger, httpClient, esURL))
