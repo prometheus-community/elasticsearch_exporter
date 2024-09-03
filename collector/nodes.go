@@ -16,7 +16,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -70,7 +70,7 @@ func createRoleMetric(role string) *nodeMetric {
 			"Node roles",
 			defaultRoleLabels, prometheus.Labels{"role": role},
 		),
-		Value: func(node NodeStatsNodeResponse) float64 {
+		Value: func(_ NodeStatsNodeResponse) float64 {
 			return 1.0
 		},
 		Labels: func(cluster string, node NodeStatsNodeResponse) []string {
@@ -1829,7 +1829,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		c.jsonParseFailures.Inc()
 		return nsr, err

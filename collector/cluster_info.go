@@ -16,7 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -77,13 +77,13 @@ type VersionInfo struct {
 	LuceneVersion semver.Version `json:"lucene_version"`
 }
 
-func (c *ClusterInfoCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *ClusterInfoCollector) Update(_ context.Context, ch chan<- prometheus.Metric) error {
 	resp, err := c.hc.Get(c.u.String())
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

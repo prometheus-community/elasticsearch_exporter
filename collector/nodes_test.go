@@ -16,10 +16,10 @@ package collector
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -29,10 +29,10 @@ import (
 func TestNodesStats(t *testing.T) {
 	for _, ver := range testElasticsearchVersions {
 		filename := fmt.Sprintf("../fixtures/nodestats/%s.json", ver)
-		data, _ := ioutil.ReadFile(filename)
+		data, _ := os.ReadFile(filename)
 
 		handlers := map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			"plain": http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				if _, err := w.Write(data); err != nil {
 					t.Fatalf("failed write: %s", err)
 				}
@@ -40,7 +40,7 @@ func TestNodesStats(t *testing.T) {
 			"basicauth": &basicAuth{
 				User: "elastic",
 				Pass: "changeme",
-				Next: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					if _, err := w.Write(data); err != nil {
 						t.Fatalf("failed write: %s", err)
 					}
@@ -138,7 +138,7 @@ type basicAuth struct {
 	Next http.Handler
 }
 
-func (h *basicAuth) checkAuth(w http.ResponseWriter, r *http.Request) bool {
+func (h *basicAuth) checkAuth(_ http.ResponseWriter, r *http.Request) bool {
 	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
 	if len(s) != 2 {
 		return false

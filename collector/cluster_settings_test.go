@@ -33,7 +33,7 @@ func TestClusterSettingsStats(t *testing.T) {
 		f, _ := os.Open(filename)
 		defer f.Close()
 		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			"plain": http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				io.Copy(w, f)
 			}),
 		} {
@@ -69,7 +69,7 @@ func TestClusterMaxShardsPerNode(t *testing.T) {
 		f, _ := os.Open(filename)
 		defer f.Close()
 		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			"plain": http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				io.Copy(w, f)
 			}),
 		} {

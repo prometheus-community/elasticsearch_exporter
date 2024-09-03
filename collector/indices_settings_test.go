@@ -59,7 +59,7 @@ func TestIndicesSettings(t *testing.T) {
 	}
 	for ver, out := range tcs {
 		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			"plain": http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				fmt.Fprintln(w, out)
 			}),
 		} {

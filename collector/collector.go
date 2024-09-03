@@ -202,8 +202,8 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 // A new action function is needed for each collector flag because the ParseContext
 // does not contain information about which flag called the action.
 // See: https://github.com/alecthomas/kingpin/issues/294
-func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
-	return func(ctx *kingpin.ParseContext) error {
+func collectorFlagAction(collector string) func(_ *kingpin.ParseContext) error {
+	return func(_ *kingpin.ParseContext) error {
 		forcedCollectors[collector] = true
 		return nil
 	}

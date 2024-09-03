@@ -16,16 +16,17 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"sort"
 	"strconv"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
@@ -1183,7 +1184,7 @@ func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 		return []byte{}, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
 		return []byte{}, err
 	}

@@ -240,7 +240,7 @@ func main() {
 
 	mux := http.DefaultServeMux
 	mux.Handle(*metricsPath, promhttp.Handler())
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>Elasticsearch Exporter</title></head>
 			<body>
@@ -257,7 +257,7 @@ func main() {
 	})
 
 	// health endpoint
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 	})
 
