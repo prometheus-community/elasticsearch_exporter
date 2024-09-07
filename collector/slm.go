@@ -61,9 +61,6 @@ type SLM struct {
 	client *http.Client
 	url    *url.URL
 
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
 	slmMetrics      []*slmMetric
 	policyMetrics   []*policyMetric
 	slmStatusMetric *slmStatusMetric
@@ -75,19 +72,6 @@ func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
 		logger: logger,
 		client: client,
 		url:    url,
-
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "slm_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch SLM endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "slm_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch SLM scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "slm_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 		slmMetrics: []*slmMetric{
 			{
 				Type: prometheus.CounterValue,
@@ -257,9 +241,6 @@ func (s *SLM) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.Desc
 	}
 
-	ch <- s.up.Desc()
-	ch <- s.totalScrapes.Desc()
-	ch <- s.jsonParseFailures.Desc()
 }
 
 func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
@@ -289,12 +270,10 @@ func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		s.jsonParseFailures.Inc()
 		return ssr, err
 	}
 
 	if err := json.Unmarshal(bts, &ssr); err != nil {
-		s.jsonParseFailures.Inc()
 		return ssr, err
 	}
 
@@ -328,12 +307,10 @@ func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		s.jsonParseFailures.Inc()
 		return ssr, err
 	}
 
 	if err := json.Unmarshal(bts, &ssr); err != nil {
-		s.jsonParseFailures.Inc()
 		return ssr, err
 	}
 
@@ -342,16 +319,9 @@ func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
 
 // Collect gets SLM metric values
 func (s *SLM) Collect(ch chan<- prometheus.Metric) {
-	s.totalScrapes.Inc()
-	defer func() {
-		ch <- s.up
-		ch <- s.totalScrapes
-		ch <- s.jsonParseFailures
-	}()
 
 	slmStatusResp, err := s.fetchAndDecodeSLMStatus()
 	if err != nil {
-		s.up.Set(0)
 		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode slm status",
 			"err", err,
@@ -361,15 +331,12 @@ func (s *SLM) Collect(ch chan<- prometheus.Metric) {
 
 	slmStatsResp, err := s.fetchAndDecodeSLMStats()
 	if err != nil {
-		s.up.Set(0)
 		level.Warn(s.logger).Log(
 			"msg", "failed to fetch and decode slm stats",
 			"err", err,
 		)
 		return
 	}
-
-	s.up.Set(1)
 
 	for _, status := range statuses {
 		ch <- prometheus.MustNewConstMetric(
