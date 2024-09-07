@@ -6,6 +6,7 @@ local row = g.panel.row;
 local panels = import './panels.libsonnet';
 local queries = import './queries.libsonnet';
 local variables = import './variables.libsonnet';
+local util = import './util.libsonnet';
 
 {
   grafanaDashboards+:: {
@@ -20,7 +21,7 @@ local variables = import './variables.libsonnet';
         variables.cluster,
       ])
       + dashboard.withPanels(
-        g.util.grid.makeGrid([
+        util.makeGrid([
           row.new('Overview')
           + row.withPanels([
             panels.stat.nodes('Nodes', queries.runningNodes),
@@ -60,7 +61,7 @@ local variables = import './variables.libsonnet';
           + row.withPanels([
             panels.timeSeries.bytes('Transport Rate', [queries.transportTXRate, queries.transportRXRate]),
           ]),
-        ], panelWidth=4, panelHeight=3),
+        ]),
       ),
   },
 }
