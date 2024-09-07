@@ -1,6 +1,6 @@
 go:
     # This must match .circle/config.yml.
-    version: 1.21
+    version: 1.22
 repository:
     path: github.com/prometheus-community/elasticsearch_exporter
 build:
