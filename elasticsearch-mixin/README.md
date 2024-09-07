@@ -4,16 +4,6 @@ This is a mixin for the elasticsearch_exporter to define dashboards, alerts, and
 
 Good example of upstream mixin for reference: https://github.com/kubernetes-monitoring/kubernetes-mixin
 
-
-docker-compose
-- docker-compose exec  elasticsearch bash
-  - bin/elasticsearch-reset-password -u elastic -f
-- login to grafana
-- add prometheus datasource (http://prometheus:9090)
-- http://127.0.0.1:3000
-- http://127.0.0.1:9090/targets?search=
-- http://127.0.0.1:9114/metrics
-
 ## Development
 
 ### JSONNET
@@ -33,5 +23,7 @@ Grafana libraries for jsonnet: https://grafana.github.io/grafonnet/
 
 ```jb install github.com/grafana/grafonnet/gen/grafonnet-latest@main```
 
-validate
-go install github.com/grafana/dashboard-linter@latest
+### Run the build
+```bash
+./scripts/compile-mixin.sh
+```
