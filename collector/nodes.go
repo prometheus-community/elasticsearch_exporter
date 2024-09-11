@@ -20,10 +20,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 func getRoles(node NodeStatsNodeResponse) map[string]bool {
@@ -627,6 +623,30 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 				),
 				Value: func(node NodeStatsNodeResponse) float64 {
 					return float64(node.Indices.Refresh.Total)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_refresh", "external_total"),
+					"Total refreshes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Refresh.ExternalTotal)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_refresh", "external_total_time_in_millis"),
+					"Total refreshes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Refresh.ExternalTotalTimeInMillis) / 1000
 				},
 				Labels: defaultNodeLabelValues,
 			},
