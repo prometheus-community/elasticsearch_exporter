@@ -26,7 +26,6 @@ import (
 	"path"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 type labels struct {
