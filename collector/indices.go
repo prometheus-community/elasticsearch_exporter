@@ -811,7 +811,7 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 					indexLabels.keys(), nil,
 				),
 				Value: func(indexStats IndexStatsIndexResponse) float64 {
-					return float64(indexStats.Total.Refresh.ExternalTotal) / 1000
+					return float64(indexStats.Total.Refresh.ExternalTotalTimeInMillis) / 1000
 				},
 				Labels: indexLabels,
 			},
