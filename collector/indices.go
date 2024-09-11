@@ -1201,11 +1201,6 @@ func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	if !strings.Contains(string(bts), "external_total_time_in_millis") {
-		bts = append(bts, []byte("external_total_time_in_millis:-1")...)
-		bts = append(bts, []byte("external_total:-1")...)
-	}
-
 	return bts, nil
 }
 

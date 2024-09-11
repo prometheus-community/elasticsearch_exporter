@@ -172,8 +172,10 @@ type NodeStatsIndicesDocsResponse struct {
 
 // NodeStatsIndicesRefreshResponse defines node stats refresh information structure for indices
 type NodeStatsIndicesRefreshResponse struct {
-	Total     int64 `json:"total"`
-	TotalTime int64 `json:"total_time_in_millis"`
+	Total                     int64 `json:"total"`
+	TotalTime                 int64 `json:"total_time_in_millis"`
+	ExternalTotal             int64 `json:"external_total"`
+	ExternalTotalTimeInMillis int64 `json:"external_total_time_in_millis"`
 }
 
 // NodeStatsIndicesTranslogResponse defines node stats translog information structure for indices
