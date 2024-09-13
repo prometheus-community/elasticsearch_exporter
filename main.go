@@ -83,9 +83,6 @@ func main() {
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
-		esExportSLM = kingpin.Flag("es.slm",
-			"Export stats for SLM snapshots.").
-			Default("false").Bool()
 		esExportDataStream = kingpin.Flag("es.data_stream",
 			"Export stas for Data Streams.").
 			Default("false").Bool()
@@ -211,10 +208,6 @@ func main() {
 			level.Error(logger).Log("msg", "failed to register shards collector in cluster info")
 			os.Exit(1)
 		}
-	}
-
-	if *esExportSLM {
-		prometheus.MustRegister(collector.NewSLM(logger, httpClient, esURL))
 	}
 
 	if *esExportDataStream {

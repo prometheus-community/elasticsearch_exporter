@@ -1,3 +1,11 @@
+## master / unreleased
+
+BREAKING CHANGES:
+
+The flag `--es.slm` has been renamed to `--collector.slm`.
+
+* [CHANGE] Rename --es.slm to --collector.slm #XXX
+*
 ## 1.7.0 / 2023-12-02
 
 BREAKING CHANGES:
