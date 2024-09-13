@@ -131,7 +131,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 	u := *r.url
 	u.User = nil
 	url := u.String()
-	level.Debug(r.logger).Log("msg", "updating cluster info metrics")
+	level.Debug(r.logger).Log("msg", fmt.Sprintf("[%s]updating cluster info metrics", u.Host))
 	// scrape failed, response is nil
 	if res == nil {
 		r.up.WithLabelValues(url).Set(0.0)
@@ -175,18 +175,18 @@ func (r *Retriever) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				level.Info(r.logger).Log(
-					"msg", "context cancelled, exiting cluster info update loop",
+					"msg", fmt.Sprintf("[%s]context cancelled, exiting cluster info update loop", r.url.Host),
 					"err", ctx.Err(),
 				)
 				return
 			case <-r.sync:
 				level.Info(r.logger).Log(
-					"msg", "providing consumers with updated cluster info label",
+					"msg", fmt.Sprintf("[%s]providing consumers with updated cluster info label", r.url.Host),
 				)
 				res, err := r.fetchAndDecodeClusterInfo()
 				if err != nil {
 					level.Error(r.logger).Log(
-						"msg", "failed to retrieve cluster info from ES",
+						"msg", fmt.Sprintf("[%s]failed to retrieve cluster info from ES", r.url.Host),
 						"err", err,
 					)
 					r.updateMetrics(nil)
@@ -195,7 +195,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 				r.updateMetrics(res)
 				for name, consumerCh := range r.consumerChannels {
 					level.Debug(r.logger).Log(
-						"msg", "sending update",
+						"msg", fmt.Sprintf("[%s]sending update", r.url.Host),
 						"consumer", name,
 						"res", fmt.Sprintf("%+v", res),
 					)
@@ -212,7 +212,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 	}(ctx)
 	// trigger initial cluster info call
 	level.Info(r.logger).Log(
-		"msg", "triggering initial cluster info call",
+		"msg", fmt.Sprintf("[%s]triggering initial cluster info call", r.url.Host),
 	)
 	r.sync <- struct{}{}
 
@@ -220,7 +220,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 	go func(ctx context.Context) {
 		if r.interval <= 0 {
 			level.Info(r.logger).Log(
-				"msg", "no periodic cluster info label update requested",
+				"msg", fmt.Sprintf("[%s]no periodic cluster info label update requested", r.url.Host),
 			)
 			return
 		}
@@ -229,13 +229,13 @@ func (r *Retriever) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				level.Info(r.logger).Log(
-					"msg", "context cancelled, exiting cluster info trigger loop",
+					"msg", fmt.Sprintf("[%s]context cancelled, exiting cluster info trigger loop", r.url.Host),
 					"err", ctx.Err(),
 				)
 				return
 			case <-ticker.C:
 				level.Debug(r.logger).Log(
-					"msg", "triggering periodic update",
+					"msg", fmt.Sprintf("[%s]triggering periodic update", r.url.Host),
 				)
 				r.sync <- struct{}{}
 			}
@@ -246,7 +246,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 	select {
 	case <-startupComplete:
 		// first sync has been successful
-		level.Debug(r.logger).Log("msg", "initial clusterinfo sync succeeded")
+		level.Debug(r.logger).Log("msg", fmt.Sprintf("[%s]initial clusterinfo sync succeeded", r.url.Host))
 		return nil
 	case <-time.After(initialTimeout):
 		// initial call timed out
@@ -265,7 +265,7 @@ func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
 	res, err := r.client.Get(u.String())
 	if err != nil {
 		level.Error(r.logger).Log(
-			"msg", "failed to get cluster info",
+			"msg", fmt.Sprintf("[%s]failed to get cluster info", r.url.Host),
 			"err", err,
 		)
 		return nil, err
@@ -275,14 +275,14 @@ func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
 		err = res.Body.Close()
 		if err != nil {
 			level.Warn(r.logger).Log(
-				"msg", "failed to close http.Client",
+				"msg", fmt.Sprintf("[%s]failed to close http.Client", r.url.Host),
 				"err", err,
 			)
 		}
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		return nil, fmt.Errorf("[%s]HTTP Request failed with code %d", r.url.Host, res.StatusCode)
 	}
 
 	bts, err := io.ReadAll(res.Body)

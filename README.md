@@ -29,6 +29,9 @@ elasticsearch_exporter:
     - "127.0.0.1:9114:9114"
 ```
 
+- /metrics endpoint is used to scrape the elasticsearch-exporter.
+- /probe endpoint is used to scrape multiple elasticsearch instances.
+
 #### Kubernetes
 
 You can find a helm chart in the prometheus-community charts repository at <https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-elasticsearch-exporter>
@@ -103,6 +106,49 @@ Further Information
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
 
+
+### Multi exporter mode
+
+Pass the es url via the url parameter.
+
+```
+http://localhost:9114/probe?target=http://server1:9200&auth_module=TEST
+```
+
+- target: es url
+- auth_module: The username and password environment variables for the es url. exp: `ES_{auth_module}_USERNAME`, `ES_{auth_module}_PASSWORD`
+
+```
+elasticsearch_exporter:
+    image: quay.io/prometheuscommunity/elasticsearch-exporter:latest
+    environment:
+    - ES_TEST_USERNAME=elastic
+    - ES_TEST_PASSWORD=changeme
+    restart: always
+    ports:
+    - "127.0.0.1:9114:9114"
+```
+
+On the prometheus side you can set a scrape config as follows
+```
+- job_name: elasticsearch # To get metrics about the elasticsearch exporter’s targets
+  static_configs:
+    - targets:
+      # All elasticsearch hostnames to monitor. 
+      - http://server1:9200
+      - http://server2:9200
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: __param_target
+    - source_labels: [__param_target]
+      target_label: instance
+    # The auth_module is used to find out the username and password from the environment variables.
+    - target_label: __param_auth_module
+      replacement: test
+    - target_label: __address__
+      # The elasticsearch_exporter host:port
+      replacement: localhost:9114
+```
 ### Metrics
 
 | Name                                                                 | Type       | Cardinality | Help                                                                                                |
