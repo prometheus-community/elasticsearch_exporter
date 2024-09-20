@@ -5,7 +5,12 @@ BREAKING CHANGES:
 The flag `--es.slm` has been renamed to `--collector.slm`.
 
 * [CHANGE] Rename --es.slm to --collector.slm #XXX
-*
+
+## 1.8.0 / 2024-09-14
+
+* [FEATURE] Add tasks action collector. Enable using `--collector.tasks.actions`. #778
+* [FEATURE] Add additional nodes metrics for indexing pressure monitoring. #904
+
 ## 1.7.0 / 2023-12-02
 
 BREAKING CHANGES:
