@@ -123,12 +123,12 @@ func TestSLM(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s := NewSLM(log.NewNopLogger(), http.DefaultClient, u)
+			s, err := NewSLM(log.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if err := testutil.CollectAndCompare(s, strings.NewReader(tt.want)); err != nil {
+			if err := testutil.CollectAndCompare(wrapCollector{s}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
