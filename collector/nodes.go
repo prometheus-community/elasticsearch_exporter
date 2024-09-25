@@ -645,7 +645,7 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_refresh", "external_total_time_in_seconds"),
+					prometheus.BuildFQName(namespace, "indices_refresh", "external_time_seconds_total"),
 					"Total time spent external refreshing in seconds",
 					defaultNodeLabels, nil,
 				),
