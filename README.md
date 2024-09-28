@@ -263,6 +263,10 @@ Further Information
 | elasticsearch_data_stream_stats_json_parse_failures                  | counter    | 0           | Number of parsing failures for Data Stream stats                                                    |
 | elasticsearch_data_stream_backing_indices_total                      | gauge      | 1           | Number of backing indices for Data Stream                                                           |
 | elasticsearch_data_stream_store_size_bytes                           | gauge      | 1           | Current size of data stream backing indices in bytes                                                |
+| elasticsearch_cluster_license_expiry_date_seconds                    | gauge      | 1           | License expiry date since unix epoch in second s                                                    |
+| elasticsearch_cluster_license_issue_date_seconds                     | gauge      | 1           | License issue date since unix epoch in seconds                                                      |
+| elasticsearch_cluster_license_max_nodes                              | gauge      | 1           | The max amount of nodes allowed by the license                                                      |
+| elasticsearch_cluster_license_start_date_seconds                     | gauge      | 1           | License start date since unix epoch in seconds                                                      |
 
 ### Alerts & Recording Rules
 
