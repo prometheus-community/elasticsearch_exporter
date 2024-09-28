@@ -338,15 +338,6 @@ func TestNodesStats(t *testing.T) {
             # HELP elasticsearch_jvm_uptime_seconds JVM process uptime in seconds
             # TYPE elasticsearch_jvm_uptime_seconds gauge
             elasticsearch_jvm_uptime_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx",type="mapped"} 14.845
-            # HELP elasticsearch_node_stats_json_parse_failures Number of errors while parsing JSON.
-            # TYPE elasticsearch_node_stats_json_parse_failures counter
-            elasticsearch_node_stats_json_parse_failures 0
-            # HELP elasticsearch_node_stats_total_scrapes Current total Elasticsearch node scrapes.
-            # TYPE elasticsearch_node_stats_total_scrapes counter
-            elasticsearch_node_stats_total_scrapes 1
-            # HELP elasticsearch_node_stats_up Was the last scrape of the Elasticsearch nodes endpoint successful.
-            # TYPE elasticsearch_node_stats_up gauge
-            elasticsearch_node_stats_up 1
             # HELP elasticsearch_nodes_roles Node roles
             # TYPE elasticsearch_nodes_roles gauge
             elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="client"} 1
@@ -806,15 +797,6 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_jvm_uptime_seconds JVM process uptime in seconds
              # TYPE elasticsearch_jvm_uptime_seconds gauge
              elasticsearch_jvm_uptime_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui",type="mapped"} 16.456
-             # HELP elasticsearch_node_stats_json_parse_failures Number of errors while parsing JSON.
-             # TYPE elasticsearch_node_stats_json_parse_failures counter
-             elasticsearch_node_stats_json_parse_failures 0
-             # HELP elasticsearch_node_stats_total_scrapes Current total Elasticsearch node scrapes.
-             # TYPE elasticsearch_node_stats_total_scrapes counter
-             elasticsearch_node_stats_total_scrapes 1
-             # HELP elasticsearch_node_stats_up Was the last scrape of the Elasticsearch nodes endpoint successful.
-             # TYPE elasticsearch_node_stats_up gauge
-             elasticsearch_node_stats_up 1
              # HELP elasticsearch_nodes_roles Node roles
              # TYPE elasticsearch_nodes_roles gauge
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="client"} 1
@@ -1338,15 +1320,6 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_jvm_uptime_seconds JVM process uptime in seconds
              # TYPE elasticsearch_jvm_uptime_seconds gauge
              elasticsearch_jvm_uptime_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb",type="mapped"} 21.844
-             # HELP elasticsearch_node_stats_json_parse_failures Number of errors while parsing JSON.
-             # TYPE elasticsearch_node_stats_json_parse_failures counter
-             elasticsearch_node_stats_json_parse_failures 0
-             # HELP elasticsearch_node_stats_total_scrapes Current total Elasticsearch node scrapes.
-             # TYPE elasticsearch_node_stats_total_scrapes counter
-             elasticsearch_node_stats_total_scrapes 1
-             # HELP elasticsearch_node_stats_up Was the last scrape of the Elasticsearch nodes endpoint successful.
-             # TYPE elasticsearch_node_stats_up gauge
-             elasticsearch_node_stats_up 1
              # HELP elasticsearch_nodes_roles Node roles
              # TYPE elasticsearch_nodes_roles gauge
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="client"} 1
