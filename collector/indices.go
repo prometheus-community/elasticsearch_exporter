@@ -16,16 +16,17 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"sort"
 	"strconv"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type labels struct {
@@ -63,10 +64,6 @@ type Indices struct {
 	aliases         bool
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
-
-	up                prometheus.Gauge
-	totalScrapes      prometheus.Counter
-	jsonParseFailures prometheus.Counter
 
 	indexMetrics []*indexMetric
 	shardMetrics []*shardMetric
@@ -128,19 +125,6 @@ func NewIndices(logger log.Logger, client *http.Client, url *url.URL, shards boo
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
 		},
-
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "index_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch index endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "index_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch index scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "index_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 
 		indexMetrics: []*indexMetric{
 			{
@@ -1117,9 +1101,10 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range i.indexMetrics {
 		ch <- metric.Desc
 	}
-	ch <- i.up.Desc()
-	ch <- i.totalScrapes.Desc()
-	ch <- i.jsonParseFailures.Desc()
+	for _, metric := range i.aliasMetrics {
+		ch <- metric.Desc
+	}
+
 }
 
 func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
@@ -1139,7 +1124,6 @@ func (i *Indices) fetchAndDecodeIndexStats() (indexStatsResponse, error) {
 	}
 
 	if err := json.Unmarshal(bts, &isr); err != nil {
-		i.jsonParseFailures.Inc()
 		return isr, err
 	}
 
@@ -1179,7 +1163,6 @@ func (i *Indices) fetchAndDecodeAliases() (aliasesResponse, error) {
 	}
 
 	if err := json.Unmarshal(bts, &asr); err != nil {
-		i.jsonParseFailures.Inc()
 		return asr, err
 	}
 
@@ -1217,24 +1200,15 @@ func (i *Indices) queryURL(u *url.URL) ([]byte, error) {
 
 // Collect gets Indices metric values
 func (i *Indices) Collect(ch chan<- prometheus.Metric) {
-	i.totalScrapes.Inc()
-	defer func() {
-		ch <- i.up
-		ch <- i.totalScrapes
-		ch <- i.jsonParseFailures
-	}()
-
 	// indices
 	indexStatsResp, err := i.fetchAndDecodeIndexStats()
 	if err != nil {
-		i.up.Set(0)
 		level.Warn(i.logger).Log(
 			"msg", "failed to fetch and decode index stats",
 			"err", err,
 		)
 		return
 	}
-	i.up.Set(1)
 
 	// Alias stats
 	if i.aliases {
