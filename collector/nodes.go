@@ -70,26 +70,13 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	return roles
 }
 
-func createRoleMetric(role string) *nodeMetric {
-	return &nodeMetric{
-		Type: prometheus.GaugeValue,
-		Desc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "nodes", "roles"),
-			"Node roles",
-			defaultRoleLabels, prometheus.Labels{"role": role},
-		),
-		Value: func(node NodeStatsNodeResponse) float64 {
-			return 1.0
-		},
-		Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-			return []string{
-				cluster,
-				node.Host,
-				node.Name,
-			}
-		},
-	}
-}
+var (
+	nodesRolesMetric = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "nodes", "roles"),
+		"Node roles",
+		append(defaultRoleLabels, "role"), nil,
+	)
+)
 
 var (
 	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
@@ -1859,10 +1846,18 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 
 // Describe add metrics descriptions
 func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
+	ch <- nodesRolesMetric
+
 	for _, metric := range c.nodeMetrics {
 		ch <- metric.Desc
 	}
 	for _, metric := range c.gcCollectionMetrics {
+		ch <- metric.Desc
+	}
+	for _, metric := range c.breakerMetrics {
+		ch <- metric.Desc
+	}
+	for _, metric := range c.indexingPressureMetrics {
 		ch <- metric.Desc
 	}
 	for _, metric := range c.threadPoolMetrics {
@@ -1948,15 +1943,24 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 		roles := getRoles(node)
 
 		for role, roleEnabled := range roles {
+			val := 0.0
 			if roleEnabled {
-				metric := createRoleMetric(role)
-				ch <- prometheus.MustNewConstMetric(
-					metric.Desc,
-					metric.Type,
-					metric.Value(node),
-					metric.Labels(nodeStatsResp.ClusterName, node)...,
-				)
+				val = 1.0
 			}
+
+			labels := []string{
+				nodeStatsResp.ClusterName,
+				node.Host,
+				node.Name,
+				role,
+			}
+
+			ch <- prometheus.MustNewConstMetric(
+				nodesRolesMetric,
+				prometheus.GaugeValue,
+				val,
+				labels...,
+			)
 		}
 
 		for _, metric := range c.nodeMetrics {
