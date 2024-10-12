@@ -40,6 +40,7 @@ type AWSSigningTransport struct {
 	creds  aws.CredentialsProvider
 	region string
 	log    log.Logger
+	signer *v4.Signer
 }
 
 func NewAWSSigningTransport(transport http.RoundTripper, region string, roleArn string, log log.Logger) (*AWSSigningTransport, error) {
@@ -67,11 +68,11 @@ func NewAWSSigningTransport(transport http.RoundTripper, region string, roleArn 
 		region: region,
 		creds:  creds,
 		log:    log,
+		signer: v4.NewSigner(),
 	}, err
 }
 
 func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	signer := v4.NewSigner()
 	payloadHash, newReader, err := hashPayload(req.Body)
 	if err != nil {
 		level.Error(a.log).Log("msg", "failed to hash request body", "err", err)
@@ -85,7 +86,7 @@ func (a *AWSSigningTransport) RoundTrip(req *http.Request) (*http.Response, erro
 		return nil, err
 	}
 
-	err = signer.SignHTTP(context.Background(), creds, req, payloadHash, service, a.region, time.Now())
+	err = a.signer.SignHTTP(context.Background(), creds, req, payloadHash, service, a.region, time.Now())
 	if err != nil {
 		level.Error(a.log).Log("msg", "failed to sign request body", "err", err)
 		return nil, err
