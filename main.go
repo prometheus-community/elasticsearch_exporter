@@ -15,21 +15,25 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"context"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
@@ -101,12 +105,6 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Bool()
-		logLevel = kingpin.Flag("log.level",
-			"Sets the loglevel. Valid levels are debug, info, warn, error").
-			Default("info").String()
-		logFormat = kingpin.Flag("log.format",
-			"Sets the log format. Valid formats are json and logfmt").
-			Default("logfmt").String()
 		logOutput = kingpin.Flag("log.output",
 			"Sets the log output. Valid outputs are stdout and stderr").
 			Default("stdout").String()
@@ -118,18 +116,27 @@ func main() {
 			Default("").String()
 	)
 
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.Version(version.Print(name))
 	kingpin.CommandLine.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	logger := getLogger(*logLevel, *logOutput, *logFormat)
+	var w io.Writer
+	switch strings.ToLower(*logOutput) {
+	case "stderr":
+		w = os.Stderr
+	case "stdout":
+		w = os.Stdout
+	default:
+		w = os.Stdout
+	}
+	promslogConfig.Writer = w
+	logger := promslog.New(promslogConfig)
 
 	esURL, err := url.Parse(*esURI)
 	if err != nil {
-		level.Error(logger).Log(
-			"msg", "failed to parse es.uri",
-			"err", err,
-		)
+		logger.Error("failed to parse es.uri", "err", err)
 		os.Exit(1)
 	}
 
@@ -167,13 +174,13 @@ func main() {
 	if *awsRegion != "" {
 		httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to create AWS transport", "err", err)
+			logger.Error("failed to create AWS transport", "err", err)
 			os.Exit(1)
 		}
 	}
 
 	// version metric
-	prometheus.MustRegister(version.NewCollector(name))
+	prometheus.MustRegister(versioncollector.NewCollector(name))
 
 	// create the exporter
 	exporter, err := collector.NewElasticsearchCollector(
@@ -183,7 +190,7 @@ func main() {
 		collector.WithHTTPClient(httpClient),
 	)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create Elasticsearch collector", "err", err)
+		logger.Error("failed to create Elasticsearch collector", "err", err)
 		os.Exit(1)
 	}
 	prometheus.MustRegister(exporter)
@@ -201,11 +208,11 @@ func main() {
 		iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
 		prometheus.MustRegister(iC)
 		if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-			level.Error(logger).Log("msg", "failed to register indices collector in cluster info")
+			logger.Error("failed to register indices collector in cluster info")
 			os.Exit(1)
 		}
 		if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
-			level.Error(logger).Log("msg", "failed to register shards collector in cluster info")
+			logger.Error("failed to register shards collector in cluster info")
 			os.Exit(1)
 		}
 	}
@@ -234,14 +241,11 @@ func main() {
 	// start the cluster info retriever
 	switch runErr := clusterInfoRetriever.Run(ctx); runErr {
 	case nil:
-		level.Info(logger).Log(
-			"msg", "started cluster info retriever",
-			"interval", (*esClusterInfoInterval).String(),
-		)
+		logger.Info("started cluster info retriever", "interval", (*esClusterInfoInterval).String())
 	case clusterinfo.ErrInitialCallTimeout:
-		level.Info(logger).Log("msg", "initial cluster info call timed out")
+		logger.Info("initial cluster info call timed out")
 	default:
-		level.Error(logger).Log("msg", "failed to run cluster info retriever", "err", err)
+		logger.Error("failed to run cluster info retriever", "err", err)
 		os.Exit(1)
 	}
 
@@ -263,7 +267,7 @@ func main() {
 		}
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			logger.Error("error creating landing page", "err", err)
 			os.Exit(1)
 		}
 		http.Handle("/", landingPage)
@@ -277,13 +281,13 @@ func main() {
 	server := &http.Server{}
 	go func() {
 		if err = web.ListenAndServe(server, toolkitFlags, logger); err != nil {
-			level.Error(logger).Log("msg", "http server quit", "err", err)
+			logger.Error("http server quit", "err", err)
 			os.Exit(1)
 		}
 	}()
 
 	<-ctx.Done()
-	level.Info(logger).Log("msg", "shutting down")
+	logger.Info("shutting down")
 	// create a context for graceful http server shutdown
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()

@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestSLM(t *testing.T) {
@@ -123,7 +123,7 @@ func TestSLM(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s, err := NewSLM(log.NewNopLogger(), u, http.DefaultClient)
+			s, err := NewSLM(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestShards(t *testing.T) {
@@ -70,7 +70,7 @@ func TestShards(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s := NewShards(log.NewNopLogger(), http.DefaultClient, u)
+			s := NewShards(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}

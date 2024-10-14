@@ -17,12 +17,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -168,7 +167,7 @@ type filesystemIODeviceMetric struct {
 
 // Nodes information struct
 type Nodes struct {
-	logger log.Logger
+	logger *slog.Logger
 	client *http.Client
 	url    *url.URL
 	all    bool
@@ -184,7 +183,7 @@ type Nodes struct {
 }
 
 // NewNodes defines Nodes Prometheus metrics
-func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
+func NewNodes(logger *slog.Logger, client *http.Client, url *url.URL, all bool, node string) *Nodes {
 	return &Nodes{
 		logger: logger,
 		client: client,
@@ -1875,8 +1874,8 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(c.logger).Log(
-				"msg", "failed to close http.Client",
+			c.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}
@@ -1901,8 +1900,8 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
-		level.Warn(c.logger).Log(
-			"msg", "failed to fetch and decode node stats",
+		c.logger.Warn(
+			"failed to fetch and decode node stats",
 			"err", err,
 		)
 		return

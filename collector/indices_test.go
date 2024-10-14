@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestIndices(t *testing.T) {
@@ -1673,7 +1673,7 @@ func TestIndices(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false, true)
+			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true)
 			if err != nil {
 				t.Fatal(err)
 			}

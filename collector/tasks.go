@@ -18,12 +18,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -45,14 +44,14 @@ func init() {
 
 // Task Information Struct
 type TaskCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	hc     *http.Client
 	u      *url.URL
 }
 
 // NewTaskCollector defines Task Prometheus metrics
-func NewTaskCollector(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
-	level.Info(logger).Log("msg", "task collector created",
+func NewTaskCollector(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+	logger.Info("task collector created",
 		"actionFilter", actionFilter,
 	)
 
@@ -98,8 +97,8 @@ func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(t.logger).Log(
-				"msg", "failed to close http.Client",
+			t.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}

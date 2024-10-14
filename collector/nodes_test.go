@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestNodesStats(t *testing.T) {
@@ -1593,7 +1593,7 @@ func TestNodesStats(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewNodes(log.NewNopLogger(), http.DefaultClient, u, true, "_local")
+			c := NewNodes(promslog.NewNopLogger(), http.DefaultClient, u, true, "_local")
 			if err != nil {
 				t.Fatal(err)
 			}

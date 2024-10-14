@@ -18,14 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -37,7 +36,7 @@ const (
 	defaultDisabled = false
 )
 
-type factoryFunc func(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error)
+type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
 
 var (
 	factories              = make(map[string]factoryFunc)
@@ -90,7 +89,7 @@ func registerCollector(name string, isDefaultEnabled bool, createFunc factoryFun
 
 type ElasticsearchCollector struct {
 	Collectors map[string]Collector
-	logger     log.Logger
+	logger     *slog.Logger
 	esURL      *url.URL
 	httpClient *http.Client
 }
@@ -98,7 +97,7 @@ type ElasticsearchCollector struct {
 type Option func(*ElasticsearchCollector) error
 
 // NewElasticsearchCollector creates a new ElasticsearchCollector
-func NewElasticsearchCollector(logger log.Logger, filters []string, options ...Option) (*ElasticsearchCollector, error) {
+func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ...Option) (*ElasticsearchCollector, error) {
 	e := &ElasticsearchCollector{logger: logger}
 	// Apply options to customize the collector
 	for _, o := range options {
@@ -128,7 +127,7 @@ func NewElasticsearchCollector(logger log.Logger, filters []string, options ...O
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			collector, err := factories[key](log.With(logger, "collector", key), e.esURL, e.httpClient)
+			collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
 			if err != nil {
 				return nil, err
 			}
@@ -176,7 +175,7 @@ func (e ElasticsearchCollector) Collect(ch chan<- prometheus.Metric) {
 	wg.Wait()
 }
 
-func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus.Metric, logger log.Logger) {
+func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus.Metric, logger *slog.Logger) {
 	begin := time.Now()
 	err := c.Update(ctx, ch)
 	duration := time.Since(begin)
@@ -184,13 +183,13 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 
 	if err != nil {
 		if IsNoDataError(err) {
-			level.Debug(logger).Log("msg", "collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			logger.Debug("collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		} else {
-			level.Error(logger).Log("msg", "collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			logger.Error("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		}
 		success = 0
 	} else {
-		level.Debug(logger).Log("msg", "collector succeeded", "name", name, "duration_seconds", duration.Seconds())
+		logger.Debug("collector succeeded", "name", name, "duration_seconds", duration.Seconds())
 		success = 1
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)

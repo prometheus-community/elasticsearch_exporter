@@ -16,13 +16,13 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -36,7 +36,7 @@ type ShardResponse struct {
 
 // Shards information struct
 type Shards struct {
-	logger          log.Logger
+	logger          *slog.Logger
 	client          *http.Client
 	url             *url.URL
 	clusterInfoCh   chan *clusterinfo.Response
@@ -65,7 +65,7 @@ type nodeShardMetric struct {
 }
 
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
+func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 
 	nodeLabels := labels{
 		keys: func(...string) []string {
@@ -113,14 +113,14 @@ func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
 	go func() {
-		level.Debug(logger).Log("msg", "starting cluster info receive loop")
+		logger.Debug("starting cluster info receive loop")
 		for ci := range shards.clusterInfoCh {
 			if ci != nil {
-				level.Debug(logger).Log("msg", "received cluster info update", "cluster", ci.ClusterName)
+				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
 				shards.lastClusterInfo = ci
 			}
 		}
-		level.Debug(logger).Log("msg", "exiting cluster info receive loop")
+		logger.Debug("exiting cluster info receive loop")
 	}()
 
 	return shards
@@ -145,8 +145,8 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(s.logger).Log(
-				"msg", "failed to close http.Client",
+			s.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}
@@ -186,8 +186,8 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 
 	sr, err := s.fetchAndDecodeShards()
 	if err != nil {
-		level.Warn(s.logger).Log(
-			"msg", "failed to fetch and decode node shards stats",
+		s.logger.Warn(
+			"failed to fetch and decode node shards stats",
 			"err", err,
 		)
 		return

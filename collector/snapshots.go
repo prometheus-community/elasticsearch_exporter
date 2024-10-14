@@ -17,11 +17,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -96,13 +96,13 @@ func init() {
 
 // Snapshots information struct
 type Snapshots struct {
-	logger log.Logger
+	logger *slog.Logger
 	hc     *http.Client
 	u      *url.URL
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &Snapshots{
 		logger: logger,
 		u:      u,

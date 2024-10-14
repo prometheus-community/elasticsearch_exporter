@@ -17,12 +17,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -35,7 +34,7 @@ type ilmMetric struct {
 
 // Index Lifecycle Management information object
 type IlmIndiciesCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -60,7 +59,7 @@ var (
 )
 
 // NewIlmIndicies defines Index Lifecycle Management Prometheus metrics
-func NewIlmIndicies(logger log.Logger, client *http.Client, url *url.URL) *IlmIndiciesCollector {
+func NewIlmIndicies(logger *slog.Logger, client *http.Client, url *url.URL) *IlmIndiciesCollector {
 	subsystem := "ilm_index"
 
 	return &IlmIndiciesCollector{
@@ -101,8 +100,8 @@ func (i *IlmIndiciesCollector) fetchAndDecodeIlm() (IlmResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(i.logger).Log(
-				"msg", "failed to close http.Client",
+			i.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}
@@ -136,8 +135,8 @@ func (i *IlmIndiciesCollector) Collect(ch chan<- prometheus.Metric) {
 	// indices
 	ilmResp, err := i.fetchAndDecodeIlm()
 	if err != nil {
-		level.Warn(i.logger).Log(
-			"msg", "failed to fetch and decode ILM stats",
+		i.logger.Warn(
+			"failed to fetch and decode ILM stats",
 			"err", err,
 		)
 		return

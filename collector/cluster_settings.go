@@ -18,13 +18,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/imdario/mergo"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -34,12 +33,12 @@ func init() {
 }
 
 type ClusterSettingsCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	u      *url.URL
 	hc     *http.Client
 }
 
-func NewClusterSettings(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterSettings(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterSettingsCollector{
 		logger: logger,
 		u:      u,
@@ -226,7 +225,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	if strings.HasSuffix(merged.Cluster.Routing.Allocation.Disk.Watermark.High, "b") {
 		flooodStageBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse flood_stage bytes", "err", err)
+			c.logger.Error("failed to parse flood_stage bytes", "err", err)
 		} else {
 			ch <- prometheus.MustNewConstMetric(
 				clusterSettingsDesc["floodStageBytes"],
@@ -237,7 +236,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 
 		highBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse high bytes", "err", err)
+			c.logger.Error("failed to parse high bytes", "err", err)
 		} else {
 			ch <- prometheus.MustNewConstMetric(
 				clusterSettingsDesc["highBytes"],
@@ -248,7 +247,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 
 		lowBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to parse low bytes", "err", err)
+			c.logger.Error("failed to parse low bytes", "err", err)
 		} else {
 			ch <- prometheus.MustNewConstMetric(
 				clusterSettingsDesc["lowBytes"],
@@ -263,7 +262,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	// Watermark ratio metrics
 	floodRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse flood_stage ratio", "err", err)
+		c.logger.Error("failed to parse flood_stage ratio", "err", err)
 	} else {
 		ch <- prometheus.MustNewConstMetric(
 			clusterSettingsDesc["floodStageRatio"],
@@ -274,7 +273,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 
 	highRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse high ratio", "err", err)
+		c.logger.Error("failed to parse high ratio", "err", err)
 	} else {
 		ch <- prometheus.MustNewConstMetric(
 			clusterSettingsDesc["highRatio"],
@@ -285,7 +284,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 
 	lowRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to parse low ratio", "err", err)
+		c.logger.Error("failed to parse low ratio", "err", err)
 	} else {
 		ch <- prometheus.MustNewConstMetric(
 			clusterSettingsDesc["lowRatio"],
