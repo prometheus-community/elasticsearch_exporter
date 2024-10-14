@@ -6,7 +6,7 @@ executors:
   # This must match .promu.yml.
   golang:
     docker:
-      - image: cimg/go:1.22.6
+      - image: cimg/go:1.23
 jobs:
   test:
     executor: golang
