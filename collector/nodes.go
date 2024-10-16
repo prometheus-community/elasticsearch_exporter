@@ -70,26 +70,13 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	return roles
 }
 
-func createRoleMetric(role string) *nodeMetric {
-	return &nodeMetric{
-		Type: prometheus.GaugeValue,
-		Desc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "nodes", "roles"),
-			"Node roles",
-			defaultRoleLabels, prometheus.Labels{"role": role},
-		),
-		Value: func(node NodeStatsNodeResponse) float64 {
-			return 1.0
-		},
-		Labels: func(cluster string, node NodeStatsNodeResponse) []string {
-			return []string{
-				cluster,
-				node.Host,
-				node.Name,
-			}
-		},
-	}
-}
+var (
+	nodesRolesMetric = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "nodes", "roles"),
+		"Node roles",
+		append(defaultRoleLabels, "role"), nil,
+	)
+)
 
 var (
 	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
@@ -187,9 +174,6 @@ type Nodes struct {
 	all    bool
 	node   string
 
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
 	nodeMetrics               []*nodeMetric
 	gcCollectionMetrics       []*gcCollectionMetric
 	breakerMetrics            []*breakerMetric
@@ -207,19 +191,6 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 		url:    url,
 		all:    all,
 		node:   node,
-
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "node_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch nodes endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "node_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch node scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "node_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 
 		nodeMetrics: []*nodeMetric{
 			{
@@ -1859,10 +1830,18 @@ func NewNodes(logger log.Logger, client *http.Client, url *url.URL, all bool, no
 
 // Describe add metrics descriptions
 func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
+	ch <- nodesRolesMetric
+
 	for _, metric := range c.nodeMetrics {
 		ch <- metric.Desc
 	}
 	for _, metric := range c.gcCollectionMetrics {
+		ch <- metric.Desc
+	}
+	for _, metric := range c.breakerMetrics {
+		ch <- metric.Desc
+	}
+	for _, metric := range c.indexingPressureMetrics {
 		ch <- metric.Desc
 	}
 	for _, metric := range c.threadPoolMetrics {
@@ -1874,9 +1853,6 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range c.filesystemIODeviceMetrics {
 		ch <- metric.Desc
 	}
-	ch <- c.up.Desc()
-	ch <- c.totalScrapes.Desc()
-	ch <- c.jsonParseFailures.Desc()
 }
 
 func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
@@ -1912,12 +1888,10 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 
 	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
 
 	if err := json.Unmarshal(bts, &nsr); err != nil {
-		c.jsonParseFailures.Inc()
 		return nsr, err
 	}
 	return nsr, nil
@@ -1925,38 +1899,38 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 
 // Collect gets nodes metric values
 func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
-	c.totalScrapes.Inc()
-	defer func() {
-		ch <- c.up
-		ch <- c.totalScrapes
-		ch <- c.jsonParseFailures
-	}()
-
 	nodeStatsResp, err := c.fetchAndDecodeNodeStats()
 	if err != nil {
-		c.up.Set(0)
 		level.Warn(c.logger).Log(
 			"msg", "failed to fetch and decode node stats",
 			"err", err,
 		)
 		return
 	}
-	c.up.Set(1)
 
 	for _, node := range nodeStatsResp.Nodes {
 		// Handle the node labels metric
 		roles := getRoles(node)
 
 		for role, roleEnabled := range roles {
+			val := 0.0
 			if roleEnabled {
-				metric := createRoleMetric(role)
-				ch <- prometheus.MustNewConstMetric(
-					metric.Desc,
-					metric.Type,
-					metric.Value(node),
-					metric.Labels(nodeStatsResp.ClusterName, node)...,
-				)
+				val = 1.0
 			}
+
+			labels := []string{
+				nodeStatsResp.ClusterName,
+				node.Host,
+				node.Name,
+				role,
+			}
+
+			ch <- prometheus.MustNewConstMetric(
+				nodesRolesMetric,
+				prometheus.GaugeValue,
+				val,
+				labels...,
+			)
 		}
 
 		for _, metric := range c.nodeMetrics {
