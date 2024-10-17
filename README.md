@@ -50,7 +50,7 @@ elasticsearch_exporter --help
 
 | Argument                | Introduced in Version | Description                                                                                                                                                                                                                                                                                                                                                                           | Default     |
 | ----------------------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------- |
-| collector.clustersettings| 1.6.0                | If true, query stats for cluster settings (As of v1.6.0, this flag has replaced "es.cluster_settings").                                                                                                                                                                                                                                                                                | false |   
+| collector.clustersettings| 1.6.0                | If true, query stats for cluster settings (As of v1.6.0, this flag has replaced "es.cluster_settings").                                                                                                                                                                                                                                                                                | false |
 | es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | <http://localhost:9200> |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                                                                                                                                                                                                                                                                                           | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                                  | false |
@@ -77,6 +77,10 @@ Commandline parameters start with a single `-` for versions less than `1.1.0rc1`
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`.
 
 The API key used to connect can be set with the `ES_API_KEY` environment variable.
+
+#### Logging
+
+Logging by the exporter is handled by the `log/slog` package. The output format can be customized with the `--log.format` flag which defaults to logfmt. The log level can be set with the `--log.level` flag which defaults to info. The output can be set to either stdout (default) or stderr with the `--log.output` flag.
 
 #### Elasticsearch 7.x security privileges
 
