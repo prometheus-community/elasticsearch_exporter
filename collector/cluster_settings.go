@@ -103,49 +103,6 @@ var clusterSettingsDesc = map[string]*prometheus.Desc{
 	),
 }
 
-// clusterSettingsResponse is a representation of a Elasticsearch Cluster Settings
-type clusterSettingsResponse struct {
-	Defaults   clusterSettingsSection `json:"defaults"`
-	Persistent clusterSettingsSection `json:"persistent"`
-	Transient  clusterSettingsSection `json:"transient"`
-}
-
-// clusterSettingsSection is a representation of a Elasticsearch Cluster Settings
-type clusterSettingsSection struct {
-	Cluster clusterSettingsCluster `json:"cluster"`
-}
-
-// clusterSettingsCluster is a representation of a Elasticsearch clusterSettingsCluster Settings
-type clusterSettingsCluster struct {
-	Routing clusterSettingsRouting `json:"routing"`
-	// This can be either a JSON object (which does not contain the value we are interested in) or a string
-	MaxShardsPerNode interface{} `json:"max_shards_per_node"`
-}
-
-// clusterSettingsRouting is a representation of a Elasticsearch Cluster shard routing configuration
-type clusterSettingsRouting struct {
-	Allocation clusterSettingsAllocation `json:"allocation"`
-}
-
-// clusterSettingsAllocation is a representation of a Elasticsearch Cluster shard routing allocation settings
-type clusterSettingsAllocation struct {
-	Enabled string              `json:"enable"`
-	Disk    clusterSettingsDisk `json:"disk"`
-}
-
-// clusterSettingsDisk is a representation of a Elasticsearch Cluster shard routing disk allocation settings
-type clusterSettingsDisk struct {
-	ThresholdEnabled string                   `json:"threshold_enabled"`
-	Watermark        clusterSettingsWatermark `json:"watermark"`
-}
-
-// clusterSettingsWatermark is representation of Elasticsearch Cluster shard routing disk allocation watermark settings
-type clusterSettingsWatermark struct {
-	FloodStage string `json:"flood_stage"`
-	High       string `json:"high"`
-	Low        string `json:"low"`
-}
-
 func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 	u := c.u.ResolveReference(&url.URL{Path: "_cluster/settings"})
 	q := u.Query()
@@ -185,15 +142,12 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	}
 
 	// Max shards per node
-	if maxShardsPerNodeString, ok := merged.Cluster.MaxShardsPerNode.(string); ok {
-		maxShardsPerNode, err := strconv.ParseInt(maxShardsPerNodeString, 10, 64)
-		if err == nil {
-			ch <- prometheus.MustNewConstMetric(
-				clusterSettingsDesc["maxShardsPerNode"],
-				prometheus.GaugeValue,
-				float64(maxShardsPerNode),
-			)
-		}
+	if maxShardsPerNode, err := strconv.ParseInt(merged.Cluster.MaxShardsPerNode, 10, 64); err == nil {
+		ch <- prometheus.MustNewConstMetric(
+			clusterSettingsDesc["maxShardsPerNode"],
+			prometheus.GaugeValue,
+			float64(maxShardsPerNode),
+		)
 	}
 
 	// Shard allocation enabled
