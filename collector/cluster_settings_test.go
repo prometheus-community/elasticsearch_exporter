@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestClusterSettingsStats(t *testing.T) {
@@ -136,7 +136,7 @@ elasticsearch_clustersettings_allocation_watermark_low_bytes 5.24288e+07
 				t.Fatal(err)
 			}
 
-			c, err := NewClusterSettings(log.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewClusterSettings(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}

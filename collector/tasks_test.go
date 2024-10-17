@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestTasks(t *testing.T) {
@@ -65,7 +65,7 @@ elasticsearch_task_stats_action{action="indices:data/write/index"} 1
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			c, err := NewTaskCollector(log.NewNopLogger(), u, ts.Client())
+			c, err := NewTaskCollector(promslog.NewNopLogger(), u, ts.Client())
 			if err != nil {
 				t.Fatalf("Failed to create collector: %v", err)
 			}

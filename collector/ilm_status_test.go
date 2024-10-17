@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestILMStatus(t *testing.T) {
@@ -66,7 +66,7 @@ elasticsearch_ilm_status{operation_mode="STOPPING"} 0
 				t.Fatal(err)
 			}
 
-			c := NewIlmStatus(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewIlmStatus(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}

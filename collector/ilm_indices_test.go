@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestILMMetrics(t *testing.T) {
@@ -98,7 +98,7 @@ elasticsearch_ilm_index_status{action="complete",index="facebook",phase="new",st
 				t.Fatal(err)
 			}
 
-			c := NewIlmIndicies(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewIlmIndicies(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}

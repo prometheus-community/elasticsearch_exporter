@@ -20,7 +20,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/go-kit/log"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestIndicesSettings(t *testing.T) {
@@ -70,7 +70,7 @@ func TestIndicesSettings(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
-			c := NewIndicesSettings(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewIndicesSettings(promslog.NewNopLogger(), http.DefaultClient, u)
 			nsr, err := c.fetchAndDecodeIndicesSettings()
 			if err != nil {
 				t.Fatalf("Failed to fetch or decode indices settings: %s", err)

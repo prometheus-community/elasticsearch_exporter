@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestSnapshots(t *testing.T) {
@@ -209,7 +209,7 @@ func TestSnapshots(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewSnapshots(log.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewSnapshots(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}

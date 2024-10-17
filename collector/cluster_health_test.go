@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestClusterHealth(t *testing.T) {
@@ -189,7 +189,7 @@ func TestClusterHealth(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewClusterHealth(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewClusterHealth(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}

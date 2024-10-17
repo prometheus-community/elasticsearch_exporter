@@ -17,12 +17,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -39,7 +38,7 @@ type ilmStatusMetric struct {
 
 // IlmStatusCollector information struct
 type IlmStatusCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	client *http.Client
 	url    *url.URL
 
@@ -51,7 +50,7 @@ type IlmStatusResponse struct {
 }
 
 // NewIlmStatus defines Indices IndexIlms Prometheus metrics
-func NewIlmStatus(logger log.Logger, client *http.Client, url *url.URL) *IlmStatusCollector {
+func NewIlmStatus(logger *slog.Logger, client *http.Client, url *url.URL) *IlmStatusCollector {
 	subsystem := "ilm"
 
 	return &IlmStatusCollector{
@@ -97,13 +96,13 @@ func (im *IlmStatusCollector) fetchAndDecodeIlm() (*IlmStatusResponse, error) {
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		level.Warn(im.logger).Log("msg", "failed to read response body", "err", err)
+		im.logger.Warn("failed to read response body", "err", err)
 		return nil, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
+		im.logger.Warn("failed to close response body", "err", err)
 		return nil, err
 	}
 
@@ -119,8 +118,8 @@ func (im *IlmStatusCollector) fetchAndDecodeIlm() (*IlmStatusResponse, error) {
 func (im *IlmStatusCollector) Collect(ch chan<- prometheus.Metric) {
 	indicesIlmsResponse, err := im.fetchAndDecodeIlm()
 	if err != nil {
-		level.Warn(im.logger).Log(
-			"msg", "failed to fetch and decode cluster ilm status",
+		im.logger.Warn(
+			"failed to fetch and decode cluster ilm status",
 			"err", err,
 		)
 		return

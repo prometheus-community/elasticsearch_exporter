@@ -2,6 +2,7 @@
 linters:
   enable:
     - revive
+    - sloglint
 
 issues:
   exclude-rules:
@@ -11,7 +12,7 @@ issues:
 
 linters-settings:
   errcheck:
-    exclude: scripts/errcheck_excludes.txt
+    exclude-functions: scripts/errcheck_excludes.txt
   revive:
     rules:
       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#unused-parameter

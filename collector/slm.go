@@ -16,10 +16,10 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/url"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -103,13 +103,13 @@ func init() {
 
 // SLM information struct
 type SLM struct {
-	logger log.Logger
+	logger *slog.Logger
 	hc     *http.Client
 	u      *url.URL
 }
 
 // NewSLM defines SLM Prometheus metrics
-func NewSLM(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &SLM{
 		logger: logger,
 		hc:     hc,

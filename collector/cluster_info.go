@@ -17,11 +17,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,12 +30,12 @@ func init() {
 }
 
 type ClusterInfoCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	u      *url.URL
 	hc     *http.Client
 }
 
-func NewClusterInfo(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterInfo(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterInfoCollector{
 		logger: logger,
 		u:      u,

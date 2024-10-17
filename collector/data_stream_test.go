@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestDataStream(t *testing.T) {
@@ -65,7 +65,7 @@ func TestDataStream(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewDataStream(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewDataStream(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}
