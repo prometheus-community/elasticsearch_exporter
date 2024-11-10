@@ -1,0 +1,19 @@
+---
+name: CI
+on:
+  pull_request:
+  push:
+
+jobs:
+  test_go:
+    name: Go tests
+    runs-on: ubuntu-latest
+    container:
+      # Whenever the Go version is updated here, .promu.yml
+      # should also be updated.
+      image: quay.io/prometheus/golang-builder:1.23-base
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: prometheus/promci@52c7012f5f0070d7281b8db4a119e21341d43c91 # v0.4.5
+      - uses: ./.github/promci/actions/setup_environment
+      - run: make GO_ONLY=1 SKIP_GOLANGCI_LINT=1
