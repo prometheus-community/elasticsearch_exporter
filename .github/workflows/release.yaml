@@ -13,6 +13,12 @@ jobs:
     - name: Release if tagged
       if: "!startswith(github.ref, 'refs/tags/v')"
       run: exit 78
+    - name: Login to Quay.io
+      uses: docker/login-action@v2
+      with:
+        registry: quay.io
+        username: ${{ secrets.QUAY_UBI_READONLY_USERNAME }}
+        password: ${{ secrets.QUAY_UBI_READONLY_PASSWORD }}
     - name: build
       uses: sysdiglabs/exporter-builder@v1.1
       with:
