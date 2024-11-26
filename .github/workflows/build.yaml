@@ -27,8 +27,8 @@ jobs:
       uses: docker/login-action@v2
       with:
         registry: quay.io
-        username: ${{ secrets.QUAY_USERNAME }}
-        password: ${{ secrets.QUAY_PASSWORD }}
+        username: ${{ secrets.QUAY_UBI_READONLY_USERNAME }}
+        password: ${{ secrets.QUAY_UBI_READONLY_PASSWORD }}
     - name: build
       uses: sysdiglabs/exporter-builder@v1.1
       with:
