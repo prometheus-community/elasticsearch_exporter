@@ -7,28 +7,28 @@ on:
 
 jobs:
   check-mixin:
-      name: check
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-        - name: Setup Go
-          uses: actions/setup-go@v5
-          with:
-            go-version: 1.22.5
-        - name: Install dependencies
-          run: |
-            go install github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
-            go install github.com/google/go-jsonnet/cmd/jsonnetfmt@v0.20.0
-            go install github.com/google/go-jsonnet/cmd/jsonnet-lint@v0.20.0
-            go install github.com/monitoring-mixins/mixtool/cmd/mixtool@16dc166166d91e93475b86b9355a4faed2400c18
-            go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1
-        - name: Lint
-          run: bash ./scripts/lint-jsonnet.sh
-        - name: Compile mixin
-          run: bash ./scripts/compile-mixin.sh
-        - name: Verify compiled mixin matches repo
-          run: |
-            git diff --exit-code -- ./elasticsearch-mixin || (echo "Compiled mixin does not match repo" && exit 1)
-            # Check if there are any new untracked files
-            test -z "$(git status --porcelain)" || (echo "Untracked files found, please run ./scripts/compile-mixin.sh" && exit 1)
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.5
+      - name: Install dependencies
+        run: |
+          go install github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+          go install github.com/google/go-jsonnet/cmd/jsonnetfmt@v0.20.0
+          go install github.com/google/go-jsonnet/cmd/jsonnet-lint@v0.20.0
+          go install github.com/monitoring-mixins/mixtool/cmd/mixtool@16dc166166d91e93475b86b9355a4faed2400c18
+          go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1
+      - name: Lint
+        run: bash ./scripts/lint-jsonnet.sh
+      - name: Compile mixin
+        run: bash ./scripts/compile-mixin.sh
+      - name: Verify compiled mixin matches repo
+        run: |
+          git diff --exit-code -- ./elasticsearch-mixin || (echo "Compiled mixin does not match repo" && exit 1)
+          # Check if there are any new untracked files
+          test -z "$(git status --porcelain)" || (echo "Untracked files found, please run ./scripts/compile-mixin.sh" && exit 1)
