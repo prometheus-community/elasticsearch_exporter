@@ -21,6 +21,9 @@ jobs:
         docker: ['scratch','ubi']
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 1
+      GOEXPERIMENT: boringcrypto
     name: ${{ matrix.docker }}
     steps:
     - name: Login to Quay.io

@@ -1,5 +1,8 @@
 FROM quay.io/prometheus/golang-builder AS builder
 
+ENV CGO_ENABLED=1
+ENV GOEXPERIMENT=boringcrypto
+
 ARG PROMU_VERSION=0.13.0
 ADD  https://github.com/prometheus/promu/releases/download/v${PROMU_VERSION}/promu-${PROMU_VERSION}.linux-amd64.tar.gz ./
 RUN tar -xvzf promu-${PROMU_VERSION}.linux-amd64.tar.gz && mv promu-${PROMU_VERSION}.linux-amd64/promu /go/bin
@@ -8,7 +11,7 @@ ADD .   /go/src/github.com/prometheus-community/elasticsearch_exporter
 WORKDIR /go/src/github.com/prometheus-community/elasticsearch_exporter
 
 RUN go mod download
-RUN make 
+RUN make
 
 FROM scratch AS scratch
 
