@@ -12,13 +12,15 @@ pipeline {
         ARTIFACTORY_URL = 'docker.internal.sysdig.com'
         EXPORTER = 'elasticsearch-exporter'
         VERSION = '1.2.1'
+        CGO_ENABLED = '1'
+        GOEXPERIMENT = 'boringcrypto'
     }
 
     stages {
         stage('Pull image from artifactory') {
             steps {
                 script {
-                    docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {                        
+                    docker.withRegistry("https://${env.ARTIFACTORY_URL}",  registryCredential) {
                         sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}"""
                         sh """docker pull ${env.ARTIFACTORY_URL}/${env.EXPORTER}:${env.VERSION}-ubi"""
                     }

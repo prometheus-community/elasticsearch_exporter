@@ -23,6 +23,8 @@ import (
 
 	"context"
 
+	_ "crypto/tls/fipsonly"
+
 	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
