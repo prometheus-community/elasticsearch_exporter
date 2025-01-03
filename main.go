@@ -88,7 +88,7 @@ func main() {
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
 		esExportDataStream = kingpin.Flag("es.data_stream",
-			"Export stas for Data Streams.").
+			"Export stats for Data Streams.").
 			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
