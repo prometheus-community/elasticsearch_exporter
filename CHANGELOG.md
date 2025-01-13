@@ -1,5 +1,11 @@
 ## master / unreleased
 
+BREAKING CHANGES:
+
+The flag `--es.data_stream` has been renamed to `--collector.data-stream`.
+
+* [CHANGE] Rename --es.data_stream to --collector.data-stream #983
+
 ## 1.9.0 / 2025-02-27
 
 BREAKING CHANGES:
