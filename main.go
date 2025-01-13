@@ -87,9 +87,6 @@ func main() {
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
-		esExportDataStream = kingpin.Flag("es.data_stream",
-			"Export stas for Data Streams.").
-			Default("false").Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
 			Default("5m").Duration()
@@ -215,10 +212,6 @@ func main() {
 			logger.Error("failed to register shards collector in cluster info")
 			os.Exit(1)
 		}
-	}
-
-	if *esExportDataStream {
-		prometheus.MustRegister(collector.NewDataStream(logger, httpClient, esURL))
 	}
 
 	if *esExportIndicesSettings {

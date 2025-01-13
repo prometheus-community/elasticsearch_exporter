@@ -14,141 +14,108 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"path"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type dataStreamMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(dataStreamStats DataStreamStatsDataStream) float64
-	Labels func(dataStreamStats DataStreamStatsDataStream) []string
-}
-
 var (
-	defaultDataStreamLabels      = []string{"data_stream"}
-	defaultDataStreamLabelValues = func(dataStreamStats DataStreamStatsDataStream) []string {
-		return []string{dataStreamStats.DataStream}
-	}
+	dataStreamBackingIndicesTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "data_stream", "backing_indices_total"),
+		"Number of backing indices",
+		[]string{"data_stream"},
+		nil,
+	)
+	dataStreamStoreSizeBytes = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "data_stream", "store_size_bytes"),
+		"Store size of data stream",
+		[]string{"data_stream"},
+		nil,
+	)
 )
+
+func init() {
+	registerCollector("data-stream", defaultDisabled, NewDataStream)
+}
 
 // DataStream Information Struct
 type DataStream struct {
 	logger *slog.Logger
-	client *http.Client
-	url    *url.URL
-
-	dataStreamMetrics []*dataStreamMetric
+	hc     *http.Client
+	u      *url.URL
 }
 
 // NewDataStream defines DataStream Prometheus metrics
-func NewDataStream(logger *slog.Logger, client *http.Client, url *url.URL) *DataStream {
+func NewDataStream(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &DataStream{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		dataStreamMetrics: []*dataStreamMetric{
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "data_stream", "backing_indices_total"),
-					"Number of backing indices",
-					defaultDataStreamLabels, nil,
-				),
-				Value: func(dataStreamStats DataStreamStatsDataStream) float64 {
-					return float64(dataStreamStats.BackingIndices)
-				},
-				Labels: defaultDataStreamLabelValues,
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "data_stream", "store_size_bytes"),
-					"Store size of data stream",
-					defaultDataStreamLabels, nil,
-				),
-				Value: func(dataStreamStats DataStreamStatsDataStream) float64 {
-					return float64(dataStreamStats.StoreSizeBytes)
-				},
-				Labels: defaultDataStreamLabelValues,
-			},
-		},
-	}
+		hc:     hc,
+		u:      u,
+	}, nil
 }
 
-// Describe adds DataStream metrics descriptions
-func (ds *DataStream) Describe(ch chan<- *prometheus.Desc) {
-	for _, metric := range ds.dataStreamMetrics {
-		ch <- metric.Desc
-	}
+// DataStreamStatsResponse is a representation of the Data Stream stats
+type DataStreamStatsResponse struct {
+	Shards              DataStreamStatsShards       `json:"_shards"`
+	DataStreamCount     int64                       `json:"data_stream_count"`
+	BackingIndices      int64                       `json:"backing_indices"`
+	TotalStoreSizeBytes int64                       `json:"total_store_size_bytes"`
+	DataStreamStats     []DataStreamStatsDataStream `json:"data_streams"`
 }
 
-func (ds *DataStream) fetchAndDecodeDataStreamStats() (DataStreamStatsResponse, error) {
+// DataStreamStatsShards defines data stream stats shards information structure
+type DataStreamStatsShards struct {
+	Total      int64 `json:"total"`
+	Successful int64 `json:"successful"`
+	Failed     int64 `json:"failed"`
+}
+
+// DataStreamStatsDataStream defines the structure of per data stream stats
+type DataStreamStatsDataStream struct {
+	DataStream       string `json:"data_stream"`
+	BackingIndices   int64  `json:"backing_indices"`
+	StoreSizeBytes   int64  `json:"store_size_bytes"`
+	MaximumTimestamp int64  `json:"maximum_timestamp"`
+}
+
+func (ds *DataStream) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 	var dsr DataStreamStatsResponse
 
-	u := *ds.url
-	u.Path = path.Join(u.Path, "/_data_stream/*/_stats")
-	res, err := ds.client.Get(u.String())
+	u := ds.u.ResolveReference(&url.URL{Path: "/_data_stream/*/_stats"})
+
+	resp, err := getURL(ctx, ds.hc, ds.logger, u.String())
 	if err != nil {
-		return dsr, fmt.Errorf("failed to get data stream stats health from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+		return err
 	}
 
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			ds.logger.Warn(
-				"failed to close http.Client",
-				"err", err,
-			)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return dsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+	if err := json.Unmarshal(resp, &dsr); err != nil {
+		return err
 	}
 
-	bts, err := io.ReadAll(res.Body)
-	if err != nil {
-		return dsr, err
-	}
+	for _, dataStream := range dsr.DataStreamStats {
+		fmt.Printf("Metric: %+v", dataStream)
 
-	if err := json.Unmarshal(bts, &dsr); err != nil {
-		return dsr, err
-	}
-
-	return dsr, nil
-}
-
-// Collect gets DataStream metric values
-func (ds *DataStream) Collect(ch chan<- prometheus.Metric) {
-
-	dataStreamStatsResp, err := ds.fetchAndDecodeDataStreamStats()
-	if err != nil {
-		ds.logger.Warn(
-			"failed to fetch and decode data stream stats",
-			"err", err,
+		ch <- prometheus.MustNewConstMetric(
+			dataStreamBackingIndicesTotal,
+			prometheus.CounterValue,
+			float64(dataStream.BackingIndices),
+			dataStream.DataStream,
 		)
-		return
+
+		ch <- prometheus.MustNewConstMetric(
+			dataStreamStoreSizeBytes,
+			prometheus.CounterValue,
+			float64(dataStream.StoreSizeBytes),
+			dataStream.DataStream,
+		)
+
 	}
 
-	for _, metric := range ds.dataStreamMetrics {
-		for _, dataStream := range dataStreamStatsResp.DataStreamStats {
-			fmt.Printf("Metric: %+v", dataStream)
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(dataStream),
-				metric.Labels(dataStream)...,
-			)
-		}
-	}
+	return nil
+
 }
