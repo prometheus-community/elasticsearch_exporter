@@ -104,6 +104,9 @@ func main() {
 		esInsecureSkipVerify = kingpin.Flag("es.ssl-skip-verify",
 			"Skip SSL verification when connecting to Elasticsearch.").
 			Default("false").Bool()
+		esExportRemoteInfo = kingpin.Flag("es.remote_info",
+			"Export stats associated with configured remote clusters.").
+			Default("false").Envar("ES_REMOTE_INFO").Bool()
 		logLevel = kingpin.Flag("log.level",
 			"Sets the loglevel. Valid levels are debug, info, warn, error").
 			Default("info").String()
@@ -232,6 +235,11 @@ func main() {
 	if *esExportILM {
 		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
 		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
+	}
+
+	if *esExportRemoteInfo {
+		// Create Remote info Collector
+		prometheus.MustRegister(collector.NewRemoteInfo(logger, httpClient, esURL))
 	}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
