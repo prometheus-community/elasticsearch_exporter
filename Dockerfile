@@ -20,7 +20,7 @@ COPY --from=builder /go/src/github.com/prometheus-community/elasticsearch_export
 EXPOSE      9114
 ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
 
-FROM quay.io/sysdig/sysdig-stig-mini-ubi9:1.2.0 AS ubi
+FROM quay.io/sysdig/sysdig-stig-mini-ubi9:1.4.4 AS ubi
 
 COPY --from=builder /go/src/github.com/prometheus-community/elasticsearch_exporter/elasticsearch_exporter  /bin/elasticsearch_exporter
 
