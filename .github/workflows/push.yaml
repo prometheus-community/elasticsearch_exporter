@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Trigger jenkins job to upload master to Quay.io
-      uses: toptal/jenkins-job-trigger-action@master
+      uses: franco-nonne/jenkins-job-trigger-action@update-bundler
       with:
         jenkins_url: "https://jenkins.internal.sysdig.tools/"
         jenkins_user: 'jenkins-bot@sysdig.com'
