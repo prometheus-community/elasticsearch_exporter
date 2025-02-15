@@ -39,7 +39,7 @@ func TestILMStatus(t *testing.T) {
 			name: "6.6.0",
 			file: "../fixtures/ilm_status/6.6.0.json",
 			want: `
-# HELP elasticsearch_ilm_status Current status of ilm. Status can be STOPPED, RUNNING, STOPPING.
+# HELP elasticsearch_ilm_status Current status of ILM. Status can be STOPPED, RUNNING, STOPPING.
 # TYPE elasticsearch_ilm_status gauge
 elasticsearch_ilm_status{operation_mode="RUNNING"} 1
 elasticsearch_ilm_status{operation_mode="STOPPED"} 0
