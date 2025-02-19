@@ -14,12 +14,16 @@
 package collector
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path"
+	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
 
@@ -54,53 +58,65 @@ func TestIndicesSettings(t *testing.T) {
 
 	// curl http://localhost:9200/_all/_settings
 
-	tcs := map[string]string{
-		"6.5.4": `{"viber":{"settings":{"index":{"creation_date":"1618593207186","number_of_shards":"5","number_of_replicas":"1","uuid":"lWg86KTARzO3r7lELytT1Q","version":{"created":"6050499"},"provided_name":"viber"}}},"instagram":{"settings":{"index":{"mapping":{"total_fields":{"limit":"10000"}},"number_of_shards":"5","blocks":{"read_only_allow_delete":"true"},"provided_name":"instagram","creation_date":"1618593203353","number_of_replicas":"1","uuid":"msb6eG7aT8GmNe-a4oyVtQ","version":{"created":"6050499"}}}},"twitter":{"settings":{"index":{"number_of_shards":"5","blocks":{"read_only_allow_delete":"true"},"provided_name":"twitter","creation_date":"1618593193641","number_of_replicas":"1","uuid":"YRUT8t4aSkKsNmGl7K3y4Q","version":{"created":"6050499"}}}},"facebook":{"settings":{"index":{"creation_date":"1618593199101","number_of_shards":"5","number_of_replicas":"1","uuid":"trZhb_YOTV-RWKitTYw81A","version":{"created":"6050499"},"provided_name":"facebook"}}}}`,
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		{
+			name: "6.5.4",
+			file: "6.5.4.json",
+			want: `# HELP elasticsearch_indices_settings_creation_timestamp_seconds index setting creation_date
+             # TYPE elasticsearch_indices_settings_creation_timestamp_seconds gauge
+             elasticsearch_indices_settings_creation_timestamp_seconds{index="facebook"} 1.618593199101e+09
+             elasticsearch_indices_settings_creation_timestamp_seconds{index="instagram"} 1.618593203353e+09
+             elasticsearch_indices_settings_creation_timestamp_seconds{index="twitter"} 1.618593193641e+09
+             elasticsearch_indices_settings_creation_timestamp_seconds{index="viber"} 1.618593207186e+09
+             # HELP elasticsearch_indices_settings_replicas index setting number_of_replicas
+             # TYPE elasticsearch_indices_settings_replicas gauge
+             elasticsearch_indices_settings_replicas{index="facebook"} 1
+             elasticsearch_indices_settings_replicas{index="instagram"} 1
+             elasticsearch_indices_settings_replicas{index="twitter"} 1
+             elasticsearch_indices_settings_replicas{index="viber"} 1
+             # HELP elasticsearch_indices_settings_stats_read_only_indices Current number of read only indices within cluster
+             # TYPE elasticsearch_indices_settings_stats_read_only_indices gauge
+             elasticsearch_indices_settings_stats_read_only_indices 2
+             # HELP elasticsearch_indices_settings_total_fields index mapping setting for total_fields
+             # TYPE elasticsearch_indices_settings_total_fields gauge
+             elasticsearch_indices_settings_total_fields{index="facebook"} 1000
+             elasticsearch_indices_settings_total_fields{index="instagram"} 10000
+             elasticsearch_indices_settings_total_fields{index="twitter"} 1000
+             elasticsearch_indices_settings_total_fields{index="viber"} 1000
+						`,
+		},
 	}
-	for ver, out := range tcs {
-		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintln(w, out)
-			}),
-		} {
-			ts := httptest.NewServer(handler)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(path.Join("../fixtures/indices_settings", tt.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				io.Copy(w, f)
+			}))
 			defer ts.Close()
 
 			u, err := url.Parse(ts.URL)
 			if err != nil {
-				t.Fatalf("Failed to parse URL: %s", err)
+				t.Fatal(err)
 			}
+
 			c := NewIndicesSettings(promslog.NewNopLogger(), http.DefaultClient, u)
-			nsr, err := c.fetchAndDecodeIndicesSettings()
 			if err != nil {
-				t.Fatalf("Failed to fetch or decode indices settings: %s", err)
+				t.Fatal(err)
 			}
-			t.Logf("[%s/%s] All Indices Settings Response: %+v", hn, ver, nsr)
-			// if nsr.Cluster.Routing.Allocation.Enabled != "ALL" {
-			// 	t.Errorf("Wrong setting for cluster routing allocation enabled")
-			// }
-			var counter int
-			var totalFields int
-			for key, value := range nsr {
-				if value.Settings.IndexInfo.Blocks.ReadOnly == "true" {
-					counter++
-					if key != "instagram" && key != "twitter" {
-						t.Errorf("Wrong read_only index")
-					}
-				}
-				if value.Settings.IndexInfo.Mapping.TotalFields.Limit == "10000" {
-					totalFields++
-					if key != "instagram" {
-						t.Errorf("Expected 10000 total_fields only for  instagram")
-					}
-				}
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
 			}
-			if counter != 2 {
-				t.Errorf("Wrong number of read_only indexes")
-			}
-			if totalFields != 1 {
-				t.Errorf(("Wrong number of total_fields found"))
-			}
-		}
+		})
 	}
 }
