@@ -53,3 +53,11 @@ func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([
 
 	return b, nil
 }
+
+// bool2Float converts a bool to a float64. True is 1, false is 0.
+func bool2Float(managed bool) float64 {
+	if managed {
+		return 1
+	}
+	return 0
+}
