@@ -41,7 +41,7 @@ func TestILM(t *testing.T) {
 						# TYPE elasticsearch_ilm_index_status gauge
 						elasticsearch_ilm_index_status{action="",index="twitter",phase="",step=""} 0
 						elasticsearch_ilm_index_status{action="complete",index="facebook",phase="new",step="complete"} 1
-						# HELP elasticsearch_ilm_status Current status of ilm. Status can be STOPPED, RUNNING, STOPPING.
+						# HELP elasticsearch_ilm_status Current status of ILM. Status can be STOPPED, RUNNING, STOPPING.
             # TYPE elasticsearch_ilm_status gauge
             elasticsearch_ilm_status{operation_mode="RUNNING"} 1
             elasticsearch_ilm_status{operation_mode="STOPPED"} 0
