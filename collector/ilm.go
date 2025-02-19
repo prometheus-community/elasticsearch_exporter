@@ -34,7 +34,7 @@ var (
 
 	ilmStatus = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "ilm", "status"),
-		"Current status of ilm. Status can be STOPPED, RUNNING, STOPPING.",
+		"Current status of ILM. Status can be STOPPED, RUNNING, STOPPING.",
 		[]string{"operation_mode"}, nil,
 	)
 )
