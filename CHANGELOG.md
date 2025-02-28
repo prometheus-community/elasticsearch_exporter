@@ -1,5 +1,7 @@
 ## master / unreleased
 
+## 1.9.0 / 2025-02-27
+
 BREAKING CHANGES:
 
 The flag `--es.slm` has been renamed to `--collector.slm`.
@@ -8,6 +10,7 @@ The logging system has been replaced with log/slog from the stdlib. This change 
 
 * [CHANGE] Rename --es.slm to --collector.slm #932
 * [CHANGE] Replace logging system #942
+* [ENHANCEMENT] Add external refresh stats #933
 
 ## 1.8.0 / 2024-09-14
 
