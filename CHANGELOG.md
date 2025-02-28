@@ -3,10 +3,12 @@
 BREAKING CHANGES:
 
 The flag `--es.slm` has been renamed to `--collector.slm`.
+The flag `--es.ilm` has been renamed to `--collector.ilm`.
 
 The logging system has been replaced with log/slog from the stdlib. This change is being made across the prometheus ecosystem. The logging output has changed, but the messages and levels remain the same. The `ts` label for the timestamp has bewen replaced with `time`, the accuracy is less, and the timezone is not forced to UTC. The `caller` field has been replaced by the `source` field, which now includes the full path to the source file. The `level` field now exposes the log level in capital letters.
 
 * [CHANGE] Rename --es.slm to --collector.slm #932
+* [CHANGE] Rename --es.ilm to --collector.ilm #XXX
 * [CHANGE] Replace logging system #942
 
 ## 1.8.0 / 2024-09-14
