@@ -1103,6 +1103,9 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range i.aliasMetrics {
 		ch <- metric.Desc
 	}
+	for _, metric := range i.shardMetrics {
+		ch <- metric.Desc
+	}
 
 }
 

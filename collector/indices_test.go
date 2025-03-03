@@ -30,19 +30,23 @@ import (
 func TestIndices(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
-	//  curl -XPUT http://localhost:9200/foo_1/type1/1 -d '{"title":"abc","content":"hello"}'
-	//  curl -XPUT http://localhost:9200/foo_1/type1/2 -d '{"title":"def","content":"world"}'
-	//  curl -XPUT http://localhost:9200/foo_2/type1/1 -d '{"title":"abc001","content":"hello001"}'
-	//  curl -XPUT http://localhost:9200/foo_2/type1/2 -d '{"title":"def002","content":"world002"}'
-	//  curl -XPUT http://localhost:9200/foo_2/type1/3 -d '{"title":"def003","content":"world003"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_1/type1/1 -d '{"title":"abc","content":"hello"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_1/type1/2 -d '{"title":"def","content":"world"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/1 -d '{"title":"abc001","content":"hello001"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/2 -d '{"title":"def002","content":"world002"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/3 -d '{"title":"def003","content":"world003"}'
+	// Make an index for foo_3
+	// curl -XPUT http://localhost:9200/foo_3
 	//  curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_2","alias": "foo_alias_2_1"}}]}'
 	//  curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_3","alias": "foo_alias_3_2"}}]}'
 	//  curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_3","alias": "foo_alias_3_1", "is_write_index": true, "routing": "title"}}]}'
 	//  curl http://localhost:9200/_all/_stats
+
 	tests := []struct {
-		name string
-		file string
-		want string
+		name   string
+		file   string
+		shards bool
+		want   string
 	}{
 		{
 			name: "1.7.6",
@@ -1640,6 +1644,479 @@ func TestIndices(t *testing.T) {
              elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_3"} 0
 `,
 		},
+		{
+			name:   "7.17.3",
+			file:   "7.17.3.json",
+			shards: true,
+			want: `# HELP elasticsearch_index_stats_fielddata_evictions_total Total fielddata evictions count
+             # TYPE elasticsearch_index_stats_fielddata_evictions_total counter
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_fielddata_memory_bytes_total Total fielddata memory bytes
+             # TYPE elasticsearch_index_stats_fielddata_memory_bytes_total counter
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_flush_time_seconds_total Total flush time in seconds
+             # TYPE elasticsearch_index_stats_flush_time_seconds_total counter
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.31
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_flush_total Total flush count
+             # TYPE elasticsearch_index_stats_flush_total counter
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index=".geoip_databases"} 4
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_get_time_seconds_total Total get time in seconds
+             # TYPE elasticsearch_index_stats_get_time_seconds_total counter
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_get_total Total get count
+             # TYPE elasticsearch_index_stats_get_total counter
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_index_current The number of documents currently being indexed to an index
+             # TYPE elasticsearch_index_stats_index_current gauge
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_time_seconds_total Total indexing delete time in seconds
+             # TYPE elasticsearch_index_stats_indexing_delete_time_seconds_total counter
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_total Total indexing delete count
+             # TYPE elasticsearch_index_stats_indexing_delete_total counter
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_time_seconds_total Total indexing index time in seconds
+             # TYPE elasticsearch_index_stats_indexing_index_time_seconds_total counter
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.866
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.002
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.003
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_total Total indexing index count
+             # TYPE elasticsearch_index_stats_indexing_index_total counter
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index=".geoip_databases"} 37
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_noop_update_total Total indexing no-op update count
+             # TYPE elasticsearch_index_stats_indexing_noop_update_total counter
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_throttle_time_seconds_total Total indexing throttle time in seconds
+             # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
+             # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_2"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_3"} 2.097152e+07
+             # HELP elasticsearch_index_stats_merge_stopped_time_seconds_total Total large merge stopped time in seconds, allowing smaller merges to complete
+             # TYPE elasticsearch_index_stats_merge_stopped_time_seconds_total counter
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_throttle_time_seconds_total Total merge I/O throttle time in seconds
+             # TYPE elasticsearch_index_stats_merge_throttle_time_seconds_total counter
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_time_seconds_total Total merge time in seconds
+             # TYPE elasticsearch_index_stats_merge_time_seconds_total counter
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_total Total merge count
+             # TYPE elasticsearch_index_stats_merge_total counter
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_caches_total Total query cache caches count
+             # TYPE elasticsearch_index_stats_query_cache_caches_total counter
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_evictions_total Total query cache evictions count
+             # TYPE elasticsearch_index_stats_query_cache_evictions_total counter
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_hits_total Total query cache hits count
+             # TYPE elasticsearch_index_stats_query_cache_hits_total counter
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_memory_bytes_total Total query cache memory bytes
+             # TYPE elasticsearch_index_stats_query_cache_memory_bytes_total counter
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_misses_total Total query cache misses count
+             # TYPE elasticsearch_index_stats_query_cache_misses_total counter
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_size Total query cache size
+             # TYPE elasticsearch_index_stats_query_cache_size gauge
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_external_time_seconds_total Total external refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_external_time_seconds_total counter
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.074
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.014
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.02
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_external_total Total external refresh count
+             # TYPE elasticsearch_index_stats_refresh_external_total counter
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index=".geoip_databases"} 7
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_1"} 4
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_2"} 5
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_3"} 2
+             # HELP elasticsearch_index_stats_refresh_time_seconds_total Total refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_time_seconds_total counter
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.083
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.014
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.02
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_total Total refresh count
+             # TYPE elasticsearch_index_stats_refresh_total counter
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index=".geoip_databases"} 10
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_1"} 4
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_2"} 5
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_3"} 2
+             # HELP elasticsearch_index_stats_request_cache_evictions_total Total request cache evictions count
+             # TYPE elasticsearch_index_stats_request_cache_evictions_total counter
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_hits_total Total request cache hits count
+             # TYPE elasticsearch_index_stats_request_cache_hits_total counter
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_memory_bytes_total Total request cache memory bytes
+             # TYPE elasticsearch_index_stats_request_cache_memory_bytes_total counter
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_misses_total Total request cache misses count
+             # TYPE elasticsearch_index_stats_request_cache_misses_total counter
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_fetch_time_seconds_total Total search fetch time in seconds
+             # TYPE elasticsearch_index_stats_search_fetch_time_seconds_total counter
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.069
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_fetch_total Total search fetch count
+             # TYPE elasticsearch_index_stats_search_fetch_total counter
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
+             # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.057
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_query_total Total number of queries
+             # TYPE elasticsearch_index_stats_search_query_total counter
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_current Current search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_current gauge
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_time_seconds_total Total search scroll time in seconds
+             # TYPE elasticsearch_index_stats_search_scroll_time_seconds_total counter
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.048
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_total Total search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_total counter
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index=".geoip_databases"} 3
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_suggest_time_seconds_total Total search suggest time in seconds
+             # TYPE elasticsearch_index_stats_search_suggest_time_seconds_total counter
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_suggest_total Total search suggest count
+             # TYPE elasticsearch_index_stats_search_suggest_total counter
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_warmer_time_seconds_total Total warmer time in seconds
+             # TYPE elasticsearch_index_stats_warmer_time_seconds_total counter
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_warmer_total Total warmer count
+             # TYPE elasticsearch_index_stats_warmer_total counter
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index=".geoip_databases"} 6
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_1"} 3
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_2"} 4
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_aliases Record aliases associated with an index
+             # TYPE elasticsearch_indices_aliases gauge
+             elasticsearch_indices_aliases{alias="foo_alias_2_1",cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_1",cluster="unknown_cluster",index="foo_3"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_2",cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_completion_bytes_primary Current size of completion with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_primary gauge
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_completion_bytes_total Current size of completion with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_total gauge
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_deleted_docs_primary Count of deleted documents with only primary shards
+             # TYPE elasticsearch_indices_deleted_docs_primary gauge
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_deleted_docs_total Total count of deleted documents
+             # TYPE elasticsearch_indices_deleted_docs_total gauge
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_docs_primary Count of documents with only primary shards
+             # TYPE elasticsearch_indices_docs_primary gauge
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index=".geoip_databases"} 37
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_docs_total Total count of documents
+             # TYPE elasticsearch_indices_docs_total gauge
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index=".geoip_databases"} 37
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_count_primary Current number of segments with only primary shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_primary gauge
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index=".geoip_databases"} 5
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_count_total Current number of segments with all shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_total gauge
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index=".geoip_databases"} 5
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_primary Current size of doc values with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_primary gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 380
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 152
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 228
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_total Current size of doc values with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_total gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 380
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 152
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 228
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_primary Current size of fields with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 2504
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 976
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 1464
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_total Current size of fields with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_total gauge
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2504
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 976
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 1464
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary Current size of fixed bit with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total Current size of fixed bit with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_primary Current size of index writer with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_primary gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_total Current size of index writer with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_total gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_primary Current size of segments with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_primary gauge
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 5444
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 3752
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 5628
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_total Current size of segments with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_total gauge
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 5444
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 3752
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 5628
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_primary Current size of norms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_primary gauge
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 256
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_total Current size of norms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_total gauge
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 256
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_primary Current size of points with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_primary gauge
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_total Current size of points with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_total gauge
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_primary_bytes Current size of term vectors with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_primary_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_total_bytes Current size of term vectors with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_total_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_primary Current size of terms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_primary gauge
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index=".geoip_databases"} 2560
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_1"} 2368
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_2"} 3552
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_total Current number of terms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_total gauge
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index=".geoip_databases"} 2560
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_1"} 2368
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_2"} 3552
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_primary Current size of version map with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_primary gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_total Current size of version map with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_total gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_shards_docs Count of documents on this shard
+             # TYPE elasticsearch_indices_shards_docs gauge
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 37
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 2
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 3
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             # HELP elasticsearch_indices_shards_docs_deleted Count of deleted documents on this shard
+             # TYPE elasticsearch_indices_shards_docs_deleted gauge
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             # HELP elasticsearch_indices_shards_store_size_in_bytes Store size of this shard
+             # TYPE elasticsearch_indices_shards_store_size_in_bytes gauge
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 3.7286036e+07
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 8600
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 12925
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 226
+             # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_primary gauge
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 3.7286036e+07
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_1"} 8600
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_2"} 12925
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_3"} 226
+             # HELP elasticsearch_indices_store_size_bytes_total Current total size of stored index data in bytes with all shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_total gauge
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 3.7286036e+07
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_1"} 8600
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_2"} 12925
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_3"} 226
+             # HELP elasticsearch_search_active_queries The number of currently active queries
+             # TYPE elasticsearch_search_active_queries gauge
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_3"} 0
+`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1649,6 +2126,13 @@ func TestIndices(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer fStats.Close()
+
+			fStatsShard, err := os.Open(path.Join("../fixtures/indices/shards/", tt.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fStatsShard.Close()
+
 			fAlias, err := os.Open(path.Join("../fixtures/indices/alias/", tt.file))
 			if err != nil {
 				t.Fatal(err)
@@ -1658,7 +2142,12 @@ func TestIndices(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/_all/_stats":
-					io.Copy(w, fStats)
+					shards := r.URL.Query().Get("level")
+					if shards == "shards" {
+						io.Copy(w, fStatsShard)
+					} else {
+						io.Copy(w, fStats)
+					}
 				case "/_alias":
 					io.Copy(w, fAlias)
 				default:
@@ -1677,6 +2166,8 @@ func TestIndices(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+
+			c.shards = tt.shards
 
 			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
