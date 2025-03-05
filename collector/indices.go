@@ -487,6 +487,18 @@ func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards b
 				Labels: indexLabels,
 			},
 			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "index_stats", "search_open_contexts"),
+					"Total number of open search contexts",
+					indexLabels.keys(), nil,
+				),
+				Value: func(indexStats IndexStatsIndexResponse) float64 {
+					return float64(indexStats.Total.Search.OpenContexts)
+				},
+				Labels: indexLabels,
+			},
+			{
 				Type: prometheus.CounterValue,
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),
