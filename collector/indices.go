@@ -431,13 +431,6 @@ type labels struct {
 	values func(*clusterinfo.Response, ...string) []string
 }
 
-type indexMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(indexStats IndexStatsIndexResponse) float64
-	Labels labels
-}
-
 // Indices information struct
 type Indices struct {
 	logger          *slog.Logger
