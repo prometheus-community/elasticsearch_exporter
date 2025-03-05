@@ -1,5 +1,11 @@
 ## master / unreleased
 
+BREAKING CHANGES:
+
+The flag `--es.ilm` has been renamed to `--collector.ilm`.
+
+* [CHANGE] Rename --es.ilm to --collector.ilm #999
+
 ## 1.9.0 / 2025-02-27
 
 BREAKING CHANGES:

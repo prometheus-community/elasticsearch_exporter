@@ -81,9 +81,6 @@ func main() {
 		esExportIndexAliases = kingpin.Flag("es.aliases",
 			"Export informational alias metrics.").
 			Default("true").Bool()
-		esExportILM = kingpin.Flag("es.ilm",
-			"Export index lifecycle policies for indices in the cluster.").
-			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
@@ -227,11 +224,6 @@ func main() {
 
 	if *esExportIndicesMappings {
 		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
-	}
-
-	if *esExportILM {
-		prometheus.MustRegister(collector.NewIlmStatus(logger, httpClient, esURL))
-		prometheus.MustRegister(collector.NewIlmIndicies(logger, httpClient, esURL))
 	}
 
 	// Create a context that is cancelled on SIGKILL or SIGINT.
