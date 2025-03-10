@@ -3,8 +3,10 @@
 BREAKING CHANGES:
 
 The flag `--es.data_stream` has been renamed to `--collector.data-stream`.
+The flag `--es.ilm` has been renamed to `--collector.ilm`.
 
 * [CHANGE] Rename --es.data_stream to --collector.data-stream #983
+* [CHANGE] Rename --es.ilm to --collector.ilm #999
 
 ## 1.9.0 / 2025-02-27
 
