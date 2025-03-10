@@ -11,8 +11,6 @@ issues:
         - errcheck
 
 linters-settings:
-  errcheck:
-    exclude-functions: scripts/errcheck_excludes.txt
   revive:
     rules:
       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#unused-parameter
