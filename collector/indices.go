@@ -27,376 +27,378 @@ import (
 )
 
 var (
+	indicesLabels = []string{"index", "cluster"}
+
 	indicesDocsPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "docs_primary"),
 		"Count of documents with only primary shards",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesDeletedDocsPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "deleted_docs_primary"),
 		"Count of deleted documents with only primary shards",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesDocsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "docs_total"),
 		"Total count of documents",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesDeletedDocsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "deleted_docs_total"),
 		"Total count of deleted documents",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesStoreSizeBytesPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "store_size_bytes_primary"),
 		"Current total size of stored index data in bytes with only primary shards on all nodes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesStoreSizeBytesTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "store_size_bytes_total"),
 		"Current total size of stored index data in bytes with all shards on all nodes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentCountPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_count_primary"),
 		"Current number of segments with only primary shards on all nodes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentCountTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_count_total"),
 		"Current number of segments with all shards on all nodes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentMemoryBytesPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_primary"),
 		"Current size of segments with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentMemoryBytesTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_memory_bytes_total"),
 		"Current size of segments with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentTermsMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_primary"),
 		"Current size of terms with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentTermsMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_terms_memory_total"),
 		"Current number of terms with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentFieldsMemoryBytesPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_primary"),
 		"Current size of fields with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentFieldsMemoryBytesTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_fields_memory_bytes_total"),
 		"Current size of fields with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentTermVectorsMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_term_vectors_memory_primary_bytes"),
 		"Current size of term vectors with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentTermVectorsMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_term_vectors_memory_total_bytes"),
 		"Current size of term vectors with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentNormsMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_primary"),
 		"Current size of norms with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentNormsMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_norms_memory_bytes_total"),
 		"Current size of norms with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentPointsMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_primary"),
 		"Current size of points with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentPointsMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_points_memory_bytes_total"),
 		"Current size of points with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentDocValuesMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_primary"),
 		"Current size of doc values with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentDocValuesMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_doc_values_memory_bytes_total"),
 		"Current size of doc values with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentIndexWriterMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_primary"),
 		"Current size of index writer with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentIndexWriterMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_index_writer_memory_bytes_total"),
 		"Current size of index writer with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentVersionMapMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_primary"),
 		"Current size of version map with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentVersionMapMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_version_map_memory_bytes_total"),
 		"Current size of version map with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentFBSMemoryPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_primary"),
 		"Current size of fixed bit with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSegmentFBSMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "segment_fixed_bit_set_memory_bytes_total"),
 		"Current size of fixed bit with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesCompletionPrimary = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "completion_bytes_primary"),
 		"Current size of completion with only primary shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesCompletionTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "completion_bytes_total"),
 		"Current size of completion with all shards on all nodes in bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	// TODO(@sysadmind): The metrics below should change the subsystem to "indices"
 	indicesSearchQueryTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),
 		"Total search query time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesActiveQueries = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "search", "active_queries"),
 		"The number of currently active queries",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchQueryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_query_total"),
 		"Total number of queries",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchFetchTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_fetch_time_seconds_total"),
 		"Total search fetch time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchFetchTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_fetch_total"),
 		"Total search fetch count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchScrollTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_scroll_time_seconds_total"),
 		"Total search scroll time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchScrollCurrent = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_scroll_current"),
 		"Current search scroll count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchScrollTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_scroll_total"),
 		"Total search scroll count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchSuggestTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_suggest_time_seconds_total"),
 		"Total search suggest time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesSearchSuggestTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_suggest_total"),
 		"Total search suggest count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexingTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "indexing_index_time_seconds_total"),
 		"Total indexing index time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexCurrent = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "index_current"),
 		"The number of documents currently being indexed to an index",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexingIndexTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "indexing_index_total"),
 		"Total indexing index count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexingDeleteSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_time_seconds_total"),
 		"Total indexing delete time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexingDeleteTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_total"),
 		"Total indexing delete count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexingNoopUpdateTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "indexing_noop_update_total"),
 		"Total indexing no-op update count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesIndexingThrottleSecondsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "indexing_throttle_time_seconds_total"),
 		"Total indexing throttle time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesGetTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "get_time_seconds_total"),
 		"Total get time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesGetTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "get_total"),
 		"Total get count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesMergeTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "merge_time_seconds_total"),
 		"Total merge time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesMergeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "merge_total"),
 		"Total merge count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesMergeThrottleTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "merge_throttle_time_seconds_total"),
 		"Total merge I/O throttle time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesMergeStoppedTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "merge_stopped_time_seconds_total"),
 		"Total large merge stopped time in seconds, allowing smaller merges to complete",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesMergeAutoThrottleBytesTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "merge_auto_throttle_bytes_total"),
 		"Total bytes that were auto-throttled during merging",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRefreshTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "refresh_time_seconds_total"),
 		"Total refresh time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRefreshExternalTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "refresh_external_time_seconds_total"),
 		"Total external refresh time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRefreshExternalTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "refresh_external_total"),
 		"Total external refresh count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRefreshTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "refresh_total"),
 		"Total refresh count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesFlushTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "flush_time_seconds_total"),
 		"Total flush time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesFlushTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "flush_total"),
 		"Total flush count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesWarmerTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "warmer_time_seconds_total"),
 		"Total warmer time in seconds",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesWarmerTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "warmer_total"),
 		"Total warmer count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesQueryCacheMemoryTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "query_cache_memory_bytes_total"),
 		"Total query cache memory bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesQueryCacheSize = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "query_cache_size"),
 		"Total query cache size",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesQueryCacheHits = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "query_cache_hits_total"),
 		"Total query cache hits count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesQueryCacheMisses = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "query_cache_misses_total"),
 		"Total query cache misses count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesQueryCacheCaches = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "query_cache_caches_total"),
 		"Total query cache caches count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesQueryCacheEvictions = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "query_cache_evictions_total"),
 		"Total query cache evictions count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRequestCacheMemory = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "request_cache_memory_bytes_total"),
 		"Total request cache memory bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRequestCacheHits = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "request_cache_hits_total"),
 		"Total request cache hits count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRequestCacheMisses = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "request_cache_misses_total"),
 		"Total request cache misses count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesRequestCacheEvictions = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "request_cache_evictions_total"),
 		"Total request cache evictions count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesFielddataMemory = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "fielddata_memory_bytes_total"),
 		"Total fielddata memory bytes",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 	indicesFielddataEvictions = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "fielddata_evictions_total"),
 		"Total fielddata evictions count",
-		[]string{"index", "cluster"}, nil,
+		indicesLabels, nil,
 	)
 
 	indicesAliases = prometheus.NewDesc(
@@ -406,22 +408,24 @@ var (
 		nil,
 	)
 
+	indicesShardsLabels = []string{"index", "shard", "node", "primary", "cluster"}
+
 	indicesShardDocs = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "shards_docs"),
 		"Count of documents on this shard",
-		[]string{"index", "shard", "node", "primary", "cluster"},
+		indicesShardsLabels,
 		nil,
 	)
 	indicesShardDocsDeleted = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "shards_docs_deleted"),
 		"Count of deleted documents on this shard",
-		[]string{"index", "shard", "node", "primary", "cluster"},
+		indicesShardsLabels,
 		nil,
 	)
 	indicesShardStoreSizeBytes = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "shards_store_size_in_bytes"),
 		"Store size of this shard",
-		[]string{"index", "shard", "node", "primary", "cluster"},
+		indicesShardsLabels,
 		nil,
 	)
 )
