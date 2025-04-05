@@ -3,7 +3,11 @@
 [![CircleCI](https://circleci.com/gh/prometheus-community/elasticsearch_exporter.svg?style=svg)](https://circleci.com/gh/prometheus-community/elasticsearch_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/prometheus-community/elasticsearch_exporter)](https://goreportcard.com/report/github.com/prometheus-community/elasticsearch_exporter)
 
-Prometheus exporter for various metrics about Elasticsearch, written in Go.
+Prometheus exporter for various metrics about Elasticsearch and OpenSearch, written in Go.
+
+## Supported Versions
+
+We support all currently supported versions of Elasticsearch and OpenSearch. This project will make reasonable attempts to maintain compatibility with previous versions but considerations will be made for code maintainability and favoring supported versions. Where Elasticsearch and OpenSearch diverge, this project will make reasonable attempts to maintain compatibility with both. Some collectors may only be compatible with one or the other.
 
 ### Installation
 
@@ -326,10 +330,6 @@ Then transferred this repository to the Prometheus Community in May 2021.
 
 This package was originally created and maintained by [Eric Richardson](https://github.com/ewr),
 who transferred this repository to us in January 2017.
-
-Maintainers of this repository:
-
-- Christoph Oelmüller <christoph.oelmueller@justwatch.com> @zwopir
 
 Please refer to the Git commit log for a complete list of contributors.
 
