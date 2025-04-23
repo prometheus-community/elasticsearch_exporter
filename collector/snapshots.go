@@ -143,7 +143,6 @@ func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) err
 
 	// Snapshots stats
 	for repositoryName, snapshotStats := range snapshotsStatsResp {
-
 		ch <- prometheus.MustNewConstMetric(
 			numSnapshots,
 			prometheus.GaugeValue,
@@ -164,7 +163,7 @@ func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) err
 
 		latest := float64(0)
 		for i := len(snapshotStats.Snapshots) - 1; i >= 0; i-- {
-			var snap = snapshotStats.Snapshots[i]
+			snap := snapshotStats.Snapshots[i]
 			if snap.State == "SUCCESS" || snap.State == "PARTIAL" {
 				latest = float64(snap.StartTimeInMillis / 1000)
 				break

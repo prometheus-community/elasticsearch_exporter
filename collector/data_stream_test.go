@@ -27,7 +27,6 @@ import (
 )
 
 func TestDataStream(t *testing.T) {
-
 	tests := []struct {
 		name string
 		file string

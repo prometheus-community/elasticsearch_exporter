@@ -14,6 +14,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,12 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"context"
-
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/prometheus-community/elasticsearch_exporter/collector"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 	"github.com/prometheus/client_golang/prometheus"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,6 +33,10 @@ import (
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
+
+	"github.com/prometheus-community/elasticsearch_exporter/collector"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 )
 
 const name = "elasticsearch_exporter"

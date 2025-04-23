@@ -113,9 +113,7 @@ func (ds *DataStream) Update(ctx context.Context, ch chan<- prometheus.Metric) e
 			float64(dataStream.StoreSizeBytes),
 			dataStream.DataStream,
 		)
-
 	}
 
 	return nil
-
 }

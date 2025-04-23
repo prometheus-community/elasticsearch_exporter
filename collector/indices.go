@@ -22,8 +22,9 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 var (
@@ -448,7 +449,6 @@ type Indices struct {
 
 // NewIndices defines Indices Prometheus metrics
 func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool) *Indices {
-
 	indices := &Indices{
 		logger:        logger,
 		client:        client,
@@ -661,7 +661,6 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 
 	// Index stats
 	for indexName, indexStats := range indexStatsResp.Indices {
-
 		ch <- prometheus.MustNewConstMetric(
 			indicesDocsPrimary,
 			prometheus.GaugeValue,

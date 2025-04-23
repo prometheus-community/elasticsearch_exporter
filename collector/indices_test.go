@@ -2153,7 +2153,6 @@ func TestIndices(t *testing.T) {
 				default:
 					http.Error(w, "Not Found", http.StatusNotFound)
 				}
-
 			}))
 			defer ts.Close()
 

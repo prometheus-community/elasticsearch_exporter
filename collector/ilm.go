@@ -122,7 +122,6 @@ func (i *ILM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 			bool2Float(statusActive),
 			status,
 		)
-
 	}
 
 	return nil
