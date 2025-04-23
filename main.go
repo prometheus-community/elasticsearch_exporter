@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	_ "net/http/pprof" // Enable pprof metrics
 	"net/url"
 	"os"
 	"os/signal"
