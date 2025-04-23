@@ -16,33 +16,31 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // IndicesSettings information struct
 type IndicesSettings struct {
-	logger log.Logger
+	logger *slog.Logger
 	client *http.Client
 	url    *url.URL
 
-	up              prometheus.Gauge
 	readOnlyIndices prometheus.Gauge
 
-	totalScrapes, jsonParseFailures prometheus.Counter
-	metrics                         []*indicesSettingsMetric
+	metrics []*indicesSettingsMetric
 }
 
 var (
 	defaultIndicesTotalFieldsLabels = []string{"index"}
 	defaultTotalFieldsValue         = 1000 //es default configuration for total fields
+	defaultDateCreation             = 0    //es index default creation date
 )
 
 type indicesSettingsMetric struct {
@@ -52,28 +50,17 @@ type indicesSettingsMetric struct {
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
-func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *IndicesSettings {
+func NewIndicesSettings(logger *slog.Logger, client *http.Client, url *url.URL) *IndicesSettings {
 	return &IndicesSettings{
 		logger: logger,
 		client: client,
 		url:    url,
 
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch Indices Settings endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch Indices Settings scrapes.",
-		}),
 		readOnlyIndices: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
 			Help: "Current number of read only indices within cluster",
 		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
+
 		metrics: []*indicesSettingsMetric{
 			{
 				Type: prometheus.GaugeValue,
@@ -105,16 +92,32 @@ func NewIndicesSettings(logger log.Logger, client *http.Client, url *url.URL) *I
 					return val
 				},
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "creation_timestamp_seconds"),
+					"index setting creation_date",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.CreationDate, 64)
+					if err != nil {
+						return float64(defaultDateCreation)
+					}
+					return val / 1000.0
+				},
+			},
 		},
 	}
 }
 
 // Describe add Snapshots metrics descriptions
 func (cs *IndicesSettings) Describe(ch chan<- *prometheus.Desc) {
-	ch <- cs.up.Desc()
-	ch <- cs.totalScrapes.Desc()
 	ch <- cs.readOnlyIndices.Desc()
-	ch <- cs.jsonParseFailures.Desc()
+
+	for _, metric := range cs.metrics {
+		ch <- metric.Desc
+	}
 }
 
 func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
@@ -127,8 +130,8 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(cs.logger).Log(
-				"msg", "failed to close http.Client",
+			cs.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}
@@ -138,14 +141,12 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := ioutil.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		cs.jsonParseFailures.Inc()
 		return err
 	}
 
 	if err := json.Unmarshal(bts, data); err != nil {
-		cs.jsonParseFailures.Inc()
 		return err
 	}
 	return nil
@@ -166,26 +167,15 @@ func (cs *IndicesSettings) fetchAndDecodeIndicesSettings() (IndicesSettingsRespo
 
 // Collect gets all indices settings metric values
 func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
-
-	cs.totalScrapes.Inc()
-	defer func() {
-		ch <- cs.up
-		ch <- cs.totalScrapes
-		ch <- cs.jsonParseFailures
-		ch <- cs.readOnlyIndices
-	}()
-
 	asr, err := cs.fetchAndDecodeIndicesSettings()
 	if err != nil {
 		cs.readOnlyIndices.Set(0)
-		cs.up.Set(0)
-		_ = level.Warn(cs.logger).Log(
-			"msg", "failed to fetch and decode cluster settings stats",
+		cs.logger.Warn(
+			"failed to fetch and decode cluster settings stats",
 			"err", err,
 		)
 		return
 	}
-	cs.up.Set(1)
 
 	var c int
 	for indexName, value := range asr {
@@ -202,4 +192,6 @@ func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 	cs.readOnlyIndices.Set(float64(c))
+
+	ch <- cs.readOnlyIndices
 }

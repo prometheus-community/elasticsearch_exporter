@@ -1,0 +1,20 @@
+{
+  "foo_1": {
+    "aliases": {}
+  },
+  "foo_2": {
+    "aliases": {
+      "foo_alias_2_1": {}
+    }
+  },
+  "foo_3": {
+    "aliases": {
+      "foo_alias_3_1": {
+        "index_routing": "title",
+        "search_routing": "title",
+        "is_write_index": true
+      },
+      "foo_alias_3_2": {}
+    }
+  }
+}

@@ -16,13 +16,12 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -38,18 +37,15 @@ type indicesMappingsMetric struct {
 
 // IndicesMappings information struct
 type IndicesMappings struct {
-	logger log.Logger
+	logger *slog.Logger
 	client *http.Client
 	url    *url.URL
-
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
 
 	metrics []*indicesMappingsMetric
 }
 
 // NewIndicesMappings defines Indices IndexMappings Prometheus metrics
-func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *IndicesMappings {
+func NewIndicesMappings(logger *slog.Logger, client *http.Client, url *url.URL) *IndicesMappings {
 	subsystem := "indices_mappings_stats"
 
 	return &IndicesMappings{
@@ -57,18 +53,6 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 		client: client,
 		url:    url,
 
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "up"),
-			Help: "Was the last scrape of the Elasticsearch Indices Mappings endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "scrapes_total"),
-			Help: "Current total Elasticsearch Indices Mappings scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, subsystem, "json_parse_failures_total"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 		metrics: []*indicesMappingsMetric{
 			{
 				Type: prometheus.GaugeValue,
@@ -88,8 +72,10 @@ func NewIndicesMappings(logger log.Logger, client *http.Client, url *url.URL) *I
 func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float64) float64 {
 	// iterate over all properties
 	for _, property := range properties {
-		if property.Type != nil {
-			// property has a type set - counts as a field
+
+		if property.Type != nil && *property.Type != "object" {
+			// property has a type set - counts as a field unless the value is object
+			// as the recursion below will handle counting that
 			fieldCounter++
 
 			// iterate over all fields of that property
@@ -103,7 +89,7 @@ func countFieldsRecursive(properties IndexMappingProperties, fieldCounter float6
 
 		// count recursively in case the property has more properties
 		if property.Properties != nil {
-			fieldCounter = +countFieldsRecursive(property.Properties, fieldCounter)
+			fieldCounter = 1 + countFieldsRecursive(property.Properties, fieldCounter)
 		}
 	}
 
@@ -115,10 +101,6 @@ func (im *IndicesMappings) Describe(ch chan<- *prometheus.Desc) {
 	for _, metric := range im.metrics {
 		ch <- metric.Desc
 	}
-
-	ch <- im.up.Desc()
-	ch <- im.totalScrapes.Desc()
-	ch <- im.jsonParseFailures.Desc()
 }
 
 func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse, error) {
@@ -132,21 +114,20 @@ func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse,
 		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		_ = level.Warn(im.logger).Log("msg", "failed to read response body", "err", err)
+		im.logger.Warn("failed to read response body", "err", err)
 		return nil, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		_ = level.Warn(im.logger).Log("msg", "failed to close response body", "err", err)
+		im.logger.Warn("failed to close response body", "err", err)
 		return nil, err
 	}
 
 	var imr IndicesMappingsResponse
 	if err := json.Unmarshal(body, &imr); err != nil {
-		im.jsonParseFailures.Inc()
 		return nil, err
 	}
 
@@ -161,24 +142,14 @@ func (im *IndicesMappings) fetchAndDecodeIndicesMappings() (*IndicesMappingsResp
 
 // Collect gets all indices mappings metric values
 func (im *IndicesMappings) Collect(ch chan<- prometheus.Metric) {
-
-	im.totalScrapes.Inc()
-	defer func() {
-		ch <- im.up
-		ch <- im.totalScrapes
-		ch <- im.jsonParseFailures
-	}()
-
 	indicesMappingsResponse, err := im.fetchAndDecodeIndicesMappings()
 	if err != nil {
-		im.up.Set(0)
-		_ = level.Warn(im.logger).Log(
-			"msg", "failed to fetch and decode cluster mappings stats",
+		im.logger.Warn(
+			"failed to fetch and decode cluster mappings stats",
 			"err", err,
 		)
 		return
 	}
-	im.up.Set(1)
 
 	for _, metric := range im.metrics {
 		for indexName, mappings := range *indicesMappingsResponse {

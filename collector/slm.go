@@ -14,388 +14,248 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"log/slog"
 	"net/http"
 	"net/url"
-	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type policyMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(policyStats PolicyStats) float64
-	Labels func(policyStats PolicyStats) []string
-}
-
-type slmMetric struct {
-	Type  prometheus.ValueType
-	Desc  *prometheus.Desc
-	Value func(slmStats SLMStatsResponse) float64
-}
-
-type slmStatusMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(slmStatus SLMStatusResponse, operationMode string) float64
-	Labels func(operationMode string) []string
-}
-
 var (
-	defaultPolicyLabels      = []string{"policy"}
-	defaultPolicyLabelValues = func(policyStats PolicyStats) []string {
-		return []string{policyStats.Policy}
-	}
-
 	statuses = []string{"RUNNING", "STOPPING", "STOPPED"}
 )
 
+var (
+	slmRetentionRunsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "retention_runs_total"),
+		"Total retention runs",
+		nil, nil,
+	)
+	slmRetentionFailedTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "retention_failed_total"),
+		"Total failed retention runs",
+		nil, nil,
+	)
+	slmRetentionTimedOutTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "retention_timed_out_total"),
+		"Total timed out retention runs",
+		nil, nil,
+	)
+	slmRetentionDeletionTimeSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "retention_deletion_time_seconds"),
+		"Retention run deletion time",
+		nil, nil,
+	)
+	slmTotalSnapshotsTaken = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_taken_total"),
+		"Total snapshots taken",
+		nil, nil,
+	)
+	slmTotalSnapshotsFailed = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_failed_total"),
+		"Total snapshots failed",
+		nil, nil,
+	)
+	slmTotalSnapshotsDeleted = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_deleted_total"),
+		"Total snapshots deleted",
+		nil, nil,
+	)
+	slmTotalSnapshotsDeleteFailed = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshot_deletion_failures_total"),
+		"Total snapshot deletion failures",
+		nil, nil,
+	)
+
+	slmOperationMode = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "operation_mode"),
+		"Operating status of SLM",
+		[]string{"operation_mode"}, nil,
+	)
+
+	slmSnapshotsTaken = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "snapshots_taken_total"),
+		"Total snapshots taken",
+		[]string{"policy"}, nil,
+	)
+	slmSnapshotsFailed = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "snapshots_failed_total"),
+		"Total snapshots failed",
+		[]string{"policy"}, nil,
+	)
+	slmSnapshotsDeleted = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "snapshots_deleted_total"),
+		"Total snapshots deleted",
+		[]string{"policy"}, nil,
+	)
+	slmSnapshotsDeletionFailure = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "slm_stats", "snapshot_deletion_failures_total"),
+		"Total snapshot deletion failures",
+		[]string{"policy"}, nil,
+	)
+)
+
+func init() {
+	registerCollector("slm", defaultDisabled, NewSLM)
+}
+
 // SLM information struct
 type SLM struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
-	slmMetrics      []*slmMetric
-	policyMetrics   []*policyMetric
-	slmStatusMetric *slmStatusMetric
+	logger *slog.Logger
+	hc     *http.Client
+	u      *url.URL
 }
 
 // NewSLM defines SLM Prometheus metrics
-func NewSLM(logger log.Logger, client *http.Client, url *url.URL) *SLM {
+func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &SLM{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "slm_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch SLM endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "slm_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch SLM scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "slm_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
-		slmMetrics: []*slmMetric{
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_runs_total"),
-					"Total retention runs",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.RetentionRuns)
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_failed_total"),
-					"Total failed retention runs",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.RetentionFailed)
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_timed_out_total"),
-					"Total timed out retention runs",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.RetentionTimedOut)
-				},
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "retention_deletion_time_seconds"),
-					"Retention run deletion time",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.RetentionDeletionTimeMillis) / 1000
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_taken_total"),
-					"Total snapshots taken",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.TotalSnapshotsTaken)
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_failed_total"),
-					"Total snapshots failed",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.TotalSnapshotsFailed)
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_deleted_total"),
-					"Total snapshots deleted",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.TotalSnapshotsDeleted)
-				},
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "total_snapshot_deletion_failures_total"),
-					"Total snapshot deletion failures",
-					nil, nil,
-				),
-				Value: func(slmStats SLMStatsResponse) float64 {
-					return float64(slmStats.TotalSnapshotDeletionFailures)
-				},
-			},
-		},
-		policyMetrics: []*policyMetric{
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_taken_total"),
-					"Total snapshots taken",
-					defaultPolicyLabels, nil,
-				),
-				Value: func(policyStats PolicyStats) float64 {
-					return float64(policyStats.SnapshotsTaken)
-				},
-				Labels: defaultPolicyLabelValues,
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_failed_total"),
-					"Total snapshots failed",
-					defaultPolicyLabels, nil,
-				),
-				Value: func(policyStats PolicyStats) float64 {
-					return float64(policyStats.SnapshotsFailed)
-				},
-				Labels: defaultPolicyLabelValues,
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshots_deleted_total"),
-					"Total snapshots deleted",
-					defaultPolicyLabels, nil,
-				),
-				Value: func(policyStats PolicyStats) float64 {
-					return float64(policyStats.SnapshotsDeleted)
-				},
-				Labels: defaultPolicyLabelValues,
-			},
-			{
-				Type: prometheus.CounterValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "slm_stats", "snapshot_deletion_failures_total"),
-					"Total snapshot deletion failures",
-					defaultPolicyLabels, nil,
-				),
-				Value: func(policyStats PolicyStats) float64 {
-					return float64(policyStats.SnapshotDeletionFailures)
-				},
-				Labels: defaultPolicyLabelValues,
-			},
-		},
-		slmStatusMetric: &slmStatusMetric{
-			Type: prometheus.GaugeValue,
-			Desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "slm_stats", "operation_mode"),
-				"Operating status of SLM",
-				[]string{"operation_mode"}, nil,
-			),
-			Value: func(slmStatus SLMStatusResponse, operationMode string) float64 {
-				if slmStatus.OperationMode == operationMode {
-					return 1
-				}
-				return 0
-			},
-		},
-	}
+		hc:     hc,
+		u:      u,
+	}, nil
 }
 
-// Describe adds SLM metrics descriptions
-func (s *SLM) Describe(ch chan<- *prometheus.Desc) {
-	ch <- s.slmStatusMetric.Desc
-
-	for _, metric := range s.slmMetrics {
-		ch <- metric.Desc
-	}
-
-	for _, metric := range s.policyMetrics {
-		ch <- metric.Desc
-	}
-
-	ch <- s.up.Desc()
-	ch <- s.totalScrapes.Desc()
-	ch <- s.jsonParseFailures.Desc()
+// SLMStatsResponse is a representation of the SLM stats
+type SLMStatsResponse struct {
+	RetentionRuns                 int64         `json:"retention_runs"`
+	RetentionFailed               int64         `json:"retention_failed"`
+	RetentionTimedOut             int64         `json:"retention_timed_out"`
+	RetentionDeletionTime         string        `json:"retention_deletion_time"`
+	RetentionDeletionTimeMillis   int64         `json:"retention_deletion_time_millis"`
+	TotalSnapshotsTaken           int64         `json:"total_snapshots_taken"`
+	TotalSnapshotsFailed          int64         `json:"total_snapshots_failed"`
+	TotalSnapshotsDeleted         int64         `json:"total_snapshots_deleted"`
+	TotalSnapshotDeletionFailures int64         `json:"total_snapshot_deletion_failures"`
+	PolicyStats                   []PolicyStats `json:"policy_stats"`
 }
 
-func (s *SLM) fetchAndDecodeSLMStats() (SLMStatsResponse, error) {
-	var ssr SLMStatsResponse
-
-	u := *s.url
-	u.Path = path.Join(u.Path, "/_slm/stats")
-	res, err := s.client.Get(u.String())
-	if err != nil {
-		return ssr, fmt.Errorf("failed to get slm stats health from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			_ = level.Warn(s.logger).Log(
-				"msg", "failed to close http.Client",
-				"err", err,
-			)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return ssr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	bts, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		s.jsonParseFailures.Inc()
-		return ssr, err
-	}
-
-	if err := json.Unmarshal(bts, &ssr); err != nil {
-		s.jsonParseFailures.Inc()
-		return ssr, err
-	}
-
-	return ssr, nil
+// PolicyStats is a representation of SLM stats for specific policies
+type PolicyStats struct {
+	Policy                   string `json:"policy"`
+	SnapshotsTaken           int64  `json:"snapshots_taken"`
+	SnapshotsFailed          int64  `json:"snapshots_failed"`
+	SnapshotsDeleted         int64  `json:"snapshots_deleted"`
+	SnapshotDeletionFailures int64  `json:"snapshot_deletion_failures"`
 }
 
-func (s *SLM) fetchAndDecodeSLMStatus() (SLMStatusResponse, error) {
-	var ssr SLMStatusResponse
-
-	u := *s.url
-	u.Path = path.Join(u.Path, "/_slm/status")
-	res, err := s.client.Get(u.String())
-	if err != nil {
-		return ssr, fmt.Errorf("failed to get slm status from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			_ = level.Warn(s.logger).Log(
-				"msg", "failed to close http.Client",
-				"err", err,
-			)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return ssr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	bts, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		s.jsonParseFailures.Inc()
-		return ssr, err
-	}
-
-	if err := json.Unmarshal(bts, &ssr); err != nil {
-		s.jsonParseFailures.Inc()
-		return ssr, err
-	}
-
-	return ssr, nil
+// SLMStatusResponse is a representation of the SLM status
+type SLMStatusResponse struct {
+	OperationMode string `json:"operation_mode"`
 }
 
-// Collect gets SLM metric values
-func (s *SLM) Collect(ch chan<- prometheus.Metric) {
-	s.totalScrapes.Inc()
-	defer func() {
-		ch <- s.up
-		ch <- s.totalScrapes
-		ch <- s.jsonParseFailures
-	}()
+func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+	u := s.u.ResolveReference(&url.URL{Path: "/_slm/status"})
+	var slmStatusResp SLMStatusResponse
 
-	slmStatusResp, err := s.fetchAndDecodeSLMStatus()
+	resp, err := getURL(ctx, s.hc, s.logger, u.String())
 	if err != nil {
-		s.up.Set(0)
-		_ = level.Warn(s.logger).Log(
-			"msg", "failed to fetch and decode slm status",
-			"err", err,
-		)
-		return
+		return err
 	}
 
-	slmStatsResp, err := s.fetchAndDecodeSLMStats()
+	err = json.Unmarshal(resp, &slmStatusResp)
 	if err != nil {
-		s.up.Set(0)
-		_ = level.Warn(s.logger).Log(
-			"msg", "failed to fetch and decode slm stats",
-			"err", err,
-		)
-		return
+		return err
 	}
 
-	s.up.Set(1)
+	u = s.u.ResolveReference(&url.URL{Path: "/_slm/stats"})
+	var slmStatsResp SLMStatsResponse
+
+	resp, err = getURL(ctx, s.hc, s.logger, u.String())
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(resp, &slmStatsResp)
+	if err != nil {
+		return err
+	}
 
 	for _, status := range statuses {
+		var value float64 = 0
+		if slmStatusResp.OperationMode == status {
+			value = 1
+		}
 		ch <- prometheus.MustNewConstMetric(
-			s.slmStatusMetric.Desc,
-			s.slmStatusMetric.Type,
-			s.slmStatusMetric.Value(slmStatusResp, status),
+			slmOperationMode,
+			prometheus.GaugeValue,
+			value,
 			status,
 		)
 	}
 
-	for _, metric := range s.slmMetrics {
+	ch <- prometheus.MustNewConstMetric(
+		slmRetentionRunsTotal,
+		prometheus.CounterValue,
+		float64(slmStatsResp.RetentionRuns),
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		slmRetentionFailedTotal,
+		prometheus.CounterValue,
+		float64(slmStatsResp.RetentionFailed),
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		slmRetentionTimedOutTotal,
+		prometheus.CounterValue,
+		float64(slmStatsResp.RetentionTimedOut),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		slmRetentionDeletionTimeSeconds,
+		prometheus.GaugeValue,
+		float64(slmStatsResp.RetentionDeletionTimeMillis)/1000,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		slmTotalSnapshotsTaken,
+		prometheus.CounterValue,
+		float64(slmStatsResp.TotalSnapshotsTaken),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		slmTotalSnapshotsFailed,
+		prometheus.CounterValue,
+		float64(slmStatsResp.TotalSnapshotsFailed),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		slmTotalSnapshotsDeleted,
+		prometheus.CounterValue,
+		float64(slmStatsResp.TotalSnapshotsDeleted),
+	)
+	ch <- prometheus.MustNewConstMetric(
+		slmTotalSnapshotsDeleteFailed,
+		prometheus.CounterValue,
+		float64(slmStatsResp.TotalSnapshotDeletionFailures),
+	)
+
+	for _, policy := range slmStatsResp.PolicyStats {
 		ch <- prometheus.MustNewConstMetric(
-			metric.Desc,
-			metric.Type,
-			metric.Value(slmStatsResp),
+			slmSnapshotsTaken,
+			prometheus.CounterValue,
+			float64(policy.SnapshotsTaken),
+			policy.Policy,
 		)
+		ch <- prometheus.MustNewConstMetric(
+			slmSnapshotsFailed,
+			prometheus.CounterValue,
+			float64(policy.SnapshotsFailed),
+			policy.Policy,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			slmSnapshotsDeleted,
+			prometheus.CounterValue,
+			float64(policy.SnapshotsDeleted),
+			policy.Policy,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			slmSnapshotsDeletionFailure,
+			prometheus.CounterValue,
+			float64(policy.SnapshotDeletionFailures),
+			policy.Policy,
+		)
+
 	}
 
-	for _, metric := range s.policyMetrics {
-		for _, policy := range slmStatsResp.PolicyStats {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(policy),
-				metric.Labels(policy)...,
-			)
-		}
-	}
+	return nil
+
 }

@@ -16,12 +16,12 @@ package collector
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,12 +30,12 @@ func init() {
 }
 
 type ClusterInfoCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	u      *url.URL
 	hc     *http.Client
 }
 
-func NewClusterInfo(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterInfo(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterInfoCollector{
 		logger: logger,
 		u:      u,
@@ -77,13 +77,13 @@ type VersionInfo struct {
 	LuceneVersion semver.Version `json:"lucene_version"`
 }
 
-func (c *ClusterInfoCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *ClusterInfoCollector) Update(_ context.Context, ch chan<- prometheus.Metric) error {
 	resp, err := c.hc.Get(c.u.String())
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

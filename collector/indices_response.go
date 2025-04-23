@@ -145,9 +145,11 @@ type IndexStatsIndexMergesResponse struct {
 
 // IndexStatsIndexRefreshResponse defines index stats index refresh information structure
 type IndexStatsIndexRefreshResponse struct {
-	Total             int64 `json:"total"`
-	TotalTimeInMillis int64 `json:"total_time_in_millis"`
-	Listeners         int64 `json:"listeners"`
+	Total                     int64 `json:"total"`
+	TotalTimeInMillis         int64 `json:"total_time_in_millis"`
+	ExternalTotal             int64 `json:"external_total"`
+	ExternalTotalTimeInMillis int64 `json:"external_total_time_in_millis"`
+	Listeners                 int64 `json:"listeners"`
 }
 
 // IndexStatsIndexFlushResponse defines index stats index flush information structure

@@ -14,129 +14,2164 @@
 package collector
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
+	"os"
+	"path"
+	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestIndices(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
-	//  curl -XPUT http://localhost:9200/foo_1/type1/1 -d '{"title":"abc","content":"hello"}'
-	//  curl -XPUT http://localhost:9200/foo_1/type1/2 -d '{"title":"def","content":"world"}'
-	//  curl -XPUT http://localhost:9200/foo_2/type1/1 -d '{"title":"abc001","content":"hello001"}'
-	//  curl -XPUT http://localhost:9200/foo_2/type1/2 -d '{"title":"def002","content":"world002"}'
-	//  curl -XPUT http://localhost:9200/foo_2/type1/3 -d '{"title":"def003","content":"world003"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_1/type1/1 -d '{"title":"abc","content":"hello"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_1/type1/2 -d '{"title":"def","content":"world"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/1 -d '{"title":"abc001","content":"hello001"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/2 -d '{"title":"def002","content":"world002"}'
+	//  curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/3 -d '{"title":"def003","content":"world003"}'
+	// Make an index for foo_3
+	// curl -XPUT http://localhost:9200/foo_3
+	//  curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_2","alias": "foo_alias_2_1"}}]}'
+	//  curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_3","alias": "foo_alias_3_2"}}]}'
+	//  curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_3","alias": "foo_alias_3_1", "is_write_index": true, "routing": "title"}}]}'
 	//  curl http://localhost:9200/_all/_stats
-	ti := map[string]string{
-		"1.7.6": `{"_shards":{"total":20,"successful":10,"failed":0},"_all":{"primaries":{"docs":{"count":5,"deleted":0},"store":{"size_in_bytes":13798,"throttle_time_in_millis":0},"indexing":{"index_total":5,"index_time_in_millis":52,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":5,"total_time_in_millis":163},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":30,"total_time_in_millis":42},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":5,"memory_in_bytes":18410,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":671088640,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":5,"size_in_bytes":102},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":5,"deleted":0},"store":{"size_in_bytes":13798,"throttle_time_in_millis":0},"indexing":{"index_total":5,"index_time_in_millis":52,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":5,"total_time_in_millis":163},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":30,"total_time_in_millis":42},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":5,"memory_in_bytes":18410,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":671088640,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":5,"size_in_bytes":102},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{"foo_2":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":8207,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":6,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":3,"total_time_in_millis":38},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":16,"total_time_in_millis":0},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":11046,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":102},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":8207,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":6,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":3,"total_time_in_millis":38},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":16,"total_time_in_millis":0},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":11046,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":102},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":5591,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":46,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":2,"total_time_in_millis":125},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":14,"total_time_in_millis":42},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":7364,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":2,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":5591,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":46,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":2,"total_time_in_millis":125},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":14,"total_time_in_millis":42},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":7364,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":2,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
-		"2.4.5": `{"_shards":{"total":20,"successful":10,"failed":0},"_all":{"primaries":{"docs":{"count":5,"deleted":0},"store":{"size_in_bytes":3610,"throttle_time_in_millis":0},"indexing":{"index_total":5,"index_time_in_millis":40,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":209715200},"refresh":{"total":5,"total_time_in_millis":171},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":30,"total_time_in_millis":12},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":5,"memory_in_bytes":10530,"terms_memory_in_bytes":7550,"stored_fields_memory_in_bytes":1560,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":960,"doc_values_memory_in_bytes":460,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":103887660,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":5,"size_in_bytes":843},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":5,"deleted":0},"store":{"size_in_bytes":3610,"throttle_time_in_millis":0},"indexing":{"index_total":5,"index_time_in_millis":40,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":209715200},"refresh":{"total":5,"total_time_in_millis":171},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":30,"total_time_in_millis":12},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":5,"memory_in_bytes":10530,"terms_memory_in_bytes":7550,"stored_fields_memory_in_bytes":1560,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":960,"doc_values_memory_in_bytes":460,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":103887660,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":5,"size_in_bytes":843},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{"foo_2":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":3350,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":6,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":3,"total_time_in_millis":34},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":16,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":6318,"terms_memory_in_bytes":4530,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":51943830,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":470},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":3350,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":6,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":3,"total_time_in_millis":34},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":16,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":6318,"terms_memory_in_bytes":4530,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":51943830,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":470},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":260,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":34,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":2,"total_time_in_millis":137},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":14,"total_time_in_millis":12},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":4212,"terms_memory_in_bytes":3020,"stored_fields_memory_in_bytes":624,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"doc_values_memory_in_bytes":184,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":51943830,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":2,"size_in_bytes":373},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":260,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":34,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":2,"total_time_in_millis":137},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":14,"total_time_in_millis":12},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":4212,"terms_memory_in_bytes":3020,"stored_fields_memory_in_bytes":624,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"doc_values_memory_in_bytes":184,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":51943830,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":2,"size_in_bytes":373},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
-		"5.4.2": `{"_shards":{"total":26,"successful":13,"failed":0},"_all":{"primaries":{"docs":{"count":76,"deleted":0},"store":{"size_in_bytes":128534,"throttle_time_in_millis":0},"indexing":{"index_total":78,"index_time_in_millis":1598,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":272629760},"refresh":{"total":15,"total_time_in_millis":1361,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":26,"total_time_in_millis":124},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":13,"memory_in_bytes":56523,"terms_memory_in_bytes":44419,"stored_fields_memory_in_bytes":4056,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":2880,"points_memory_in_bytes":652,"doc_values_memory_in_bytes":4516,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":78,"size_in_bytes":56679},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":76,"deleted":0},"store":{"size_in_bytes":128534,"throttle_time_in_millis":0},"indexing":{"index_total":78,"index_time_in_millis":1598,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":272629760},"refresh":{"total":15,"total_time_in_millis":1361,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":26,"total_time_in_millis":124},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":13,"memory_in_bytes":56523,"terms_memory_in_bytes":44419,"stored_fields_memory_in_bytes":4056,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":2880,"points_memory_in_bytes":652,"doc_values_memory_in_bytes":4516,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":78,"size_in_bytes":56679},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{".monitoring-es-2-2017.08.23":{"primaries":{"docs":{"count":65,"deleted":0},"store":{"size_in_bytes":68917,"throttle_time_in_millis":0},"indexing":{"index_total":65,"index_time_in_millis":106,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":390,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":4,"total_time_in_millis":15},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":23830,"terms_memory_in_bytes":18474,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":320,"points_memory_in_bytes":648,"doc_values_memory_in_bytes":3452,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":65,"size_in_bytes":37990},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":65,"deleted":0},"store":{"size_in_bytes":68917,"throttle_time_in_millis":0},"indexing":{"index_total":65,"index_time_in_millis":106,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":390,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":4,"total_time_in_millis":15},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":23830,"terms_memory_in_bytes":18474,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":320,"points_memory_in_bytes":648,"doc_values_memory_in_bytes":3452,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":65,"size_in_bytes":37990},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".monitoring-data-2":{"primaries":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":4226,"throttle_time_in_millis":0},"indexing":{"index_total":4,"index_time_in_millis":13,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":2,"total_time_in_millis":74,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":3,"total_time_in_millis":2},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1335,"terms_memory_in_bytes":787,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":0,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":236,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":4,"size_in_bytes":6738},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":4226,"throttle_time_in_millis":0},"indexing":{"index_total":4,"index_time_in_millis":13,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":2,"total_time_in_millis":74,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":3,"total_time_in_millis":2},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1335,"terms_memory_in_bytes":787,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":0,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":236,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":4,"size_in_bytes":6738},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_2":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":11909,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":12,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":3,"total_time_in_millis":42,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":8,"total_time_in_millis":4},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":7764,"terms_memory_in_bytes":5976,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":494},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":11909,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":12,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":3,"total_time_in_millis":42,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":8,"total_time_in_millis":4},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":7764,"terms_memory_in_bytes":5976,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":494},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":8038,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":46,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":2,"total_time_in_millis":84,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":7,"total_time_in_millis":94},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":5176,"terms_memory_in_bytes":3984,"stored_fields_memory_in_bytes":624,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":184,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":2,"size_in_bytes":389},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":8038,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":46,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":2,"total_time_in_millis":84,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":7,"total_time_in_millis":94},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":5176,"terms_memory_in_bytes":3984,"stored_fields_memory_in_bytes":624,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":184,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":2,"size_in_bytes":389},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".watches":{"primaries":{"docs":{"count":4,"deleted":0},"store":{"size_in_bytes":35444,"throttle_time_in_millis":0},"indexing":{"index_total":4,"index_time_in_millis":1421,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":5,"total_time_in_millis":771,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":4,"total_time_in_millis":9},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":4,"memory_in_bytes":18418,"terms_memory_in_bytes":15198,"stored_fields_memory_in_bytes":1248,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":1600,"points_memory_in_bytes":4,"doc_values_memory_in_bytes":368,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":4,"size_in_bytes":11068},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":4,"deleted":0},"store":{"size_in_bytes":35444,"throttle_time_in_millis":0},"indexing":{"index_total":4,"index_time_in_millis":1421,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":5,"total_time_in_millis":771,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":4,"total_time_in_millis":9},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":4,"memory_in_bytes":18418,"terms_memory_in_bytes":15198,"stored_fields_memory_in_bytes":1248,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":1600,"points_memory_in_bytes":4,"doc_values_memory_in_bytes":368,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":4,"size_in_bytes":11068},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
-		"5.5.2": `{"_shards":{"total":34,"successful":34,"failed":0},"_all":{"primaries":{"docs":{"count":256658,"deleted":148},"store":{"size_in_bytes":175959144,"throttle_time_in_millis":0},"indexing":{"index_total":413652,"index_time_in_millis":316231,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":88438,"time_in_millis":2799,"exists_total":88438,"exists_time_in_millis":2799,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":88458,"query_time_in_millis":2513,"query_current":0,"fetch_total":88446,"fetch_time_in_millis":2685,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":10275,"total_time_in_millis":5895937,"total_docs":80376844,"total_size_in_bytes":49005089428,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":274,"total_auto_throttle_in_bytes":354609338},"refresh":{"total":100264,"total_time_in_millis":818781,"listeners":0},"flush":{"total":5,"total_time_in_millis":124},"warmer":{"current":0,"total":100286,"total_time_in_millis":23851},"query_cache":{"memory_size_in_bytes":0,"total_count":22,"hit_count":0,"miss_count":22,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":38,"memory_in_bytes":720166,"terms_memory_in_bytes":481188,"stored_fields_memory_in_bytes":31920,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":3072,"points_memory_in_bytes":61858,"doc_values_memory_in_bytes":142128,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":137331,"size_in_bytes":167642357},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":1},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":513316,"deleted":324},"store":{"size_in_bytes":352143858,"throttle_time_in_millis":0},"indexing":{"index_total":827302,"index_time_in_millis":625030,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":176883,"time_in_millis":6265,"exists_total":176883,"exists_time_in_millis":6265,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":176913,"query_time_in_millis":5115,"query_current":0,"fetch_total":176891,"fetch_time_in_millis":5862,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":20547,"total_time_in_millis":11765629,"total_docs":160766745,"total_size_in_bytes":98024993696,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":522,"total_auto_throttle_in_bytes":709218676},"refresh":{"total":200378,"total_time_in_millis":1620051,"listeners":0},"flush":{"total":10,"total_time_in_millis":264},"warmer":{"current":0,"total":200427,"total_time_in_millis":46689},"query_cache":{"memory_size_in_bytes":0,"total_count":54,"hit_count":0,"miss_count":54,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":776,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":86,"memory_in_bytes":1496932,"terms_memory_in_bytes":1008932,"stored_fields_memory_in_bytes":66896,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":6784,"points_memory_in_bytes":124368,"doc_values_memory_in_bytes":289952,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":1502755202429,"file_sizes":{}},"translog":{"operations":274662,"size_in_bytes":335284714},"request_cache":{"memory_size_in_bytes":1794,"evictions":0,"hit_count":0,"miss_count":3},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{".monitoring-kibana-6-2017.08.16":{"primaries":{"docs":{"count":12459,"deleted":0},"store":{"size_in_bytes":4880578,"throttle_time_in_millis":0},"indexing":{"index_total":12459,"index_time_in_millis":20073,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":1372,"total_time_in_millis":275560,"total_docs":8619963,"total_size_in_bytes":3518738895,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":12724,"total_time_in_millis":79600,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12725,"total_time_in_millis":2653},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":34337,"terms_memory_in_bytes":30104,"stored_fields_memory_in_bytes":968,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":1393,"doc_values_memory_in_bytes":1744,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":12459,"size_in_bytes":12175093},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":24918,"deleted":0},"store":{"size_in_bytes":9682148,"throttle_time_in_millis":0},"indexing":{"index_total":24918,"index_time_in_millis":37852,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":10,"query_current":0,"fetch_total":1,"fetch_time_in_millis":1,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":2743,"total_time_in_millis":549689,"total_docs":17234974,"total_size_in_bytes":7034624631,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":41943040},"refresh":{"total":25390,"total_time_in_millis":155546,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":25392,"total_time_in_millis":5196},"query_cache":{"memory_size_in_bytes":0,"total_count":3,"hit_count":0,"miss_count":3,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":7,"memory_in_bytes":83565,"terms_memory_in_bytes":73488,"stored_fields_memory_in_bytes":2968,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":448,"points_memory_in_bytes":2897,"doc_values_memory_in_bytes":3764,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":24918,"size_in_bytes":24350186},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".monitoring-kibana-6-2017.08.15":{"primaries":{"docs":{"count":25917,"deleted":0},"store":{"size_in_bytes":9617967,"throttle_time_in_millis":0},"indexing":{"index_total":25917,"index_time_in_millis":36304,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":10,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":2055,"total_time_in_millis":746516,"total_docs":27797269,"total_size_in_bytes":10672726928,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":19569,"total_time_in_millis":123083,"listeners":0},"flush":{"total":1,"total_time_in_millis":18},"warmer":{"current":0,"total":19571,"total_time_in_millis":3995},"query_cache":{"memory_size_in_bytes":0,"total_count":3,"hit_count":0,"miss_count":3,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":58226,"terms_memory_in_bytes":52997,"stored_fields_memory_in_bytes":1912,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":2721,"doc_values_memory_in_bytes":404,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":43},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":51834,"deleted":0},"store":{"size_in_bytes":19309686,"throttle_time_in_millis":0},"indexing":{"index_total":51834,"index_time_in_millis":68258,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":10,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":4109,"total_time_in_millis":1477106,"total_docs":55598675,"total_size_in_bytes":21347372840,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":41943040},"refresh":{"total":39103,"total_time_in_millis":238886,"listeners":0},"flush":{"total":2,"total_time_in_millis":44},"warmer":{"current":0,"total":39108,"total_time_in_millis":7775},"query_cache":{"memory_size_in_bytes":0,"total_count":3,"hit_count":0,"miss_count":3,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":11,"memory_in_bytes":141204,"terms_memory_in_bytes":128132,"stored_fields_memory_in_bytes":5472,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":704,"points_memory_in_bytes":5628,"doc_values_memory_in_bytes":1268,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":1502755202429,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":86},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".monitoring-kibana-6-2017.08.14":{"primaries":{"docs":{"count":6147,"deleted":0},"store":{"size_in_bytes":2467088,"throttle_time_in_millis":0},"indexing":{"index_total":6147,"index_time_in_millis":9228,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":32,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":397,"total_time_in_millis":48142,"total_docs":1231276,"total_size_in_bytes":559560922,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3733,"total_time_in_millis":28841,"listeners":0},"flush":{"total":1,"total_time_in_millis":7},"warmer":{"current":0,"total":3735,"total_time_in_millis":1168},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":29099,"terms_memory_in_bytes":25724,"stored_fields_memory_in_bytes":1104,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":715,"doc_values_memory_in_bytes":1364,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":43},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":12294,"deleted":0},"store":{"size_in_bytes":5029190,"throttle_time_in_millis":0},"indexing":{"index_total":12294,"index_time_in_millis":16557,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":32,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":792,"total_time_in_millis":96523,"total_docs":2467549,"total_size_in_bytes":1121117660,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":41943040},"refresh":{"total":7449,"total_time_in_millis":51544,"listeners":0},"flush":{"total":2,"total_time_in_millis":16},"warmer":{"current":0,"total":7453,"total_time_in_millis":1872},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":11,"memory_in_bytes":83924,"terms_memory_in_bytes":73590,"stored_fields_memory_in_bytes":3768,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":704,"points_memory_in_bytes":1618,"doc_values_memory_in_bytes":4244,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":86},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".kibana":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3967,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":88438,"time_in_millis":2799,"exists_total":88438,"exists_time_in_millis":2799,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":88441,"query_time_in_millis":2287,"query_current":0,"fetch_total":88441,"fetch_time_in_millis":2685,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":2,"total_time_in_millis":19,"listeners":0},"flush":{"total":1,"total_time_in_millis":7},"warmer":{"current":0,"total":5,"total_time_in_millis":12},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2219,"terms_memory_in_bytes":1751,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":64,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":43},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":7934,"throttle_time_in_millis":0},"indexing":{"index_total":2,"index_time_in_millis":4,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":176883,"time_in_millis":6265,"exists_total":176883,"exists_time_in_millis":6265,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":176879,"query_time_in_millis":4703,"query_current":0,"fetch_total":176879,"fetch_time_in_millis":5860,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":41943040},"refresh":{"total":4,"total_time_in_millis":33,"listeners":0},"flush":{"total":2,"total_time_in_millis":14},"warmer":{"current":0,"total":10,"total_time_in_millis":26},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":4438,"terms_memory_in_bytes":3502,"stored_fields_memory_in_bytes":624,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":184,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":86},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".monitoring-es-6-2017.08.15":{"primaries":{"docs":{"count":120970,"deleted":60},"store":{"size_in_bytes":90471073,"throttle_time_in_millis":0},"indexing":{"index_total":207360,"index_time_in_millis":142584,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":85,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":3781,"total_time_in_millis":2188959,"total_docs":19326607,"total_size_in_bytes":15981823826,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":274,"total_auto_throttle_in_bytes":19065018},"refresh":{"total":37364,"total_time_in_millis":337011,"listeners":0},"flush":{"total":1,"total_time_in_millis":67},"warmer":{"current":0,"total":37365,"total_time_in_millis":8943},"query_cache":{"memory_size_in_bytes":0,"total_count":9,"hit_count":0,"miss_count":9,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":9,"memory_in_bytes":297633,"terms_memory_in_bytes":184606,"stored_fields_memory_in_bytes":13736,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":31279,"doc_values_memory_in_bytes":67436,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":43},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":241940,"deleted":120},"store":{"size_in_bytes":180988889,"throttle_time_in_millis":0},"indexing":{"index_total":414720,"index_time_in_millis":286230,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":2,"query_time_in_millis":135,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":7561,"total_time_in_millis":4425176,"total_docs":38722769,"total_size_in_bytes":32018268991,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":522,"total_auto_throttle_in_bytes":38130036},"refresh":{"total":74706,"total_time_in_millis":675900,"listeners":0},"flush":{"total":2,"total_time_in_millis":148},"warmer":{"current":0,"total":74710,"total_time_in_millis":18069},"query_cache":{"memory_size_in_bytes":0,"total_count":24,"hit_count":0,"miss_count":24,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":424,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":16,"memory_in_bytes":590531,"terms_memory_in_bytes":362031,"stored_fields_memory_in_bytes":26728,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":1024,"points_memory_in_bytes":62748,"doc_values_memory_in_bytes":138000,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":1502755201903,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":86},"request_cache":{"memory_size_in_bytes":897,"evictions":0,"hit_count":0,"miss_count":1},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".monitoring-es-6-2017.08.14":{"primaries":{"docs":{"count":24614,"deleted":12},"store":{"size_in_bytes":17680221,"throttle_time_in_millis":0},"indexing":{"index_total":36896,"index_time_in_millis":35441,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":24,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":927,"total_time_in_millis":1245791,"total_docs":11392506,"total_size_in_bytes":8435013687,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":9432,"total_time_in_millis":90529,"listeners":0},"flush":{"total":1,"total_time_in_millis":25},"warmer":{"current":0,"total":9434,"total_time_in_millis":3098},"query_cache":{"memory_size_in_bytes":0,"total_count":2,"hit_count":0,"miss_count":2,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":7,"memory_in_bytes":83467,"terms_memory_in_bytes":59601,"stored_fields_memory_in_bytes":4040,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":448,"points_memory_in_bytes":7054,"doc_values_memory_in_bytes":12324,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":43},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":49228,"deleted":18},"store":{"size_in_bytes":35172184,"throttle_time_in_millis":0},"indexing":{"index_total":73792,"index_time_in_millis":69939,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":2,"query_time_in_millis":61,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":1853,"total_time_in_millis":2468444,"total_docs":22769560,"total_size_in_bytes":16842830754,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":41943040},"refresh":{"total":18843,"total_time_in_millis":176757,"listeners":0},"flush":{"total":2,"total_time_in_millis":42},"warmer":{"current":0,"total":18847,"total_time_in_millis":5819},"query_cache":{"memory_size_in_bytes":0,"total_count":7,"hit_count":0,"miss_count":7,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":352,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":9,"memory_in_bytes":137869,"terms_memory_in_bytes":97131,"stored_fields_memory_in_bytes":6680,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":13662,"doc_values_memory_in_bytes":19820,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":86},"request_cache":{"memory_size_in_bytes":897,"evictions":0,"hit_count":0,"miss_count":1},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_2":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":12138,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":4,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":5,"query_time_in_millis":0,"query_current":0,"fetch_total":2,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":3,"total_time_in_millis":12,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":8,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":7764,"terms_memory_in_bytes":5976,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":524},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":6,"deleted":0},"store":{"size_in_bytes":24276,"throttle_time_in_millis":0},"indexing":{"index_total":5,"index_time_in_millis":6,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":10,"query_time_in_millis":0,"query_current":0,"fetch_total":5,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":209715200},"refresh":{"total":5,"total_time_in_millis":20,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":16,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":6,"memory_in_bytes":15528,"terms_memory_in_bytes":11952,"stored_fields_memory_in_bytes":1872,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":1152,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":552,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":6,"size_in_bytes":1048},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":2,"deleted":0},"store":{"size_in_bytes":8246,"throttle_time_in_millis":0},"indexing":{"index_total":4,"index_time_in_millis":7,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":7,"query_time_in_millis":8,"query_current":0,"fetch_total":3,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":4,"total_time_in_millis":18,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":9,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":2,"memory_in_bytes":5176,"terms_memory_in_bytes":3984,"stored_fields_memory_in_bytes":624,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":184,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":4,"size_in_bytes":609},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":4,"deleted":0},"store":{"size_in_bytes":16492,"throttle_time_in_millis":0},"indexing":{"index_total":7,"index_time_in_millis":13,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":15,"query_time_in_millis":21,"query_current":0,"fetch_total":5,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":209715200},"refresh":{"total":7,"total_time_in_millis":32,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":18,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":4,"memory_in_bytes":10352,"terms_memory_in_bytes":7968,"stored_fields_memory_in_bytes":1248,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":768,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":368,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":8,"size_in_bytes":1218},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},".monitoring-es-6-2017.08.16":{"primaries":{"docs":{"count":66545,"deleted":76},"store":{"size_in_bytes":50817866,"throttle_time_in_millis":0},"indexing":{"index_total":124865,"index_time_in_millis":72588,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":1,"query_time_in_millis":67,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":1743,"total_time_in_millis":1390969,"total_docs":12009223,"total_size_in_bytes":9837225170,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":17433,"total_time_in_millis":159668,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":17434,"total_time_in_millis":3982},"query_cache":{"memory_size_in_bytes":0,"total_count":8,"hit_count":0,"miss_count":8,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":8,"memory_in_bytes":202245,"terms_memory_in_bytes":116445,"stored_fields_memory_in_bytes":8288,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":512,"points_memory_in_bytes":18696,"doc_values_memory_in_bytes":58304,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":124865,"size_in_bytes":155465916},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":1},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":133090,"deleted":186},"store":{"size_in_bytes":101913059,"throttle_time_in_millis":0},"indexing":{"index_total":249730,"index_time_in_millis":146171,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":2,"query_time_in_millis":143,"query_current":0,"fetch_total":1,"fetch_time_in_millis":1,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":3489,"total_time_in_millis":2748691,"total_docs":23973218,"total_size_in_bytes":19660778820,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":41943040},"refresh":{"total":34871,"total_time_in_millis":321333,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":34873,"total_time_in_millis":7932},"query_cache":{"memory_size_in_bytes":0,"total_count":17,"hit_count":0,"miss_count":17,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":20,"memory_in_bytes":429521,"terms_memory_in_bytes":251138,"stored_fields_memory_in_bytes":17536,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":1280,"points_memory_in_bytes":37815,"doc_values_memory_in_bytes":121752,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":249730,"size_in_bytes":310931832},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":1},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
-	}
-	for ver, out := range ti {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out)
-		}))
-		defer ts.Close()
 
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
-		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false, false)
-		stats, err := i.fetchAndDecodeIndexStats()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode indices stats: %s", err)
-		}
-		t.Logf("[%s] Index Response: %+v", ver, stats)
-		if stats.Indices["foo_1"].Primaries.Docs.Count != 2 {
-			t.Errorf("Wrong number of primary docs")
-		}
-		if stats.Indices["foo_1"].Primaries.Store.SizeInBytes == 0 {
-			t.Errorf("Wrong number of primary store size in bytes")
-		}
-		if stats.Indices["foo_1"].Total.Store.SizeInBytes == 0 {
-			t.Errorf("Wrong number of total store size in bytes")
-		}
-		if stats.Indices["foo_1"].Total.Indexing.IndexTimeInMillis == 0 {
-			t.Errorf("Wrong indexing time recorded")
-		}
-		if stats.Indices["foo_1"].Total.Indexing.IndexTotal == 0 {
-			t.Errorf("Wrong indexing total recorded")
-		}
-		if stats.Aliases != nil {
-			t.Errorf("Aliases are populated when they should not be")
-		}
-	}
-}
+	tests := []struct {
+		name   string
+		file   string
+		shards bool
+		want   string
+	}{
+		{
+			name: "1.7.6",
+			file: "1.7.6.json",
+			want: `# HELP elasticsearch_index_stats_fielddata_evictions_total Total fielddata evictions count
+             # TYPE elasticsearch_index_stats_fielddata_evictions_total counter
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_fielddata_memory_bytes_total Total fielddata memory bytes
+             # TYPE elasticsearch_index_stats_fielddata_memory_bytes_total counter
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_flush_time_seconds_total Total flush time in seconds
+             # TYPE elasticsearch_index_stats_flush_time_seconds_total counter
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_flush_total Total flush count
+             # TYPE elasticsearch_index_stats_flush_total counter
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_get_time_seconds_total Total get time in seconds
+             # TYPE elasticsearch_index_stats_get_time_seconds_total counter
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_get_total Total get count
+             # TYPE elasticsearch_index_stats_get_total counter
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_index_current The number of documents currently being indexed to an index
+             # TYPE elasticsearch_index_stats_index_current gauge
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_time_seconds_total Total indexing delete time in seconds
+             # TYPE elasticsearch_index_stats_indexing_delete_time_seconds_total counter
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_total Total indexing delete count
+             # TYPE elasticsearch_index_stats_indexing_delete_total counter
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_index_time_seconds_total Total indexing index time in seconds
+             # TYPE elasticsearch_index_stats_indexing_index_time_seconds_total counter
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.046
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.006
+             # HELP elasticsearch_index_stats_indexing_index_total Total indexing index count
+             # TYPE elasticsearch_index_stats_indexing_index_total counter
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_index_stats_indexing_noop_update_total Total indexing no-op update count
+             # TYPE elasticsearch_index_stats_indexing_noop_update_total counter
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_throttle_time_seconds_total Total indexing throttle time in seconds
+             # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
+             # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_stopped_time_seconds_total Total large merge stopped time in seconds, allowing smaller merges to complete
+             # TYPE elasticsearch_index_stats_merge_stopped_time_seconds_total counter
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_throttle_time_seconds_total Total merge I/O throttle time in seconds
+             # TYPE elasticsearch_index_stats_merge_throttle_time_seconds_total counter
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_time_seconds_total Total merge time in seconds
+             # TYPE elasticsearch_index_stats_merge_time_seconds_total counter
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_total Total merge count
+             # TYPE elasticsearch_index_stats_merge_total counter
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_caches_total Total query cache caches count
+             # TYPE elasticsearch_index_stats_query_cache_caches_total counter
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_evictions_total Total query cache evictions count
+             # TYPE elasticsearch_index_stats_query_cache_evictions_total counter
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_hits_total Total query cache hits count
+             # TYPE elasticsearch_index_stats_query_cache_hits_total counter
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_memory_bytes_total Total query cache memory bytes
+             # TYPE elasticsearch_index_stats_query_cache_memory_bytes_total counter
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_misses_total Total query cache misses count
+             # TYPE elasticsearch_index_stats_query_cache_misses_total counter
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_size Total query cache size
+             # TYPE elasticsearch_index_stats_query_cache_size gauge
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_external_time_seconds_total Total external refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_external_time_seconds_total counter
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_external_total Total external refresh count
+             # TYPE elasticsearch_index_stats_refresh_external_total counter
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_time_seconds_total Total refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_time_seconds_total counter
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.125
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.038
+             # HELP elasticsearch_index_stats_refresh_total Total refresh count
+             # TYPE elasticsearch_index_stats_refresh_total counter
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_index_stats_request_cache_evictions_total Total request cache evictions count
+             # TYPE elasticsearch_index_stats_request_cache_evictions_total counter
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_hits_total Total request cache hits count
+             # TYPE elasticsearch_index_stats_request_cache_hits_total counter
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_memory_bytes_total Total request cache memory bytes
+             # TYPE elasticsearch_index_stats_request_cache_memory_bytes_total counter
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_misses_total Total request cache misses count
+             # TYPE elasticsearch_index_stats_request_cache_misses_total counter
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_fetch_time_seconds_total Total search fetch time in seconds
+             # TYPE elasticsearch_index_stats_search_fetch_time_seconds_total counter
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_fetch_total Total search fetch count
+             # TYPE elasticsearch_index_stats_search_fetch_total counter
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
+             # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_query_total Total number of queries
+             # TYPE elasticsearch_index_stats_search_query_total counter
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_current Current search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_current gauge
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_time_seconds_total Total search scroll time in seconds
+             # TYPE elasticsearch_index_stats_search_scroll_time_seconds_total counter
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_total Total search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_total counter
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_suggest_time_seconds_total Total search suggest time in seconds
+             # TYPE elasticsearch_index_stats_search_suggest_time_seconds_total counter
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_suggest_total Total search suggest count
+             # TYPE elasticsearch_index_stats_search_suggest_total counter
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_warmer_time_seconds_total Total warmer time in seconds
+             # TYPE elasticsearch_index_stats_warmer_time_seconds_total counter
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.042
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_warmer_total Total warmer count
+             # TYPE elasticsearch_index_stats_warmer_total counter
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_1"} 14
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_2"} 16
+						 # HELP elasticsearch_indices_aliases Record aliases associated with an index
+             # TYPE elasticsearch_indices_aliases gauge
+             elasticsearch_indices_aliases{alias="foo_alias_2_1",cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_1",cluster="unknown_cluster",index="foo_3"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_2",cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_completion_bytes_primary Current size of completion with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_primary gauge
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_completion_bytes_total Current size of completion with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_total gauge
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_deleted_docs_primary Count of deleted documents with only primary shards
+             # TYPE elasticsearch_indices_deleted_docs_primary gauge
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_deleted_docs_total Total count of deleted documents
+             # TYPE elasticsearch_indices_deleted_docs_total gauge
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_docs_primary Count of documents with only primary shards
+             # TYPE elasticsearch_indices_docs_primary gauge
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_docs_total Total count of documents
+             # TYPE elasticsearch_indices_docs_total gauge
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_count_primary Current number of segments with only primary shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_primary gauge
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_count_total Current number of segments with all shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_total gauge
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_primary Current size of doc values with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_primary gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_total Current size of doc values with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_total gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_primary Current size of fields with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_total Current size of fields with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_total gauge
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary Current size of fixed bit with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total Current size of fixed bit with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_primary Current size of index writer with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_primary gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_total Current size of index writer with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_total gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_primary Current size of segments with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_primary gauge
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 7364
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 11046
+             # HELP elasticsearch_indices_segment_memory_bytes_total Current size of segments with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_total gauge
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 7364
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 11046
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_primary Current size of norms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_primary gauge
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_total Current size of norms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_total gauge
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_primary Current size of points with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_primary gauge
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_total Current size of points with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_total gauge
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_primary_bytes Current size of term vectors with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_primary_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_total_bytes Current size of term vectors with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_total_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_primary Current size of terms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_primary gauge
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_total Current number of terms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_total gauge
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_primary Current size of version map with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_primary gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_total Current size of version map with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_total gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_primary gauge
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_1"} 5591
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_2"} 8207
+             # HELP elasticsearch_indices_store_size_bytes_total Current total size of stored index data in bytes with all shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_total gauge
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_1"} 5591
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_2"} 8207
+             # HELP elasticsearch_search_active_queries The number of currently active queries
+             # TYPE elasticsearch_search_active_queries gauge
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_2"} 0
+`,
+		},
+		{
+			name: "2.4.5",
+			file: "2.4.5.json",
+			want: `# HELP elasticsearch_index_stats_fielddata_evictions_total Total fielddata evictions count
+             # TYPE elasticsearch_index_stats_fielddata_evictions_total counter
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_fielddata_memory_bytes_total Total fielddata memory bytes
+             # TYPE elasticsearch_index_stats_fielddata_memory_bytes_total counter
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_flush_time_seconds_total Total flush time in seconds
+             # TYPE elasticsearch_index_stats_flush_time_seconds_total counter
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_flush_total Total flush count
+             # TYPE elasticsearch_index_stats_flush_total counter
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_get_time_seconds_total Total get time in seconds
+             # TYPE elasticsearch_index_stats_get_time_seconds_total counter
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_get_total Total get count
+             # TYPE elasticsearch_index_stats_get_total counter
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_index_current The number of documents currently being indexed to an index
+             # TYPE elasticsearch_index_stats_index_current gauge
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_time_seconds_total Total indexing delete time in seconds
+             # TYPE elasticsearch_index_stats_indexing_delete_time_seconds_total counter
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_total Total indexing delete count
+             # TYPE elasticsearch_index_stats_indexing_delete_total counter
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_index_time_seconds_total Total indexing index time in seconds
+             # TYPE elasticsearch_index_stats_indexing_index_time_seconds_total counter
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.034
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.006
+             # HELP elasticsearch_index_stats_indexing_index_total Total indexing index count
+             # TYPE elasticsearch_index_stats_indexing_index_total counter
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_index_stats_indexing_noop_update_total Total indexing no-op update count
+             # TYPE elasticsearch_index_stats_indexing_noop_update_total counter
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_throttle_time_seconds_total Total indexing throttle time in seconds
+             # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
+             # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 1.048576e+08
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_2"} 1.048576e+08
+             # HELP elasticsearch_index_stats_merge_stopped_time_seconds_total Total large merge stopped time in seconds, allowing smaller merges to complete
+             # TYPE elasticsearch_index_stats_merge_stopped_time_seconds_total counter
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_throttle_time_seconds_total Total merge I/O throttle time in seconds
+             # TYPE elasticsearch_index_stats_merge_throttle_time_seconds_total counter
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_time_seconds_total Total merge time in seconds
+             # TYPE elasticsearch_index_stats_merge_time_seconds_total counter
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_total Total merge count
+             # TYPE elasticsearch_index_stats_merge_total counter
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_caches_total Total query cache caches count
+             # TYPE elasticsearch_index_stats_query_cache_caches_total counter
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_evictions_total Total query cache evictions count
+             # TYPE elasticsearch_index_stats_query_cache_evictions_total counter
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_hits_total Total query cache hits count
+             # TYPE elasticsearch_index_stats_query_cache_hits_total counter
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_memory_bytes_total Total query cache memory bytes
+             # TYPE elasticsearch_index_stats_query_cache_memory_bytes_total counter
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_misses_total Total query cache misses count
+             # TYPE elasticsearch_index_stats_query_cache_misses_total counter
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_size Total query cache size
+             # TYPE elasticsearch_index_stats_query_cache_size gauge
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_external_time_seconds_total Total external refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_external_time_seconds_total counter
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_external_total Total external refresh count
+             # TYPE elasticsearch_index_stats_refresh_external_total counter
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_time_seconds_total Total refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_time_seconds_total counter
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.137
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.034
+             # HELP elasticsearch_index_stats_refresh_total Total refresh count
+             # TYPE elasticsearch_index_stats_refresh_total counter
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_index_stats_request_cache_evictions_total Total request cache evictions count
+             # TYPE elasticsearch_index_stats_request_cache_evictions_total counter
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_hits_total Total request cache hits count
+             # TYPE elasticsearch_index_stats_request_cache_hits_total counter
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_memory_bytes_total Total request cache memory bytes
+             # TYPE elasticsearch_index_stats_request_cache_memory_bytes_total counter
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_misses_total Total request cache misses count
+             # TYPE elasticsearch_index_stats_request_cache_misses_total counter
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_fetch_time_seconds_total Total search fetch time in seconds
+             # TYPE elasticsearch_index_stats_search_fetch_time_seconds_total counter
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_fetch_total Total search fetch count
+             # TYPE elasticsearch_index_stats_search_fetch_total counter
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
+             # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_query_total Total number of queries
+             # TYPE elasticsearch_index_stats_search_query_total counter
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_current Current search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_current gauge
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_time_seconds_total Total search scroll time in seconds
+             # TYPE elasticsearch_index_stats_search_scroll_time_seconds_total counter
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_total Total search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_total counter
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_suggest_time_seconds_total Total search suggest time in seconds
+             # TYPE elasticsearch_index_stats_search_suggest_time_seconds_total counter
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_suggest_total Total search suggest count
+             # TYPE elasticsearch_index_stats_search_suggest_total counter
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_warmer_time_seconds_total Total warmer time in seconds
+             # TYPE elasticsearch_index_stats_warmer_time_seconds_total counter
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.012
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_warmer_total Total warmer count
+             # TYPE elasticsearch_index_stats_warmer_total counter
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_1"} 14
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_2"} 16
+             # HELP elasticsearch_indices_aliases Record aliases associated with an index
+             # TYPE elasticsearch_indices_aliases gauge
+             elasticsearch_indices_aliases{alias="foo_alias_2_1",cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_1",cluster="unknown_cluster",index="foo_3"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_2",cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_completion_bytes_primary Current size of completion with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_primary gauge
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_completion_bytes_total Current size of completion with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_total gauge
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_deleted_docs_primary Count of deleted documents with only primary shards
+             # TYPE elasticsearch_indices_deleted_docs_primary gauge
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_deleted_docs_total Total count of deleted documents
+             # TYPE elasticsearch_indices_deleted_docs_total gauge
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_docs_primary Count of documents with only primary shards
+             # TYPE elasticsearch_indices_docs_primary gauge
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_docs_total Total count of documents
+             # TYPE elasticsearch_indices_docs_total gauge
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_count_primary Current number of segments with only primary shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_primary gauge
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_count_total Current number of segments with all shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_total gauge
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_primary Current size of doc values with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_primary gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 184
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 276
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_total Current size of doc values with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_total gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 184
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 276
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_primary Current size of fields with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 624
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 936
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_total Current size of fields with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_total gauge
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 624
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 936
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary Current size of fixed bit with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total Current size of fixed bit with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_primary Current size of index writer with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_primary gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_total Current size of index writer with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_total gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_primary Current size of segments with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_primary gauge
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 4212
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 6318
+             # HELP elasticsearch_indices_segment_memory_bytes_total Current size of segments with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_total gauge
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 4212
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 6318
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_primary Current size of norms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_primary gauge
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 576
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_total Current size of norms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_total gauge
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 576
+             # HELP elasticsearch_indices_segment_points_memory_bytes_primary Current size of points with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_primary gauge
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_total Current size of points with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_total gauge
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_primary_bytes Current size of term vectors with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_primary_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_total_bytes Current size of term vectors with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_total_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_primary Current size of terms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_primary gauge
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_1"} 3020
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_2"} 4530
+             # HELP elasticsearch_indices_segment_terms_memory_total Current number of terms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_total gauge
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_1"} 3020
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_2"} 4530
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_primary Current size of version map with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_primary gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_total Current size of version map with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_total gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_primary gauge
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_1"} 260
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_2"} 3350
+             # HELP elasticsearch_indices_store_size_bytes_total Current total size of stored index data in bytes with all shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_total gauge
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_1"} 260
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_2"} 3350
+             # HELP elasticsearch_search_active_queries The number of currently active queries
+             # TYPE elasticsearch_search_active_queries gauge
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_2"} 0
 
-func TestAliases(t *testing.T) {
-	/*
-		Testcases created using (note: the docker image name no longer has -alpine in it for newer versions):
-		 docker run -d -p 9200:9200 elasticsearch:VERSION-alpine  # versions 1.x.x, 2.x.x, and 5.x.x
-		 docker run -p 9200:9200 -e "discovery.type=single-node" elasticsearch:VERSION  # version 7.x.x
-		 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_1/type1/1 -d '{"title":"abc","content":"hello"}'
-		 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_2/type1/1 -d '{"title":"abc001","content":"hello001"}'
-		 curl -XPUT -H "Content-Type: application/json" http://localhost:9200/foo_3/type1/1 -d '{"title":"def003","content":"world003"}'
-		 curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_2","alias": "foo_alias_2_1"}}]}'
-		 curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_3","alias": "foo_alias_3_2"}}]}'
-		 curl -XPOST -H "Content-Type: application/json" http://localhost:9200/_aliases -d '{"actions": [{"add": {"index": "foo_3","alias": "foo_alias_3_1", "is_write_index": true, "routing": "title"}}]}'
-		 curl -H "Content-Type: application/json" http://localhost:9200/_alias
-		 curl -H "Content-Type: application/json" http://localhost:9200/_all/_stats
-	*/
-	ti := map[string]map[string]string{
-		"1.7.6": {
-			"alias": `{"foo_1":{"aliases":{}},"foo_2":{"aliases":{"foo_alias_2_1":{}}},"foo_3":{"aliases":{"foo_alias_3_1":{"index_routing":"title","search_routing":"title","is_write_index":true},"foo_alias_3_2":{}}}}`,
-			"stats": `{"_shards":{"total":30,"successful":15,"failed":0},"_all":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":9336,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":69,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":3,"total_time_in_millis":129},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":36,"total_time_in_millis":20},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":11046,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":1006632960,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":9336,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":69,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":3,"total_time_in_millis":129},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":36,"total_time_in_millis":20},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":11046,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":1006632960,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{"foo_2":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3124,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":1,"total_time_in_millis":14},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":3682,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3124,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":1,"total_time_in_millis":14},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":3682,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3088,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":65,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":1,"total_time_in_millis":101},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":20},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":3682,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3088,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":65,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":1,"total_time_in_millis":101},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":20},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":3682,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_3":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3124,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":1,"total_time_in_millis":14},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":3682,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3124,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0},"refresh":{"total":1,"total_time_in_millis":14},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"filter_cache":{"memory_size_in_bytes":0,"evictions":0},"id_cache":{"memory_size_in_bytes":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":3682,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":335544320,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":17},"suggest":{"total":0,"time_in_millis":0,"current":0},"query_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
+`,
 		},
-		"2.4.5": {
-			"alias": `{"foo_1":{"aliases":{}},"foo_2":{"aliases":{"foo_alias_2_1":{}}},"foo_3":{"aliases":{"foo_alias_3_1":{"index_routing":"title","search_routing":"title","is_write_index":true},"foo_alias_3_2":{}}}}`,
-			"stats": `{"_shards":{"total":30,"successful":15,"failed":0},"_all":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":11164,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":59,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":314572800},"refresh":{"total":3,"total_time_in_millis":148},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":36,"total_time_in_millis":13},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":6318,"terms_memory_in_bytes":4530,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":103795905,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":894},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":11164,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":59,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":314572800},"refresh":{"total":3,"total_time_in_millis":148},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":36,"total_time_in_millis":13},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":6318,"terms_memory_in_bytes":4530,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":103795905,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":3,"size_in_bytes":894},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{"foo_2":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3733,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":16},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2106,"terms_memory_in_bytes":1510,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":34598635,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":300},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3733,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":2,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":16},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2106,"terms_memory_in_bytes":1510,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":34598635,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":300},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3698,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":56,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":116},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":13},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2106,"terms_memory_in_bytes":1510,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":34598635,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":294},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3698,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":56,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":116},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":13},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2106,"terms_memory_in_bytes":1510,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":34598635,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":294},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_3":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3733,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":16},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2106,"terms_memory_in_bytes":1510,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":34598635,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":300},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":3733,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":16},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":12,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"percolate":{"total":0,"time_in_millis":0,"current":0,"memory_size_in_bytes":-1,"memory_size":"-1b","queries":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2106,"terms_memory_in_bytes":1510,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"index_writer_max_memory_in_bytes":34598635,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0},"translog":{"operations":1,"size_in_bytes":300},"suggest":{"total":0,"time_in_millis":0,"current":0},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
+		{
+			name: "5.4.2",
+			file: "5.4.2.json",
+			want: `# HELP elasticsearch_index_stats_fielddata_evictions_total Total fielddata evictions count
+             # TYPE elasticsearch_index_stats_fielddata_evictions_total counter
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_fielddata_memory_bytes_total Total fielddata memory bytes
+             # TYPE elasticsearch_index_stats_fielddata_memory_bytes_total counter
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_flush_time_seconds_total Total flush time in seconds
+             # TYPE elasticsearch_index_stats_flush_time_seconds_total counter
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_flush_total Total flush count
+             # TYPE elasticsearch_index_stats_flush_total counter
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_get_time_seconds_total Total get time in seconds
+             # TYPE elasticsearch_index_stats_get_time_seconds_total counter
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_get_total Total get count
+             # TYPE elasticsearch_index_stats_get_total counter
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_index_current The number of documents currently being indexed to an index
+             # TYPE elasticsearch_index_stats_index_current gauge
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_time_seconds_total Total indexing delete time in seconds
+             # TYPE elasticsearch_index_stats_indexing_delete_time_seconds_total counter
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_total Total indexing delete count
+             # TYPE elasticsearch_index_stats_indexing_delete_total counter
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_index_time_seconds_total Total indexing index time in seconds
+             # TYPE elasticsearch_index_stats_indexing_index_time_seconds_total counter
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0.013
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0.106
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index=".watches"} 1.421
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.046
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.012
+             # HELP elasticsearch_index_stats_indexing_index_total Total indexing index count
+             # TYPE elasticsearch_index_stats_indexing_index_total counter
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index=".monitoring-data-2"} 4
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 65
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_index_stats_indexing_noop_update_total Total indexing no-op update count
+             # TYPE elasticsearch_index_stats_indexing_noop_update_total counter
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_throttle_time_seconds_total Total indexing throttle time in seconds
+             # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
+             # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".watches"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 1.048576e+08
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_2"} 1.048576e+08
+             # HELP elasticsearch_index_stats_merge_stopped_time_seconds_total Total large merge stopped time in seconds, allowing smaller merges to complete
+             # TYPE elasticsearch_index_stats_merge_stopped_time_seconds_total counter
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_throttle_time_seconds_total Total merge I/O throttle time in seconds
+             # TYPE elasticsearch_index_stats_merge_throttle_time_seconds_total counter
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_time_seconds_total Total merge time in seconds
+             # TYPE elasticsearch_index_stats_merge_time_seconds_total counter
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_merge_total Total merge count
+             # TYPE elasticsearch_index_stats_merge_total counter
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_caches_total Total query cache caches count
+             # TYPE elasticsearch_index_stats_query_cache_caches_total counter
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_evictions_total Total query cache evictions count
+             # TYPE elasticsearch_index_stats_query_cache_evictions_total counter
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_hits_total Total query cache hits count
+             # TYPE elasticsearch_index_stats_query_cache_hits_total counter
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_memory_bytes_total Total query cache memory bytes
+             # TYPE elasticsearch_index_stats_query_cache_memory_bytes_total counter
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_misses_total Total query cache misses count
+             # TYPE elasticsearch_index_stats_query_cache_misses_total counter
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_query_cache_size Total query cache size
+             # TYPE elasticsearch_index_stats_query_cache_size gauge
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_external_time_seconds_total Total external refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_external_time_seconds_total counter
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_external_total Total external refresh count
+             # TYPE elasticsearch_index_stats_refresh_external_total counter
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_refresh_time_seconds_total Total refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_time_seconds_total counter
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0.074
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0.39
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0.771
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.084
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.042
+             # HELP elasticsearch_index_stats_refresh_total Total refresh count
+             # TYPE elasticsearch_index_stats_refresh_total counter
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index=".monitoring-data-2"} 2
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 3
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index=".watches"} 5
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_index_stats_request_cache_evictions_total Total request cache evictions count
+             # TYPE elasticsearch_index_stats_request_cache_evictions_total counter
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_hits_total Total request cache hits count
+             # TYPE elasticsearch_index_stats_request_cache_hits_total counter
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_memory_bytes_total Total request cache memory bytes
+             # TYPE elasticsearch_index_stats_request_cache_memory_bytes_total counter
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_request_cache_misses_total Total request cache misses count
+             # TYPE elasticsearch_index_stats_request_cache_misses_total counter
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_fetch_time_seconds_total Total search fetch time in seconds
+             # TYPE elasticsearch_index_stats_search_fetch_time_seconds_total counter
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_fetch_total Total search fetch count
+             # TYPE elasticsearch_index_stats_search_fetch_total counter
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
+             # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_query_total Total number of queries
+             # TYPE elasticsearch_index_stats_search_query_total counter
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_current Current search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_current gauge
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_time_seconds_total Total search scroll time in seconds
+             # TYPE elasticsearch_index_stats_search_scroll_time_seconds_total counter
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_scroll_total Total search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_total counter
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_suggest_time_seconds_total Total search suggest time in seconds
+             # TYPE elasticsearch_index_stats_search_suggest_time_seconds_total counter
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_suggest_total Total search suggest count
+             # TYPE elasticsearch_index_stats_search_suggest_total counter
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_warmer_time_seconds_total Total warmer time in seconds
+             # TYPE elasticsearch_index_stats_warmer_time_seconds_total counter
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0.002
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0.015
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0.009
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.094
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.004
+             # HELP elasticsearch_index_stats_warmer_total Total warmer count
+             # TYPE elasticsearch_index_stats_warmer_total counter
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index=".monitoring-data-2"} 3
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 4
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_1"} 7
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_2"} 8
+             # HELP elasticsearch_indices_aliases Record aliases associated with an index
+             # TYPE elasticsearch_indices_aliases gauge
+             elasticsearch_indices_aliases{alias="foo_alias_2_1",cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_1",cluster="unknown_cluster",index="foo_3"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_2",cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_completion_bytes_primary Current size of completion with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_primary gauge
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_completion_bytes_total Current size of completion with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_total gauge
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_deleted_docs_primary Count of deleted documents with only primary shards
+             # TYPE elasticsearch_indices_deleted_docs_primary gauge
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_deleted_docs_total Total count of deleted documents
+             # TYPE elasticsearch_indices_deleted_docs_total gauge
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_docs_primary Count of documents with only primary shards
+             # TYPE elasticsearch_indices_docs_primary gauge
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 2
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 65
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_docs_total Total count of documents
+             # TYPE elasticsearch_indices_docs_total gauge
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index=".monitoring-data-2"} 2
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 65
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_count_primary Current number of segments with only primary shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_primary gauge
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 1
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 3
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_count_total Current number of segments with all shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_total gauge
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index=".monitoring-data-2"} 1
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 3
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_2"} 3
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_primary Current size of doc values with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_primary gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 236
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 3452
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 368
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 184
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 276
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_total Current size of doc values with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_total gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 236
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 3452
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 368
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 184
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 276
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_primary Current size of fields with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 312
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 936
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 1248
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 624
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 936
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_total Current size of fields with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_total gauge
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 312
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 936
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 1248
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 624
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 936
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary Current size of fixed bit with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total Current size of fixed bit with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_primary Current size of index writer with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_primary gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_total Current size of index writer with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_total gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_primary Current size of segments with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_primary gauge
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 1335
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 23830
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 18418
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 5176
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 7764
+             # HELP elasticsearch_indices_segment_memory_bytes_total Current size of segments with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_total gauge
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 1335
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 23830
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 18418
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 5176
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 7764
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_primary Current size of norms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_primary gauge
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 320
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 1600
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 576
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_total Current size of norms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_total gauge
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 320
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 1600
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 576
+             # HELP elasticsearch_indices_segment_points_memory_bytes_primary Current size of points with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_primary gauge
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 648
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_total Current size of points with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_total gauge
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 648
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 4
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_primary_bytes Current size of term vectors with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_primary_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_total_bytes Current size of term vectors with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_total_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_primary Current size of terms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_primary gauge
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 787
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 18474
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index=".watches"} 15198
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_1"} 3984
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_2"} 5976
+             # HELP elasticsearch_indices_segment_terms_memory_total Current number of terms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_total gauge
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index=".monitoring-data-2"} 787
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 18474
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index=".watches"} 15198
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_1"} 3984
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_2"} 5976
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_primary Current size of version map with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_primary gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_total Current size of version map with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_total gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_primary gauge
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".monitoring-data-2"} 4226
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 68917
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".watches"} 35444
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_1"} 8038
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_2"} 11909
+             # HELP elasticsearch_indices_store_size_bytes_total Current total size of stored index data in bytes with all shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_total gauge
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 4226
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 68917
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index=".watches"} 35444
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_1"} 8038
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_2"} 11909
+             # HELP elasticsearch_search_active_queries The number of currently active queries
+             # TYPE elasticsearch_search_active_queries gauge
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_2"} 0
+
+`,
 		},
-		"5.4.2": {
-			"alias": `{"foo_1":{"aliases":{}},"foo_2":{"aliases":{"foo_alias_2_1":{}}},"foo_3":{"aliases":{"foo_alias_3_1":{"index_routing":"title","search_routing":"title","is_write_index":true},"foo_alias_3_2":{}}}}`,
-			"stats": `{"_shards":{"total":30,"successful":15,"failed":0},"_all":{"primaries":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":13165,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":80,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":314572800},"refresh":{"total":3,"total_time_in_millis":1317,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":18,"total_time_in_millis":26},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":7764,"terms_memory_in_bytes":5976,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":918},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":3,"deleted":0},"store":{"size_in_bytes":13165,"throttle_time_in_millis":0},"indexing":{"index_total":3,"index_time_in_millis":80,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":314572800},"refresh":{"total":3,"total_time_in_millis":1317,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":18,"total_time_in_millis":26},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":3,"memory_in_bytes":7764,"terms_memory_in_bytes":5976,"stored_fields_memory_in_bytes":936,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":576,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":276,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":918},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{"foo_2":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":4408,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":4,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":24,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":6,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2588,"terms_memory_in_bytes":1992,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":308},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":4408,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":4,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":24,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":6,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2588,"terms_memory_in_bytes":1992,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":308},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":4349,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":3,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":1166,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":6,"total_time_in_millis":6},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2588,"terms_memory_in_bytes":1992,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":302},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":4349,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":3,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":1166,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":6,"total_time_in_millis":6},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2588,"terms_memory_in_bytes":1992,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":302},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_3":{"primaries":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":4408,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":73,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":127,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":6,"total_time_in_millis":20},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2588,"terms_memory_in_bytes":1992,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":308},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"store":{"size_in_bytes":4408,"throttle_time_in_millis":0},"indexing":{"index_total":1,"index_time_in_millis":73,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":104857600},"refresh":{"total":1,"total_time_in_millis":127,"listeners":0},"flush":{"total":0,"total_time_in_millis":0},"warmer":{"current":0,"total":6,"total_time_in_millis":20},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":2588,"terms_memory_in_bytes":1992,"stored_fields_memory_in_bytes":312,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":192,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":92,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":308},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
+		{
+			name: "7.17.3",
+			file: "7.17.3.json",
+			want: `# HELP elasticsearch_index_stats_fielddata_evictions_total Total fielddata evictions count
+             # TYPE elasticsearch_index_stats_fielddata_evictions_total counter
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_fielddata_memory_bytes_total Total fielddata memory bytes
+             # TYPE elasticsearch_index_stats_fielddata_memory_bytes_total counter
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_flush_time_seconds_total Total flush time in seconds
+             # TYPE elasticsearch_index_stats_flush_time_seconds_total counter
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.15
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_flush_total Total flush count
+             # TYPE elasticsearch_index_stats_flush_total counter
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index=".geoip_databases"} 4
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_get_time_seconds_total Total get time in seconds
+             # TYPE elasticsearch_index_stats_get_time_seconds_total counter
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_get_total Total get count
+             # TYPE elasticsearch_index_stats_get_total counter
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_index_current The number of documents currently being indexed to an index
+             # TYPE elasticsearch_index_stats_index_current gauge
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_time_seconds_total Total indexing delete time in seconds
+             # TYPE elasticsearch_index_stats_indexing_delete_time_seconds_total counter
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_total Total indexing delete count
+             # TYPE elasticsearch_index_stats_indexing_delete_total counter
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_time_seconds_total Total indexing index time in seconds
+             # TYPE elasticsearch_index_stats_indexing_index_time_seconds_total counter
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.738
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.001
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.001
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0.001
+             # HELP elasticsearch_index_stats_indexing_index_total Total indexing index count
+             # TYPE elasticsearch_index_stats_indexing_index_total counter
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_1"} 1
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_index_stats_indexing_noop_update_total Total indexing no-op update count
+             # TYPE elasticsearch_index_stats_indexing_noop_update_total counter
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_throttle_time_seconds_total Total indexing throttle time in seconds
+             # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
+             # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_2"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_3"} 2.097152e+07
+             # HELP elasticsearch_index_stats_merge_stopped_time_seconds_total Total large merge stopped time in seconds, allowing smaller merges to complete
+             # TYPE elasticsearch_index_stats_merge_stopped_time_seconds_total counter
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_throttle_time_seconds_total Total merge I/O throttle time in seconds
+             # TYPE elasticsearch_index_stats_merge_throttle_time_seconds_total counter
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_time_seconds_total Total merge time in seconds
+             # TYPE elasticsearch_index_stats_merge_time_seconds_total counter
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_total Total merge count
+             # TYPE elasticsearch_index_stats_merge_total counter
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_caches_total Total query cache caches count
+             # TYPE elasticsearch_index_stats_query_cache_caches_total counter
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_evictions_total Total query cache evictions count
+             # TYPE elasticsearch_index_stats_query_cache_evictions_total counter
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_hits_total Total query cache hits count
+             # TYPE elasticsearch_index_stats_query_cache_hits_total counter
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_memory_bytes_total Total query cache memory bytes
+             # TYPE elasticsearch_index_stats_query_cache_memory_bytes_total counter
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_misses_total Total query cache misses count
+             # TYPE elasticsearch_index_stats_query_cache_misses_total counter
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_size Total query cache size
+             # TYPE elasticsearch_index_stats_query_cache_size gauge
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_external_time_seconds_total Total external refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_external_time_seconds_total counter
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.045
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.008
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.01
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0.01
+             # HELP elasticsearch_index_stats_refresh_external_total Total external refresh count
+             # TYPE elasticsearch_index_stats_refresh_external_total counter
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index=".geoip_databases"} 6
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_1"} 3
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_3"} 3
+             # HELP elasticsearch_index_stats_refresh_time_seconds_total Total refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_time_seconds_total counter
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.05
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.008
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.009
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0.009
+             # HELP elasticsearch_index_stats_refresh_total Total refresh count
+             # TYPE elasticsearch_index_stats_refresh_total counter
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index=".geoip_databases"} 9
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_1"} 3
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_3"} 3
+             # HELP elasticsearch_index_stats_request_cache_evictions_total Total request cache evictions count
+             # TYPE elasticsearch_index_stats_request_cache_evictions_total counter
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_hits_total Total request cache hits count
+             # TYPE elasticsearch_index_stats_request_cache_hits_total counter
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_memory_bytes_total Total request cache memory bytes
+             # TYPE elasticsearch_index_stats_request_cache_memory_bytes_total counter
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_misses_total Total request cache misses count
+             # TYPE elasticsearch_index_stats_request_cache_misses_total counter
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_fetch_time_seconds_total Total search fetch time in seconds
+             # TYPE elasticsearch_index_stats_search_fetch_time_seconds_total counter
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.096
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_fetch_total Total search fetch count
+             # TYPE elasticsearch_index_stats_search_fetch_total counter
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".geoip_databases"} 43
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
+             # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.071
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_query_total Total number of queries
+             # TYPE elasticsearch_index_stats_search_query_total counter
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index=".geoip_databases"} 43
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_current Current search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_current gauge
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_time_seconds_total Total search scroll time in seconds
+             # TYPE elasticsearch_index_stats_search_scroll_time_seconds_total counter
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.06
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_total Total search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_total counter
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index=".geoip_databases"} 3
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_suggest_time_seconds_total Total search suggest time in seconds
+             # TYPE elasticsearch_index_stats_search_suggest_time_seconds_total counter
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_suggest_total Total search suggest count
+             # TYPE elasticsearch_index_stats_search_suggest_total counter
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_warmer_time_seconds_total Total warmer time in seconds
+             # TYPE elasticsearch_index_stats_warmer_time_seconds_total counter
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_warmer_total Total warmer count
+             # TYPE elasticsearch_index_stats_warmer_total counter
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index=".geoip_databases"} 5
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_2"} 2
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_3"} 2
+             # HELP elasticsearch_indices_aliases Record aliases associated with an index
+             # TYPE elasticsearch_indices_aliases gauge
+             elasticsearch_indices_aliases{alias="foo_alias_2_1",cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_1",cluster="unknown_cluster",index="foo_3"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_2",cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_completion_bytes_primary Current size of completion with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_primary gauge
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_completion_bytes_total Current size of completion with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_total gauge
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_deleted_docs_primary Count of deleted documents with only primary shards
+             # TYPE elasticsearch_indices_deleted_docs_primary gauge
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_deleted_docs_total Total count of deleted documents
+             # TYPE elasticsearch_indices_deleted_docs_total gauge
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_docs_primary Count of documents with only primary shards
+             # TYPE elasticsearch_indices_docs_primary gauge
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_1"} 1
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_docs_total Total count of documents
+             # TYPE elasticsearch_indices_docs_total gauge
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_1"} 1
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_segment_count_primary Current number of segments with only primary shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_primary gauge
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index=".geoip_databases"} 4
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_1"} 1
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_segment_count_total Current number of segments with all shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_total gauge
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index=".geoip_databases"} 4
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_1"} 1
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_primary Current size of doc values with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_primary gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 304
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 76
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 76
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 76
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_total Current size of doc values with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_total gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 304
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 76
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 76
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 76
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_primary Current size of fields with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 2016
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 488
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 488
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 488
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_total Current size of fields with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_total gauge
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2016
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 488
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 488
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 488
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary Current size of fixed bit with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total Current size of fixed bit with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_primary Current size of index writer with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_primary gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_total Current size of index writer with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_total gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_primary Current size of segments with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_primary gauge
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 4368
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 1876
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 1876
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 1876
+             # HELP elasticsearch_indices_segment_memory_bytes_total Current size of segments with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_total gauge
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 4368
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 1876
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 1876
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 1876
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_primary Current size of norms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_primary gauge
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 128
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 128
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 128
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_total Current size of norms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_total gauge
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 128
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 128
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 128
+             # HELP elasticsearch_indices_segment_points_memory_bytes_primary Current size of points with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_primary gauge
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_total Current size of points with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_total gauge
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_primary_bytes Current size of term vectors with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_primary_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_total_bytes Current size of term vectors with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_total_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_primary Current size of terms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_primary gauge
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index=".geoip_databases"} 2048
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_1"} 1184
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_2"} 1184
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_3"} 1184
+             # HELP elasticsearch_indices_segment_terms_memory_total Current number of terms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_total gauge
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index=".geoip_databases"} 2048
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_1"} 1184
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_2"} 1184
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_3"} 1184
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_primary Current size of version map with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_primary gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_total Current size of version map with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_total gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_primary gauge
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 3.9904033e+07
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_1"} 4413
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_2"} 4459
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_3"} 4459
+             # HELP elasticsearch_indices_store_size_bytes_total Current total size of stored index data in bytes with all shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_total gauge
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 3.9904033e+07
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_1"} 4413
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_2"} 4459
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_3"} 4459
+             # HELP elasticsearch_search_active_queries The number of currently active queries
+             # TYPE elasticsearch_search_active_queries gauge
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_3"} 0
+`,
 		},
-		"7.17.3": {
-			"alias": `{"foo_1":{"aliases":{}},"foo_2":{"aliases":{"foo_alias_2_1":{}}},"foo_3":{"aliases":{"foo_alias_3_1":{"index_routing":"title","search_routing":"title","is_write_index":true},"foo_alias_3_2":{}}}}`,
-			"stats": `{"_shards":{"total":7,"successful":4,"failed":0},"_all":{"primaries":{"docs":{"count":43,"deleted":0},"shard_stats":{"total_count":4},"store":{"size_in_bytes":39917364,"total_data_set_size_in_bytes":39917364,"reserved_in_bytes":0},"indexing":{"index_total":43,"index_time_in_millis":741,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":43,"query_time_in_millis":71,"query_current":0,"fetch_total":43,"fetch_time_in_millis":96,"fetch_current":0,"scroll_total":3,"scroll_time_in_millis":60,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":83886080},"refresh":{"total":18,"total_time_in_millis":76,"external_total":15,"external_total_time_in_millis":73,"listeners":0},"flush":{"total":4,"periodic":0,"total_time_in_millis":150},"warmer":{"current":0,"total":11,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":7,"memory_in_bytes":9996,"terms_memory_in_bytes":5600,"stored_fields_memory_in_bytes":3480,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":532,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":487,"uncommitted_operations":3,"uncommitted_size_in_bytes":487,"earliest_last_modified_age":35855},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":43,"deleted":0},"shard_stats":{"total_count":4},"store":{"size_in_bytes":39917364,"total_data_set_size_in_bytes":39917364,"reserved_in_bytes":0},"indexing":{"index_total":43,"index_time_in_millis":741,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":43,"query_time_in_millis":71,"query_current":0,"fetch_total":43,"fetch_time_in_millis":96,"fetch_current":0,"scroll_total":3,"scroll_time_in_millis":60,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":83886080},"refresh":{"total":18,"total_time_in_millis":76,"external_total":15,"external_total_time_in_millis":73,"listeners":0},"flush":{"total":4,"periodic":0,"total_time_in_millis":150},"warmer":{"current":0,"total":11,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":7,"memory_in_bytes":9996,"terms_memory_in_bytes":5600,"stored_fields_memory_in_bytes":3480,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":384,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":532,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":3,"size_in_bytes":487,"uncommitted_operations":3,"uncommitted_size_in_bytes":487,"earliest_last_modified_age":35855},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"indices":{".geoip_databases":{"uuid":"AbBfA8RRRLGfbIPGIAQs7A","primaries":{"docs":{"count":40,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":39904033,"total_data_set_size_in_bytes":39904033,"reserved_in_bytes":0},"indexing":{"index_total":40,"index_time_in_millis":738,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":43,"query_time_in_millis":71,"query_current":0,"fetch_total":43,"fetch_time_in_millis":96,"fetch_current":0,"scroll_total":3,"scroll_time_in_millis":60,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":9,"total_time_in_millis":50,"external_total":6,"external_total_time_in_millis":45,"listeners":0},"flush":{"total":4,"periodic":0,"total_time_in_millis":150},"warmer":{"current":0,"total":5,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":4,"memory_in_bytes":4368,"terms_memory_in_bytes":2048,"stored_fields_memory_in_bytes":2016,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":0,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":304,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":55,"uncommitted_operations":0,"uncommitted_size_in_bytes":55,"earliest_last_modified_age":406186},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":40,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":39904033,"total_data_set_size_in_bytes":39904033,"reserved_in_bytes":0},"indexing":{"index_total":40,"index_time_in_millis":738,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":43,"query_time_in_millis":71,"query_current":0,"fetch_total":43,"fetch_time_in_millis":96,"fetch_current":0,"scroll_total":3,"scroll_time_in_millis":60,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":9,"total_time_in_millis":50,"external_total":6,"external_total_time_in_millis":45,"listeners":0},"flush":{"total":4,"periodic":0,"total_time_in_millis":150},"warmer":{"current":0,"total":5,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":4,"memory_in_bytes":4368,"terms_memory_in_bytes":2048,"stored_fields_memory_in_bytes":2016,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":0,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":304,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":0,"size_in_bytes":55,"uncommitted_operations":0,"uncommitted_size_in_bytes":55,"earliest_last_modified_age":406186},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_2":{"uuid":"JnYmxu4DStKroXSy6BHYcQ","primaries":{"docs":{"count":1,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":4459,"total_data_set_size_in_bytes":4459,"reserved_in_bytes":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":9,"external_total":3,"external_total_time_in_millis":10,"listeners":0},"flush":{"total":0,"periodic":0,"total_time_in_millis":0},"warmer":{"current":0,"total":2,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1876,"terms_memory_in_bytes":1184,"stored_fields_memory_in_bytes":488,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":76,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":146,"uncommitted_operations":1,"uncommitted_size_in_bytes":146,"earliest_last_modified_age":36079},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":4459,"total_data_set_size_in_bytes":4459,"reserved_in_bytes":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":9,"external_total":3,"external_total_time_in_millis":10,"listeners":0},"flush":{"total":0,"periodic":0,"total_time_in_millis":0},"warmer":{"current":0,"total":2,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1876,"terms_memory_in_bytes":1184,"stored_fields_memory_in_bytes":488,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":76,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":146,"uncommitted_operations":1,"uncommitted_size_in_bytes":146,"earliest_last_modified_age":36079},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_1":{"uuid":"9itiRXMuQym8eTdKygV3Kw","primaries":{"docs":{"count":1,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":4413,"total_data_set_size_in_bytes":4413,"reserved_in_bytes":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":8,"external_total":3,"external_total_time_in_millis":8,"listeners":0},"flush":{"total":0,"periodic":0,"total_time_in_millis":0},"warmer":{"current":0,"total":2,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1876,"terms_memory_in_bytes":1184,"stored_fields_memory_in_bytes":488,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":76,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":140,"uncommitted_operations":1,"uncommitted_size_in_bytes":140,"earliest_last_modified_age":36364},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":4413,"total_data_set_size_in_bytes":4413,"reserved_in_bytes":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":8,"external_total":3,"external_total_time_in_millis":8,"listeners":0},"flush":{"total":0,"periodic":0,"total_time_in_millis":0},"warmer":{"current":0,"total":2,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1876,"terms_memory_in_bytes":1184,"stored_fields_memory_in_bytes":488,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":76,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":140,"uncommitted_operations":1,"uncommitted_size_in_bytes":140,"earliest_last_modified_age":36364},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}},"foo_3":{"uuid":"a2-lU19tRuKUPgarKpqoCg","primaries":{"docs":{"count":1,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":4459,"total_data_set_size_in_bytes":4459,"reserved_in_bytes":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":9,"external_total":3,"external_total_time_in_millis":10,"listeners":0},"flush":{"total":0,"periodic":0,"total_time_in_millis":0},"warmer":{"current":0,"total":2,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1876,"terms_memory_in_bytes":1184,"stored_fields_memory_in_bytes":488,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":76,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":146,"uncommitted_operations":1,"uncommitted_size_in_bytes":146,"earliest_last_modified_age":35855},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}},"total":{"docs":{"count":1,"deleted":0},"shard_stats":{"total_count":1},"store":{"size_in_bytes":4459,"total_data_set_size_in_bytes":4459,"reserved_in_bytes":0},"indexing":{"index_total":1,"index_time_in_millis":1,"index_current":0,"index_failed":0,"delete_total":0,"delete_time_in_millis":0,"delete_current":0,"noop_update_total":0,"is_throttled":false,"throttle_time_in_millis":0},"get":{"total":0,"time_in_millis":0,"exists_total":0,"exists_time_in_millis":0,"missing_total":0,"missing_time_in_millis":0,"current":0},"search":{"open_contexts":0,"query_total":0,"query_time_in_millis":0,"query_current":0,"fetch_total":0,"fetch_time_in_millis":0,"fetch_current":0,"scroll_total":0,"scroll_time_in_millis":0,"scroll_current":0,"suggest_total":0,"suggest_time_in_millis":0,"suggest_current":0},"merges":{"current":0,"current_docs":0,"current_size_in_bytes":0,"total":0,"total_time_in_millis":0,"total_docs":0,"total_size_in_bytes":0,"total_stopped_time_in_millis":0,"total_throttled_time_in_millis":0,"total_auto_throttle_in_bytes":20971520},"refresh":{"total":3,"total_time_in_millis":9,"external_total":3,"external_total_time_in_millis":10,"listeners":0},"flush":{"total":0,"periodic":0,"total_time_in_millis":0},"warmer":{"current":0,"total":2,"total_time_in_millis":0},"query_cache":{"memory_size_in_bytes":0,"total_count":0,"hit_count":0,"miss_count":0,"cache_size":0,"cache_count":0,"evictions":0},"fielddata":{"memory_size_in_bytes":0,"evictions":0},"completion":{"size_in_bytes":0},"segments":{"count":1,"memory_in_bytes":1876,"terms_memory_in_bytes":1184,"stored_fields_memory_in_bytes":488,"term_vectors_memory_in_bytes":0,"norms_memory_in_bytes":128,"points_memory_in_bytes":0,"doc_values_memory_in_bytes":76,"index_writer_memory_in_bytes":0,"version_map_memory_in_bytes":0,"fixed_bit_set_memory_in_bytes":0,"max_unsafe_auto_id_timestamp":-1,"file_sizes":{}},"translog":{"operations":1,"size_in_bytes":146,"uncommitted_operations":1,"uncommitted_size_in_bytes":146,"earliest_last_modified_age":35855},"request_cache":{"memory_size_in_bytes":0,"evictions":0,"hit_count":0,"miss_count":0},"recovery":{"current_as_source":0,"current_as_target":0,"throttle_time_in_millis":0}}}}}`,
+		{
+			name:   "7.17.3",
+			file:   "7.17.3.json",
+			shards: true,
+			want: `# HELP elasticsearch_index_stats_fielddata_evictions_total Total fielddata evictions count
+             # TYPE elasticsearch_index_stats_fielddata_evictions_total counter
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_fielddata_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_fielddata_memory_bytes_total Total fielddata memory bytes
+             # TYPE elasticsearch_index_stats_fielddata_memory_bytes_total counter
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_fielddata_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_flush_time_seconds_total Total flush time in seconds
+             # TYPE elasticsearch_index_stats_flush_time_seconds_total counter
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.31
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_flush_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_flush_total Total flush count
+             # TYPE elasticsearch_index_stats_flush_total counter
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index=".geoip_databases"} 4
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_flush_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_get_time_seconds_total Total get time in seconds
+             # TYPE elasticsearch_index_stats_get_time_seconds_total counter
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_get_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_get_total Total get count
+             # TYPE elasticsearch_index_stats_get_total counter
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_get_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_index_current The number of documents currently being indexed to an index
+             # TYPE elasticsearch_index_stats_index_current gauge
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_index_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_time_seconds_total Total indexing delete time in seconds
+             # TYPE elasticsearch_index_stats_indexing_delete_time_seconds_total counter
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_total Total indexing delete count
+             # TYPE elasticsearch_index_stats_indexing_delete_total counter
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_time_seconds_total Total indexing index time in seconds
+             # TYPE elasticsearch_index_stats_indexing_index_time_seconds_total counter
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.866
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.002
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.003
+             elasticsearch_index_stats_indexing_index_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_total Total indexing index count
+             # TYPE elasticsearch_index_stats_indexing_index_total counter
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index=".geoip_databases"} 37
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_index_stats_indexing_index_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_noop_update_total Total indexing no-op update count
+             # TYPE elasticsearch_index_stats_indexing_noop_update_total counter
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_noop_update_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_throttle_time_seconds_total Total indexing throttle time in seconds
+             # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
+             # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_2"} 2.097152e+07
+             elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_3"} 2.097152e+07
+             # HELP elasticsearch_index_stats_merge_stopped_time_seconds_total Total large merge stopped time in seconds, allowing smaller merges to complete
+             # TYPE elasticsearch_index_stats_merge_stopped_time_seconds_total counter
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_stopped_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_throttle_time_seconds_total Total merge I/O throttle time in seconds
+             # TYPE elasticsearch_index_stats_merge_throttle_time_seconds_total counter
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_time_seconds_total Total merge time in seconds
+             # TYPE elasticsearch_index_stats_merge_time_seconds_total counter
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_merge_total Total merge count
+             # TYPE elasticsearch_index_stats_merge_total counter
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_merge_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_caches_total Total query cache caches count
+             # TYPE elasticsearch_index_stats_query_cache_caches_total counter
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_caches_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_evictions_total Total query cache evictions count
+             # TYPE elasticsearch_index_stats_query_cache_evictions_total counter
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_hits_total Total query cache hits count
+             # TYPE elasticsearch_index_stats_query_cache_hits_total counter
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_hits_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_memory_bytes_total Total query cache memory bytes
+             # TYPE elasticsearch_index_stats_query_cache_memory_bytes_total counter
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_misses_total Total query cache misses count
+             # TYPE elasticsearch_index_stats_query_cache_misses_total counter
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_misses_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_query_cache_size Total query cache size
+             # TYPE elasticsearch_index_stats_query_cache_size gauge
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_query_cache_size{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_external_time_seconds_total Total external refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_external_time_seconds_total counter
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.074
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.014
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.02
+             elasticsearch_index_stats_refresh_external_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_external_total Total external refresh count
+             # TYPE elasticsearch_index_stats_refresh_external_total counter
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index=".geoip_databases"} 7
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_1"} 4
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_2"} 5
+             elasticsearch_index_stats_refresh_external_total{cluster="unknown_cluster",index="foo_3"} 2
+             # HELP elasticsearch_index_stats_refresh_time_seconds_total Total refresh time in seconds
+             # TYPE elasticsearch_index_stats_refresh_time_seconds_total counter
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.083
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0.014
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0.02
+             elasticsearch_index_stats_refresh_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_refresh_total Total refresh count
+             # TYPE elasticsearch_index_stats_refresh_total counter
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index=".geoip_databases"} 10
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_1"} 4
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_2"} 5
+             elasticsearch_index_stats_refresh_total{cluster="unknown_cluster",index="foo_3"} 2
+             # HELP elasticsearch_index_stats_request_cache_evictions_total Total request cache evictions count
+             # TYPE elasticsearch_index_stats_request_cache_evictions_total counter
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_evictions_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_hits_total Total request cache hits count
+             # TYPE elasticsearch_index_stats_request_cache_hits_total counter
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_hits_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_memory_bytes_total Total request cache memory bytes
+             # TYPE elasticsearch_index_stats_request_cache_memory_bytes_total counter
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_request_cache_misses_total Total request cache misses count
+             # TYPE elasticsearch_index_stats_request_cache_misses_total counter
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_request_cache_misses_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_fetch_time_seconds_total Total search fetch time in seconds
+             # TYPE elasticsearch_index_stats_search_fetch_time_seconds_total counter
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.069
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_fetch_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_fetch_total Total search fetch count
+             # TYPE elasticsearch_index_stats_search_fetch_total counter
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
+             # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.057
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_query_total Total number of queries
+             # TYPE elasticsearch_index_stats_search_query_total counter
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index=".geoip_databases"} 40
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_query_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_current Current search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_current gauge
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_time_seconds_total Total search scroll time in seconds
+             # TYPE elasticsearch_index_stats_search_scroll_time_seconds_total counter
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.048
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_scroll_total Total search scroll count
+             # TYPE elasticsearch_index_stats_search_scroll_total counter
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index=".geoip_databases"} 3
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_scroll_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_suggest_time_seconds_total Total search suggest time in seconds
+             # TYPE elasticsearch_index_stats_search_suggest_time_seconds_total counter
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_suggest_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_suggest_total Total search suggest count
+             # TYPE elasticsearch_index_stats_search_suggest_total counter
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_suggest_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_warmer_time_seconds_total Total warmer time in seconds
+             # TYPE elasticsearch_index_stats_warmer_time_seconds_total counter
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_warmer_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_warmer_total Total warmer count
+             # TYPE elasticsearch_index_stats_warmer_total counter
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index=".geoip_databases"} 6
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_1"} 3
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_2"} 4
+             elasticsearch_index_stats_warmer_total{cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_aliases Record aliases associated with an index
+             # TYPE elasticsearch_indices_aliases gauge
+             elasticsearch_indices_aliases{alias="foo_alias_2_1",cluster="unknown_cluster",index="foo_2"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_1",cluster="unknown_cluster",index="foo_3"} 1
+             elasticsearch_indices_aliases{alias="foo_alias_3_2",cluster="unknown_cluster",index="foo_3"} 1
+             # HELP elasticsearch_indices_completion_bytes_primary Current size of completion with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_primary gauge
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_completion_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_completion_bytes_total Current size of completion with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_completion_bytes_total gauge
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_completion_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_deleted_docs_primary Count of deleted documents with only primary shards
+             # TYPE elasticsearch_indices_deleted_docs_primary gauge
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_deleted_docs_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_deleted_docs_total Total count of deleted documents
+             # TYPE elasticsearch_indices_deleted_docs_total gauge
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_deleted_docs_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_docs_primary Count of documents with only primary shards
+             # TYPE elasticsearch_indices_docs_primary gauge
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index=".geoip_databases"} 37
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_docs_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_docs_total Total count of documents
+             # TYPE elasticsearch_indices_docs_total gauge
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index=".geoip_databases"} 37
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_docs_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_count_primary Current number of segments with only primary shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_primary gauge
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index=".geoip_databases"} 5
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_segment_count_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_count_total Current number of segments with all shards on all nodes
+             # TYPE elasticsearch_indices_segment_count_total gauge
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index=".geoip_databases"} 5
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_1"} 2
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_2"} 3
+             elasticsearch_indices_segment_count_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_primary Current size of doc values with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_primary gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 380
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 152
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 228
+             elasticsearch_indices_segment_doc_values_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_doc_values_memory_bytes_total Current size of doc values with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_doc_values_memory_bytes_total gauge
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 380
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 152
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 228
+             elasticsearch_indices_segment_doc_values_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_primary Current size of fields with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 2504
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 976
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 1464
+             elasticsearch_indices_segment_fields_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fields_memory_bytes_total Current size of fields with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fields_memory_bytes_total gauge
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2504
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 976
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 1464
+             elasticsearch_indices_segment_fields_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary Current size of fixed bit with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total Current size of fixed bit with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total gauge
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_fixed_bit_set_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_primary Current size of index writer with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_primary gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_index_writer_memory_bytes_total Current size of index writer with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_index_writer_memory_bytes_total gauge
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_index_writer_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_primary Current size of segments with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_primary gauge
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 5444
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 3752
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 5628
+             elasticsearch_indices_segment_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_memory_bytes_total Current size of segments with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_memory_bytes_total gauge
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 5444
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 3752
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 5628
+             elasticsearch_indices_segment_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_primary Current size of norms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_primary gauge
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 256
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_norms_memory_bytes_total Current size of norms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_norms_memory_bytes_total gauge
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 256
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 384
+             elasticsearch_indices_segment_norms_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_primary Current size of points with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_primary gauge
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_points_memory_bytes_total Current size of points with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_points_memory_bytes_total gauge
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_points_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_primary_bytes Current size of term vectors with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_primary_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_primary_bytes{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_term_vectors_memory_total_bytes Current size of term vectors with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_term_vectors_memory_total_bytes gauge
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_term_vectors_memory_total_bytes{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_primary Current size of terms with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_primary gauge
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index=".geoip_databases"} 2560
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_1"} 2368
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_2"} 3552
+             elasticsearch_indices_segment_terms_memory_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_terms_memory_total Current number of terms with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_terms_memory_total gauge
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index=".geoip_databases"} 2560
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_1"} 2368
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_2"} 3552
+             elasticsearch_indices_segment_terms_memory_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_primary Current size of version map with only primary shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_primary gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_primary{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_segment_version_map_memory_bytes_total Current size of version map with all shards on all nodes in bytes
+             # TYPE elasticsearch_indices_segment_version_map_memory_bytes_total gauge
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_shards_docs Count of documents on this shard
+             # TYPE elasticsearch_indices_shards_docs gauge
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 37
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 2
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 3
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             # HELP elasticsearch_indices_shards_docs_deleted Count of deleted documents on this shard
+             # TYPE elasticsearch_indices_shards_docs_deleted gauge
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             # HELP elasticsearch_indices_shards_store_size_in_bytes Store size of this shard
+             # TYPE elasticsearch_indices_shards_store_size_in_bytes gauge
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 3.7286036e+07
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 8600
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 12925
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 226
+             # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_primary gauge
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 3.7286036e+07
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_1"} 8600
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_2"} 12925
+             elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index="foo_3"} 226
+             # HELP elasticsearch_indices_store_size_bytes_total Current total size of stored index data in bytes with all shards on all nodes
+             # TYPE elasticsearch_indices_store_size_bytes_total gauge
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 3.7286036e+07
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_1"} 8600
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_2"} 12925
+             elasticsearch_indices_store_size_bytes_total{cluster="unknown_cluster",index="foo_3"} 226
+             # HELP elasticsearch_search_active_queries The number of currently active queries
+             # TYPE elasticsearch_search_active_queries gauge
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_search_active_queries{cluster="unknown_cluster",index="foo_3"} 0
+`,
 		},
 	}
-	for ver, out := range ti {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/_all/_stats", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out["stats"])
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fStats, err := os.Open(path.Join("../fixtures/indices/", tt.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fStats.Close()
+
+			fStatsShard, err := os.Open(path.Join("../fixtures/indices/shards/", tt.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fStatsShard.Close()
+
+			fAlias, err := os.Open(path.Join("../fixtures/indices/alias/", tt.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fAlias.Close()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/_all/_stats":
+					shards := r.URL.Query().Get("level")
+					if shards == "shards" {
+						io.Copy(w, fStatsShard)
+					} else {
+						io.Copy(w, fStats)
+					}
+				case "/_alias":
+					io.Copy(w, fAlias)
+				default:
+					http.Error(w, "Not Found", http.StatusNotFound)
+				}
+
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c.shards = tt.shards
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
 		})
-		mux.HandleFunc("/_alias", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out["alias"])
-		})
-		ts := httptest.NewServer(mux)
-		defer ts.Close()
-
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
-		i := NewIndices(log.NewNopLogger(), http.DefaultClient, u, false, true)
-		stats, err := i.fetchAndDecodeIndexStats()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode indices stats: %s", err)
-		}
-		t.Logf("[%s] Index Response: %+v", ver, stats)
-		if stats.Aliases["foo_1"] != nil {
-			t.Errorf("Wrong aliases for foo_1")
-		}
-		if !reflect.DeepEqual(stats.Aliases["foo_2"], []string{"foo_alias_2_1"}) {
-			t.Errorf("Wrong aliases for foo_2")
-		}
-		if !reflect.DeepEqual(stats.Aliases["foo_3"], []string{"foo_alias_3_1", "foo_alias_3_2"}) {
-			t.Errorf("Wrong aliases for foo_3")
-		}
 	}
 }

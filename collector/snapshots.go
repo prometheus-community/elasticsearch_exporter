@@ -14,31 +14,16 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-type snapshotMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(snapshotStats SnapshotStatDataResponse) float64
-	Labels func(repositoryName string, snapshotStats SnapshotStatDataResponse) []string
-}
-
-type repositoryMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(snapshotsStats SnapshotStatsResponse) float64
-	Labels func(repositoryName string) []string
-}
 
 var (
 	defaultSnapshotLabels      = []string{"repository", "state", "version"}
@@ -51,285 +36,195 @@ var (
 	}
 )
 
+var (
+	numIndices = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_indices"),
+		"Number of indices in the last snapshot",
+		defaultSnapshotLabels, nil,
+	)
+	snapshotStartTimestamp = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_start_time_timestamp"),
+		"Last snapshot start timestamp",
+		defaultSnapshotLabels, nil,
+	)
+	snapshotEndTimestamp = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_end_time_timestamp"),
+		"Last snapshot end timestamp",
+		defaultSnapshotLabels, nil,
+	)
+	snapshotNumFailures = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_failures"),
+		"Last snapshot number of failures",
+		defaultSnapshotLabels, nil,
+	)
+	snapshotNumShards = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_total_shards"),
+		"Last snapshot total shards",
+		defaultSnapshotLabels, nil,
+	)
+	snapshotFailedShards = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_failed_shards"),
+		"Last snapshot failed shards",
+		defaultSnapshotLabels, nil,
+	)
+	snapshotSuccessfulShards = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_successful_shards"),
+		"Last snapshot successful shards",
+		defaultSnapshotLabels, nil,
+	)
+
+	numSnapshots = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "number_of_snapshots"),
+		"Number of snapshots in a repository",
+		defaultSnapshotRepositoryLabels, nil,
+	)
+	oldestSnapshotTimestamp = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "oldest_snapshot_timestamp"),
+		"Timestamp of the oldest snapshot",
+		defaultSnapshotRepositoryLabels, nil,
+	)
+	latestSnapshotTimestamp = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "latest_snapshot_timestamp_seconds"),
+		"Timestamp of the latest SUCCESS or PARTIAL snapshot",
+		defaultSnapshotRepositoryLabels, nil,
+	)
+)
+
+func init() {
+	registerCollector("snapshots", defaultDisabled, NewSnapshots)
+}
+
 // Snapshots information struct
 type Snapshots struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
-
-	up                              prometheus.Gauge
-	totalScrapes, jsonParseFailures prometheus.Counter
-
-	snapshotMetrics   []*snapshotMetric
-	repositoryMetrics []*repositoryMetric
+	logger *slog.Logger
+	hc     *http.Client
+	u      *url.URL
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger log.Logger, client *http.Client, url *url.URL) *Snapshots {
+func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &Snapshots{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		up: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "up"),
-			Help: "Was the last scrape of the Elasticsearch snapshots endpoint successful.",
-		}),
-		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "total_scrapes"),
-			Help: "Current total Elasticsearch snapshots scrapes.",
-		}),
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "snapshot_stats", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
-		snapshotMetrics: []*snapshotMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_indices"),
-					"Number of indices in the last snapshot",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(len(snapshotStats.Indices))
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_start_time_timestamp"),
-					"Last snapshot start timestamp",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(snapshotStats.StartTimeInMillis / 1000)
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_end_time_timestamp"),
-					"Last snapshot end timestamp",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(snapshotStats.EndTimeInMillis / 1000)
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_failures"),
-					"Last snapshot number of failures",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(len(snapshotStats.Failures))
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_total_shards"),
-					"Last snapshot total shards",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(snapshotStats.Shards.Total)
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_failed_shards"),
-					"Last snapshot failed shards",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(snapshotStats.Shards.Failed)
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_successful_shards"),
-					"Last snapshot successful shards",
-					defaultSnapshotLabels, nil,
-				),
-				Value: func(snapshotStats SnapshotStatDataResponse) float64 {
-					return float64(snapshotStats.Shards.Successful)
-				},
-				Labels: defaultSnapshotLabelValues,
-			},
-		},
-		repositoryMetrics: []*repositoryMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "number_of_snapshots"),
-					"Number of snapshots in a repository",
-					defaultSnapshotRepositoryLabels, nil,
-				),
-				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
-					return float64(len(snapshotsStats.Snapshots))
-				},
-				Labels: defaultSnapshotRepositoryLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "oldest_snapshot_timestamp"),
-					"Timestamp of the oldest snapshot",
-					defaultSnapshotRepositoryLabels, nil,
-				),
-				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
-					if len(snapshotsStats.Snapshots) == 0 {
-						return 0
-					}
-					return float64(snapshotsStats.Snapshots[0].StartTimeInMillis / 1000)
-				},
-				Labels: defaultSnapshotRepositoryLabelValues,
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "snapshot_stats", "latest_snapshot_timestamp_seconds"),
-					"Timestamp of the latest SUCCESS or PARTIAL snapshot",
-					defaultSnapshotRepositoryLabels, nil,
-				),
-				Value: func(snapshotsStats SnapshotStatsResponse) float64 {
-					for i := len(snapshotsStats.Snapshots) - 1; i >= 0; i-- {
-						var snap = snapshotsStats.Snapshots[i]
-						if snap.State == "SUCCESS" || snap.State == "PARTIAL" {
-							return float64(snap.StartTimeInMillis / 1000)
-						}
-					}
-					return 0
-				},
-				Labels: defaultSnapshotRepositoryLabelValues,
-			},
-		},
-	}
+		u:      u,
+		hc:     hc,
+	}, nil
 }
 
-// Describe add Snapshots metrics descriptions
-func (s *Snapshots) Describe(ch chan<- *prometheus.Desc) {
-	for _, metric := range s.snapshotMetrics {
-		ch <- metric.Desc
-	}
-	ch <- s.up.Desc()
-	ch <- s.totalScrapes.Desc()
-	ch <- s.jsonParseFailures.Desc()
-}
+func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+	// indices
+	snapshotsStatsResp := make(map[string]SnapshotStatsResponse)
+	u := c.u.ResolveReference(&url.URL{Path: "/_snapshot"})
 
-func (s *Snapshots) getAndParseURL(u *url.URL, data interface{}) error {
-	res, err := s.client.Get(u.String())
-	if err != nil {
-		return fmt.Errorf("failed to get from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			_ = level.Warn(s.logger).Log(
-				"msg", "failed to close http.Client",
-				"err", err,
-			)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	bts, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		s.jsonParseFailures.Inc()
-		return err
-	}
-
-	if err := json.Unmarshal(bts, data); err != nil {
-		s.jsonParseFailures.Inc()
-		return err
-	}
-	return nil
-}
-
-func (s *Snapshots) fetchAndDecodeSnapshotsStats() (map[string]SnapshotStatsResponse, error) {
-	mssr := make(map[string]SnapshotStatsResponse)
-
-	u := *s.url
-	u.Path = path.Join(u.Path, "/_snapshot")
 	var srr SnapshotRepositoriesResponse
-	err := s.getAndParseURL(&u, &srr)
+	resp, err := getURL(ctx, c.hc, c.logger, u.String())
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	err = json.Unmarshal(resp, &srr)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON: %v", err)
+	}
+
 	for repository := range srr {
-		u := *s.url
-		u.Path = path.Join(u.Path, "/_snapshot", repository, "/_all")
+		pathPart := path.Join("/_snapshot", repository, "/_all")
+		u := c.u.ResolveReference(&url.URL{Path: pathPart})
 		var ssr SnapshotStatsResponse
-		err := s.getAndParseURL(&u, &ssr)
+		resp, err := getURL(ctx, c.hc, c.logger, u.String())
 		if err != nil {
 			continue
 		}
-		mssr[repository] = ssr
+		err = json.Unmarshal(resp, &ssr)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal JSON: %v", err)
+		}
+		snapshotsStatsResp[repository] = ssr
 	}
-
-	return mssr, nil
-}
-
-// Collect gets Snapshots metric values
-func (s *Snapshots) Collect(ch chan<- prometheus.Metric) {
-	s.totalScrapes.Inc()
-	defer func() {
-		ch <- s.up
-		ch <- s.totalScrapes
-		ch <- s.jsonParseFailures
-	}()
-
-	// indices
-	snapshotsStatsResp, err := s.fetchAndDecodeSnapshotsStats()
-	if err != nil {
-		s.up.Set(0)
-		_ = level.Warn(s.logger).Log(
-			"msg", "failed to fetch and decode snapshot stats",
-			"err", err,
-		)
-		return
-	}
-	s.up.Set(1)
 
 	// Snapshots stats
 	for repositoryName, snapshotStats := range snapshotsStatsResp {
-		for _, metric := range s.repositoryMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(snapshotStats),
-				metric.Labels(repositoryName)...,
-			)
+
+		ch <- prometheus.MustNewConstMetric(
+			numSnapshots,
+			prometheus.GaugeValue,
+			float64(len(snapshotStats.Snapshots)),
+			defaultSnapshotRepositoryLabelValues(repositoryName)...,
+		)
+
+		oldest := float64(0)
+		if len(snapshotStats.Snapshots) > 0 {
+			oldest = float64(snapshotStats.Snapshots[0].StartTimeInMillis / 1000)
 		}
+		ch <- prometheus.MustNewConstMetric(
+			oldestSnapshotTimestamp,
+			prometheus.GaugeValue,
+			oldest,
+			defaultSnapshotRepositoryLabelValues(repositoryName)...,
+		)
+
+		latest := float64(0)
+		for i := len(snapshotStats.Snapshots) - 1; i >= 0; i-- {
+			var snap = snapshotStats.Snapshots[i]
+			if snap.State == "SUCCESS" || snap.State == "PARTIAL" {
+				latest = float64(snap.StartTimeInMillis / 1000)
+				break
+			}
+		}
+		ch <- prometheus.MustNewConstMetric(
+			latestSnapshotTimestamp,
+			prometheus.GaugeValue,
+			latest,
+			defaultSnapshotRepositoryLabelValues(repositoryName)...,
+		)
+
 		if len(snapshotStats.Snapshots) == 0 {
 			continue
 		}
 
 		lastSnapshot := snapshotStats.Snapshots[len(snapshotStats.Snapshots)-1]
-		for _, metric := range s.snapshotMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(lastSnapshot),
-				metric.Labels(repositoryName, lastSnapshot)...,
-			)
-		}
+		ch <- prometheus.MustNewConstMetric(
+			numIndices,
+			prometheus.GaugeValue,
+			float64(len(lastSnapshot.Indices)),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotStartTimestamp,
+			prometheus.GaugeValue,
+			float64(lastSnapshot.StartTimeInMillis/1000),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotEndTimestamp,
+			prometheus.GaugeValue,
+			float64(lastSnapshot.EndTimeInMillis/1000),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotNumFailures,
+			prometheus.GaugeValue,
+			float64(len(lastSnapshot.Failures)),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotNumShards,
+			prometheus.GaugeValue,
+			float64(lastSnapshot.Shards.Total),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotFailedShards,
+			prometheus.GaugeValue,
+			float64(lastSnapshot.Shards.Failed),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotSuccessfulShards,
+			prometheus.GaugeValue,
+			float64(lastSnapshot.Shards.Successful),
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
 	}
+
+	return nil
 }

@@ -1,52 +1,36 @@
 ---
+# This project has switched to GitHub actions.
+# Circle CI is not disabled repository-wise so that previous pull requests
+# continue working.
+# This file does not generate any CircleCI workflow.
+
 version: 2.1
-orbs:
-  prometheus: prometheus/prometheus@0.16.0
+
 executors:
-  # This must match .promu.yml.
+
   golang:
     docker:
-      - image: cimg/go:1.19
+      - image: busybox
+
 jobs:
-  test:
+  noopjob:
     executor: golang
+
     steps:
-      - prometheus/setup_environment
-      - run: make
-      - prometheus/store_artifact:
-          file: elasticsearch_exporter
+      - run:
+          command: "true"
+
+
 workflows:
   version: 2
   elasticsearch_exporter:
     jobs:
-      - test:
-          filters:
-            tags:
-              only: /.*/
-      - prometheus/build:
-          name: build
-          filters:
-            tags:
-              only: /.*/
-      - prometheus/publish_master:
-          context: org-context
-          docker_hub_organization: prometheuscommunity
-          quay_io_organization: prometheuscommunity
-          requires:
-            - test
-            - build
+      - noopjob
+    triggers:
+      - schedule:
+          cron: "0 0 30 2 *"
           filters:
             branches:
-              only: master
-      - prometheus/publish_release:
-          context: org-context
-          docker_hub_organization: prometheuscommunity
-          quay_io_organization: prometheuscommunity
-          requires:
-            - test
-            - build
-          filters:
-            tags:
-              only: /^v.*/
-            branches:
-              ignore: /.*/
+              only:
+                - main
+                - master

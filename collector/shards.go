@@ -10,60 +10,86 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package collector
 
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
+
 	"github.com/prometheus/client_golang/prometheus"
-)
-
-var (
-	defaultNodeShardLabels = []string{"node"}
-
-	defaultNodeShardLabelValues = func(node string) []string {
-		return []string{
-			node,
-		}
-	}
 )
 
 // ShardResponse has shard's node and index info
 type ShardResponse struct {
 	Index string `json:"index"`
 	Shard string `json:"shard"`
+	State string `json:"state"`
 	Node  string `json:"node"`
 }
 
 // Shards information struct
 type Shards struct {
-	logger log.Logger
-	client *http.Client
-	url    *url.URL
+	logger          *slog.Logger
+	client          *http.Client
+	url             *url.URL
+	clusterInfoCh   chan *clusterinfo.Response
+	lastClusterInfo *clusterinfo.Response
 
 	nodeShardMetrics  []*nodeShardMetric
 	jsonParseFailures prometheus.Counter
+}
+
+// ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
+// (not exported) clusterinfo.consumer interface
+func (s *Shards) ClusterLabelUpdates() *chan *clusterinfo.Response {
+	return &s.clusterInfoCh
+}
+
+// String implements the stringer interface. It is part of the clusterinfo.consumer interface
+func (s *Shards) String() string {
+	return namespace + "shards"
 }
 
 type nodeShardMetric struct {
 	Type   prometheus.ValueType
 	Desc   *prometheus.Desc
 	Value  func(shards float64) float64
-	Labels func(node string) []string
+	Labels labels
 }
 
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
-	return &Shards{
+func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
+
+	nodeLabels := labels{
+		keys: func(...string) []string {
+			return []string{"node", "cluster"}
+		},
+		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
+			if lastClusterinfo != nil {
+				return append(s, lastClusterinfo.ClusterName)
+			}
+			// this shouldn't happen, as the clusterinfo Retriever has a blocking
+			// Run method. It blocks until the first clusterinfo call has succeeded
+			return append(s, "unknown_cluster")
+		},
+	}
+
+	shards := &Shards{
 		logger: logger,
 		client: client,
 		url:    url,
+
+		clusterInfoCh: make(chan *clusterinfo.Response),
+		lastClusterInfo: &clusterinfo.Response{
+			ClusterName: "unknown_cluster",
+		},
 
 		nodeShardMetrics: []*nodeShardMetric{
 			{
@@ -71,12 +97,12 @@ func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
 				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "node_shards", "total"),
 					"Total shards per node",
-					defaultNodeShardLabels, nil,
+					nodeLabels.keys(), nil,
 				),
 				Value: func(shards float64) float64 {
 					return shards
 				},
-				Labels: defaultNodeShardLabelValues,
+				Labels: nodeLabels,
 			}},
 
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
@@ -84,6 +110,20 @@ func NewShards(logger log.Logger, client *http.Client, url *url.URL) *Shards {
 			Help: "Number of errors while parsing JSON.",
 		}),
 	}
+
+	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
+	go func() {
+		logger.Debug("starting cluster info receive loop")
+		for ci := range shards.clusterInfoCh {
+			if ci != nil {
+				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
+				shards.lastClusterInfo = ci
+			}
+		}
+		logger.Debug("exiting cluster info receive loop")
+	}()
+
+	return shards
 }
 
 // Describe Shards
@@ -105,8 +145,8 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			_ = level.Warn(s.logger).Log(
-				"msg", "failed to close http.Client",
+			s.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}
@@ -137,7 +177,7 @@ func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
 	return sfr, err
 }
 
-// Collect number of shards on each nodes
+// Collect number of shards on each node
 func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 
 	defer func() {
@@ -146,8 +186,8 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 
 	sr, err := s.fetchAndDecodeShards()
 	if err != nil {
-		_ = level.Warn(s.logger).Log(
-			"msg", "failed to fetch and decode node shards stats",
+		s.logger.Warn(
+			"failed to fetch and decode node shards stats",
 			"err", err,
 		)
 		return
@@ -156,10 +196,8 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 	nodeShards := make(map[string]float64)
 
 	for _, shard := range sr {
-		if val, ok := nodeShards[shard.Node]; ok {
-			nodeShards[shard.Node] = val + 1
-		} else {
-			nodeShards[shard.Node] = 1
+		if shard.State == "STARTED" {
+			nodeShards[shard.Node]++
 		}
 	}
 
@@ -169,7 +207,7 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 				metric.Desc,
 				metric.Type,
 				metric.Value(shards),
-				metric.Labels(node)...,
+				metric.Labels.values(s.lastClusterInfo, node)...,
 			)
 		}
 	}

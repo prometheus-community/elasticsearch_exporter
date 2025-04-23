@@ -14,13 +14,16 @@
 package collector
 
 import (
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestClusterHealth(t *testing.T) {
@@ -28,46 +31,172 @@ func TestClusterHealth(t *testing.T) {
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
 	//  curl -XPUT http://localhost:9200/twitter
 	//  curl http://localhost:9200/_cluster/health
-	tcs := map[string]string{
-		"1.7.6": `{"cluster_name":"elasticsearch","status":"yellow","timed_out":false,"number_of_nodes":1,"number_of_data_nodes":1,"active_primary_shards":5,"active_shards":5,"relocating_shards":0,"initializing_shards":0,"unassigned_shards":5,"delayed_unassigned_shards":0,"number_of_pending_tasks":0,"number_of_in_flight_fetch":0}`,
-		"2.4.5": `{"cluster_name":"elasticsearch","status":"yellow","timed_out":false,"number_of_nodes":1,"number_of_data_nodes":1,"active_primary_shards":5,"active_shards":5,"relocating_shards":0,"initializing_shards":0,"unassigned_shards":5,"delayed_unassigned_shards":0,"number_of_pending_tasks":0,"number_of_in_flight_fetch":0,"task_max_waiting_in_queue_millis":12,"active_shards_percent_as_number":50.0}`,
-		"5.4.2": `{"cluster_name":"elasticsearch","status":"yellow","timed_out":false,"number_of_nodes":1,"number_of_data_nodes":1,"active_primary_shards":5,"active_shards":5,"relocating_shards":0,"initializing_shards":0,"unassigned_shards":5,"delayed_unassigned_shards":0,"number_of_pending_tasks":0,"number_of_in_flight_fetch":0,"task_max_waiting_in_queue_millis":12,"active_shards_percent_as_number":50.0}`,
-	}
-	for ver, out := range tcs {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, out)
-		}))
-		defer ts.Close()
 
-		u, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatalf("Failed to parse URL: %s", err)
-		}
-		c := NewClusterHealth(log.NewNopLogger(), http.DefaultClient, u)
-		chr, err := c.fetchAndDecodeClusterHealth()
-		if err != nil {
-			t.Fatalf("Failed to fetch or decode cluster health: %s", err)
-		}
-		t.Logf("[%s] Cluster Health Response: %+v", ver, chr)
-		if chr.ClusterName != "elasticsearch" {
-			t.Errorf("Invalid cluster health response")
-		}
-		if chr.Status != "yellow" {
-			t.Errorf("Invalid cluster status")
-		}
-		if chr.TimedOut {
-			t.Errorf("Check didn't time out")
-		}
-		if chr.NumberOfNodes != 1 {
-			t.Errorf("Wrong number of nodes")
-		}
-		if chr.NumberOfDataNodes != 1 {
-			t.Errorf("Wrong number of data nodes")
-		}
-		if ver != "1.7.6" {
-			if chr.TaskMaxWaitingInQueueMillis != 12 {
-				t.Errorf("Wrong task max waiting time in millis")
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		{
+			name: "1.7.6",
+			file: "../fixtures/clusterhealth/1.7.6.json",
+			want: `
+				# HELP elasticsearch_cluster_health_active_primary_shards The number of primary shards in your cluster. This is an aggregate total across all indices.
+				# TYPE elasticsearch_cluster_health_active_primary_shards gauge
+				elasticsearch_cluster_health_active_primary_shards{cluster="elasticsearch"} 5
+				# HELP elasticsearch_cluster_health_active_shards Aggregate total of all shards across all indices, which includes replica shards.
+				# TYPE elasticsearch_cluster_health_active_shards gauge
+				elasticsearch_cluster_health_active_shards{cluster="elasticsearch"} 5
+				# HELP elasticsearch_cluster_health_delayed_unassigned_shards Shards delayed to reduce reallocation overhead
+				# TYPE elasticsearch_cluster_health_delayed_unassigned_shards gauge
+				elasticsearch_cluster_health_delayed_unassigned_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_initializing_shards Count of shards that are being freshly created.
+				# TYPE elasticsearch_cluster_health_initializing_shards gauge
+				elasticsearch_cluster_health_initializing_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_number_of_data_nodes Number of data nodes in the cluster.
+				# TYPE elasticsearch_cluster_health_number_of_data_nodes gauge
+				elasticsearch_cluster_health_number_of_data_nodes{cluster="elasticsearch"} 1
+				# HELP elasticsearch_cluster_health_number_of_in_flight_fetch The number of ongoing shard info requests.
+				# TYPE elasticsearch_cluster_health_number_of_in_flight_fetch gauge
+				elasticsearch_cluster_health_number_of_in_flight_fetch{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_number_of_nodes Number of nodes in the cluster.
+				# TYPE elasticsearch_cluster_health_number_of_nodes gauge
+				elasticsearch_cluster_health_number_of_nodes{cluster="elasticsearch"} 1
+				# HELP elasticsearch_cluster_health_number_of_pending_tasks Cluster level changes which have not yet been executed
+				# TYPE elasticsearch_cluster_health_number_of_pending_tasks gauge
+				elasticsearch_cluster_health_number_of_pending_tasks{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_relocating_shards The number of shards that are currently moving from one node to another node.
+				# TYPE elasticsearch_cluster_health_relocating_shards gauge
+				elasticsearch_cluster_health_relocating_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_status Whether all primary and replica shards are allocated.
+				# TYPE elasticsearch_cluster_health_status gauge
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="green"} 0
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="red"} 0
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="yellow"} 1
+				# HELP elasticsearch_cluster_health_task_max_waiting_in_queue_millis Tasks max time waiting in queue.
+				# TYPE elasticsearch_cluster_health_task_max_waiting_in_queue_millis gauge
+				elasticsearch_cluster_health_task_max_waiting_in_queue_millis{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_unassigned_shards The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
+				# TYPE elasticsearch_cluster_health_unassigned_shards gauge
+				elasticsearch_cluster_health_unassigned_shards{cluster="elasticsearch"} 5
+      `,
+		},
+		{
+			name: "2.4.5",
+			file: "../fixtures/clusterhealth/2.4.5.json",
+			want: `
+				# HELP elasticsearch_cluster_health_active_primary_shards The number of primary shards in your cluster. This is an aggregate total across all indices.
+				# TYPE elasticsearch_cluster_health_active_primary_shards gauge
+				elasticsearch_cluster_health_active_primary_shards{cluster="elasticsearch"} 5
+				# HELP elasticsearch_cluster_health_active_shards Aggregate total of all shards across all indices, which includes replica shards.
+				# TYPE elasticsearch_cluster_health_active_shards gauge
+				elasticsearch_cluster_health_active_shards{cluster="elasticsearch"} 5
+				# HELP elasticsearch_cluster_health_delayed_unassigned_shards Shards delayed to reduce reallocation overhead
+				# TYPE elasticsearch_cluster_health_delayed_unassigned_shards gauge
+				elasticsearch_cluster_health_delayed_unassigned_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_initializing_shards Count of shards that are being freshly created.
+				# TYPE elasticsearch_cluster_health_initializing_shards gauge
+				elasticsearch_cluster_health_initializing_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_number_of_data_nodes Number of data nodes in the cluster.
+				# TYPE elasticsearch_cluster_health_number_of_data_nodes gauge
+				elasticsearch_cluster_health_number_of_data_nodes{cluster="elasticsearch"} 1
+				# HELP elasticsearch_cluster_health_number_of_in_flight_fetch The number of ongoing shard info requests.
+				# TYPE elasticsearch_cluster_health_number_of_in_flight_fetch gauge
+				elasticsearch_cluster_health_number_of_in_flight_fetch{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_number_of_nodes Number of nodes in the cluster.
+				# TYPE elasticsearch_cluster_health_number_of_nodes gauge
+				elasticsearch_cluster_health_number_of_nodes{cluster="elasticsearch"} 1
+				# HELP elasticsearch_cluster_health_number_of_pending_tasks Cluster level changes which have not yet been executed
+				# TYPE elasticsearch_cluster_health_number_of_pending_tasks gauge
+				elasticsearch_cluster_health_number_of_pending_tasks{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_relocating_shards The number of shards that are currently moving from one node to another node.
+				# TYPE elasticsearch_cluster_health_relocating_shards gauge
+				elasticsearch_cluster_health_relocating_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_status Whether all primary and replica shards are allocated.
+				# TYPE elasticsearch_cluster_health_status gauge
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="green"} 0
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="red"} 0
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="yellow"} 1
+				# HELP elasticsearch_cluster_health_task_max_waiting_in_queue_millis Tasks max time waiting in queue.
+				# TYPE elasticsearch_cluster_health_task_max_waiting_in_queue_millis gauge
+				elasticsearch_cluster_health_task_max_waiting_in_queue_millis{cluster="elasticsearch"} 12
+				# HELP elasticsearch_cluster_health_unassigned_shards The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
+				# TYPE elasticsearch_cluster_health_unassigned_shards gauge
+				elasticsearch_cluster_health_unassigned_shards{cluster="elasticsearch"} 5
+      `,
+		},
+		{
+			name: "5.4.2",
+			file: "../fixtures/clusterhealth/5.4.2.json",
+			want: `
+				# HELP elasticsearch_cluster_health_active_primary_shards The number of primary shards in your cluster. This is an aggregate total across all indices.
+				# TYPE elasticsearch_cluster_health_active_primary_shards gauge
+				elasticsearch_cluster_health_active_primary_shards{cluster="elasticsearch"} 5
+				# HELP elasticsearch_cluster_health_active_shards Aggregate total of all shards across all indices, which includes replica shards.
+				# TYPE elasticsearch_cluster_health_active_shards gauge
+				elasticsearch_cluster_health_active_shards{cluster="elasticsearch"} 5
+				# HELP elasticsearch_cluster_health_delayed_unassigned_shards Shards delayed to reduce reallocation overhead
+				# TYPE elasticsearch_cluster_health_delayed_unassigned_shards gauge
+				elasticsearch_cluster_health_delayed_unassigned_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_initializing_shards Count of shards that are being freshly created.
+				# TYPE elasticsearch_cluster_health_initializing_shards gauge
+				elasticsearch_cluster_health_initializing_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_number_of_data_nodes Number of data nodes in the cluster.
+				# TYPE elasticsearch_cluster_health_number_of_data_nodes gauge
+				elasticsearch_cluster_health_number_of_data_nodes{cluster="elasticsearch"} 1
+				# HELP elasticsearch_cluster_health_number_of_in_flight_fetch The number of ongoing shard info requests.
+				# TYPE elasticsearch_cluster_health_number_of_in_flight_fetch gauge
+				elasticsearch_cluster_health_number_of_in_flight_fetch{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_number_of_nodes Number of nodes in the cluster.
+				# TYPE elasticsearch_cluster_health_number_of_nodes gauge
+				elasticsearch_cluster_health_number_of_nodes{cluster="elasticsearch"} 1
+				# HELP elasticsearch_cluster_health_number_of_pending_tasks Cluster level changes which have not yet been executed
+				# TYPE elasticsearch_cluster_health_number_of_pending_tasks gauge
+				elasticsearch_cluster_health_number_of_pending_tasks{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_relocating_shards The number of shards that are currently moving from one node to another node.
+				# TYPE elasticsearch_cluster_health_relocating_shards gauge
+				elasticsearch_cluster_health_relocating_shards{cluster="elasticsearch"} 0
+				# HELP elasticsearch_cluster_health_status Whether all primary and replica shards are allocated.
+				# TYPE elasticsearch_cluster_health_status gauge
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="green"} 0
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="red"} 0
+				elasticsearch_cluster_health_status{cluster="elasticsearch",color="yellow"} 1
+				# HELP elasticsearch_cluster_health_task_max_waiting_in_queue_millis Tasks max time waiting in queue.
+				# TYPE elasticsearch_cluster_health_task_max_waiting_in_queue_millis gauge
+				elasticsearch_cluster_health_task_max_waiting_in_queue_millis{cluster="elasticsearch"} 12
+				# HELP elasticsearch_cluster_health_unassigned_shards The number of shards that exist in the cluster state, but cannot be found in the cluster itself.
+				# TYPE elasticsearch_cluster_health_unassigned_shards gauge
+				elasticsearch_cluster_health_unassigned_shards{cluster="elasticsearch"} 5
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.file)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
+			defer f.Close()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				io.Copy(w, f)
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c := NewClusterHealth(promslog.NewNopLogger(), http.DefaultClient, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
