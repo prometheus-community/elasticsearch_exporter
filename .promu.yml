@@ -21,4 +21,4 @@ tarball:
         - CHANGELOG.md
         - examples/grafana/dashboard.json
         - examples/kubernetes/deployment.yml
-        - examples/prometheus/elasticsearch.rules
+        - examples/prometheus/elasticsearch.rules.yml
