@@ -132,7 +132,5 @@ func TestSLM(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
-
 	}
-
 }

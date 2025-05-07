@@ -69,12 +69,10 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	return roles
 }
 
-var (
-	nodesRolesMetric = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "nodes", "roles"),
-		"Node roles",
-		append(defaultRoleLabels, "role"), nil,
-	)
+var nodesRolesMetric = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, "nodes", "roles"),
+	"Node roles",
+	append(defaultRoleLabels, "role"), nil,
 )
 
 var (
@@ -2012,6 +2010,5 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 				)
 			}
 		}
-
 	}
 }

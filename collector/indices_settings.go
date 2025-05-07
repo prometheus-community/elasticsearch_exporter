@@ -39,8 +39,8 @@ type IndicesSettings struct {
 
 var (
 	defaultIndicesTotalFieldsLabels = []string{"index"}
-	defaultTotalFieldsValue         = 1000 //es default configuration for total fields
-	defaultDateCreation             = 0    //es index default creation date
+	defaultTotalFieldsValue         = 1000 // es default configuration for total fields
+	defaultDateCreation             = 0    // es index default creation date
 )
 
 type indicesSettingsMetric struct {
@@ -153,7 +153,6 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 }
 
 func (cs *IndicesSettings) fetchAndDecodeIndicesSettings() (IndicesSettingsResponse, error) {
-
 	u := *cs.url
 	u.Path = path.Join(u.Path, "/_all/_settings")
 	var asr IndicesSettingsResponse

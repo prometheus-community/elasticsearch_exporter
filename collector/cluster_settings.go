@@ -151,7 +151,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	q.Set("include_defaults", "true")
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return err
 	}

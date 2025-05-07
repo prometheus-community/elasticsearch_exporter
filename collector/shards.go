@@ -21,9 +21,9 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 // ShardResponse has shard's node and index info
@@ -66,7 +66,6 @@ type nodeShardMetric struct {
 
 // NewShards defines Shards Prometheus metrics
 func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
-
 	nodeLabels := labels{
 		keys: func(...string) []string {
 			return []string{"node", "cluster"}
@@ -103,7 +102,8 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 					return shards
 				},
 				Labels: nodeLabels,
-			}},
+			},
+		},
 
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_shards", "json_parse_failures"),
@@ -164,7 +164,6 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 }
 
 func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
-
 	u := *s.url
 	u.Path = path.Join(u.Path, "/_cat/shards")
 	q := u.Query()
@@ -179,7 +178,6 @@ func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
 
 // Collect number of shards on each node
 func (s *Shards) Collect(ch chan<- prometheus.Metric) {
-
 	defer func() {
 		ch <- s.jsonParseFailures
 	}()

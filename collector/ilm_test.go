@@ -54,14 +54,12 @@ func TestILM(t *testing.T) {
 			indexF, err := os.Open(path.Join("../fixtures/ilm_indices", tt.file))
 			if err != nil {
 				t.Fatal(err)
-
 			}
 			defer indexF.Close()
 
 			statusF, err := os.Open(path.Join("../fixtures/ilm_status", tt.file))
 			if err != nil {
 				t.Fatal(err)
-
 			}
 			defer statusF.Close()
 
@@ -75,7 +73,6 @@ func TestILM(t *testing.T) {
 				})
 
 				sm.ServeHTTP(w, r)
-
 			}))
 			defer ts.Close()
 

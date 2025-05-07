@@ -23,9 +23,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	statuses = []string{"RUNNING", "STOPPING", "STOPPED"}
-)
+var statuses = []string{"RUNNING", "STOPPING", "STOPPED"}
 
 var (
 	slmRetentionRunsTotal = prometheus.NewDesc(
@@ -173,7 +171,7 @@ func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 	}
 
 	for _, status := range statuses {
-		var value float64 = 0
+		var value float64
 		if slmStatusResp.OperationMode == status {
 			value = 1
 		}
@@ -253,9 +251,7 @@ func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 			float64(policy.SnapshotDeletionFailures),
 			policy.Policy,
 		)
-
 	}
 
 	return nil
-
 }
