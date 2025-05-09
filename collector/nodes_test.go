@@ -292,6 +292,18 @@ func TestNodesStats(t *testing.T) {
             # HELP elasticsearch_indices_warmer_total Total warmer count
             # TYPE elasticsearch_indices_warmer_total counter
             elasticsearch_indices_warmer_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 35
+			# HELP elasticsearch_ingest_total_count Total number of ingest count since the last JVM restart
+			# TYPE elasticsearch_ingest_total_count gauge
+			elasticsearch_ingest_total_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_ingest_total_current Total number of current ingest docs since the last JVM restart
+			# TYPE elasticsearch_ingest_total_current gauge
+			elasticsearch_ingest_total_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_ingest_total_failed Total number of ingest failed docs since the last JVM restart
+			# TYPE elasticsearch_ingest_total_failed gauge
+			elasticsearch_ingest_total_failed{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_ingest_total_time_seconds Total number of ingest time in seconds since the last JVM restart
+			# TYPE elasticsearch_ingest_total_time_seconds gauge
+			elasticsearch_ingest_total_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
             # HELP elasticsearch_jvm_buffer_pool_used_bytes JVM buffer currently used
             # TYPE elasticsearch_jvm_buffer_pool_used_bytes gauge
             elasticsearch_jvm_buffer_pool_used_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx",type="direct"} 2.52727869e+08
@@ -1274,6 +1286,18 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_warmer_total Total warmer count
              # TYPE elasticsearch_indices_warmer_total counter
              elasticsearch_indices_warmer_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 11
+             # HELP elasticsearch_ingest_total_count Total number of ingest count since the last JVM restart
+             # TYPE elasticsearch_ingest_total_count gauge
+             elasticsearch_ingest_total_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_ingest_total_current Total number of current ingest docs since the last JVM restart
+             # TYPE elasticsearch_ingest_total_current gauge
+             elasticsearch_ingest_total_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_ingest_total_failed Total number of ingest failed docs since the last JVM restart
+             # TYPE elasticsearch_ingest_total_failed gauge
+             elasticsearch_ingest_total_failed{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_ingest_total_time_seconds Total number of ingest time in seconds since the last JVM restart
+             # TYPE elasticsearch_ingest_total_time_seconds gauge
+             elasticsearch_ingest_total_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              # HELP elasticsearch_jvm_buffer_pool_used_bytes JVM buffer currently used
              # TYPE elasticsearch_jvm_buffer_pool_used_bytes gauge
              elasticsearch_jvm_buffer_pool_used_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb",type="direct"} 8.811046e+06
