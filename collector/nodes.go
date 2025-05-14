@@ -289,6 +289,66 @@ func NewNodes(logger *slog.Logger, client *http.Client, url *url.URL, all bool, 
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_cfs_period_micros"),
+					"CPU period length in microseconds (Linux CFS bandwidth control)",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPU.CfsPeriodMicros)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_cfs_quota_micros"),
+					"CPU quota per CPU period (cgroup_cfs_period_micros) in microseconds (Linux CFS bandwidth control)",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPU.CfsQuotaMicros)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_stat_number_of_times_throttled"),
+					"Number of times the process has been throttled (Linux CFS bandwidth control)",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPU.Stat.NumberOfTimesThrottled)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpu_stat_time_throttled_nanos"),
+					"Total time duration (in nanoseconds) for which the process has been throttled (Linux CFS bandwidth control)",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPU.Stat.TimeThrottledNanos)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.CounterValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "os", "cgroup_cpuacct_usage_nanos"),
+					"Total CPU usage in nanoseconds (Linux cgroups CPU accounting)",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.OS.Cgroup.CPUAcct.UsageNanos)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "fielddata_memory_size_bytes"),
 					"Field data cache memory usage in bytes",
 					defaultNodeLabels, nil,
