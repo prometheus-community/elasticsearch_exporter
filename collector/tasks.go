@@ -24,6 +24,8 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 // filterByTask global required because collector interface doesn't expose any way to take
@@ -50,7 +52,7 @@ type TaskCollector struct {
 }
 
 // NewTaskCollector defines Task Prometheus metrics
-func NewTaskCollector(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewTaskCollector(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	logger.Info("task collector created",
 		"actionFilter", actionFilter,
 	)

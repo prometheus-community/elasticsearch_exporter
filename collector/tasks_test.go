@@ -20,9 +20,12 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func TestTasks(t *testing.T) {
@@ -65,7 +68,9 @@ elasticsearch_task_stats_action{action="indices:data/write/index"} 1
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			c, err := NewTaskCollector(promslog.NewNopLogger(), u, ts.Client())
+			logger := promslog.NewNopLogger()
+			ci := clusterinfo.New(logger, http.DefaultClient, u, time.Duration(300000000000))
+			c, err := NewTaskCollector(logger, u, ts.Client(), ci)
 			if err != nil {
 				t.Fatalf("Failed to create collector: %v", err)
 			}
