@@ -31,69 +31,81 @@ var (
 	slmRetentionRunsTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "retention_runs_total"),
 		"Total retention runs",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmRetentionFailedTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "retention_failed_total"),
 		"Total failed retention runs",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmRetentionTimedOutTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "retention_timed_out_total"),
 		"Total timed out retention runs",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmRetentionDeletionTimeSeconds = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "retention_deletion_time_seconds"),
 		"Retention run deletion time",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmTotalSnapshotsTaken = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_taken_total"),
 		"Total snapshots taken",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmTotalSnapshotsFailed = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_failed_total"),
 		"Total snapshots failed",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmTotalSnapshotsDeleted = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshots_deleted_total"),
 		"Total snapshots deleted",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 	slmTotalSnapshotsDeleteFailed = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "total_snapshot_deletion_failures_total"),
 		"Total snapshot deletion failures",
-		nil, nil,
+		[]string{"cluster"}, nil,
 	)
 
 	slmOperationMode = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "operation_mode"),
 		"Operating status of SLM",
-		[]string{"operation_mode"}, nil,
+		[]string{"cluster", "operation_mode"}, nil,
 	)
 
 	slmSnapshotsTaken = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "snapshots_taken_total"),
 		"Total snapshots taken",
-		[]string{"policy"}, nil,
+		[]string{
+			"policy",
+			"cluster",
+		}, nil,
 	)
 	slmSnapshotsFailed = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "snapshots_failed_total"),
 		"Total snapshots failed",
-		[]string{"policy"}, nil,
+		[]string{
+			"policy",
+			"cluster",
+		}, nil,
 	)
 	slmSnapshotsDeleted = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "snapshots_deleted_total"),
 		"Total snapshots deleted",
-		[]string{"policy"}, nil,
+		[]string{
+			"policy",
+			"cluster",
+		}, nil,
 	)
 	slmSnapshotsDeletionFailure = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "slm_stats", "snapshot_deletion_failures_total"),
 		"Total snapshot deletion failures",
-		[]string{"policy"}, nil,
+		[]string{
+			"policy",
+			"cluster",
+		}, nil,
 	)
 )
 
@@ -103,18 +115,67 @@ func init() {
 
 // SLM information struct
 type SLM struct {
-	logger *slog.Logger
-	hc     *http.Client
-	u      *url.URL
+	logger          *slog.Logger
+	hc              *http.Client
+	u               *url.URL
+	clusterInfoCh   chan *clusterinfo.Response
+	lastClusterInfo *clusterinfo.Response
 }
 
 // NewSLM defines SLM Prometheus metrics
 func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
-	return &SLM{
-		logger: logger,
-		hc:     hc,
-		u:      u,
-	}, nil
+	slm := &SLM{
+		logger:        logger,
+		hc:            hc,
+		u:             u,
+		clusterInfoCh: make(chan *clusterinfo.Response),
+		lastClusterInfo: &clusterinfo.Response{
+			ClusterName: "unknown_cluster",
+		},
+	}
+
+	err := ci.RegisterConsumer(slm)
+	if err != nil {
+		return slm, err
+	}
+
+	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
+	go func() {
+		logger.Debug("starting cluster info receive loop")
+		for ci := range slm.clusterInfoCh {
+			if ci != nil {
+				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
+				slm.lastClusterInfo = ci
+			}
+		}
+		logger.Debug("exiting cluster info receive loop")
+	}()
+
+	return slm, nil
+}
+
+func (s *SLM) Describe(ch chan<- *prometheus.Desc) {
+	ch <- slmRetentionRunsTotal
+	ch <- slmRetentionFailedTotal
+	ch <- slmRetentionTimedOutTotal
+	ch <- slmRetentionDeletionTimeSeconds
+	ch <- slmTotalSnapshotsTaken
+	ch <- slmTotalSnapshotsFailed
+	ch <- slmTotalSnapshotsDeleted
+	ch <- slmTotalSnapshotsDeleteFailed
+	ch <- slmOperationMode
+	ch <- slmSnapshotsTaken
+	ch <- slmSnapshotsFailed
+	ch <- slmSnapshotsDeleted
+	ch <- slmSnapshotsDeletionFailure
+}
+
+func (s *SLM) ClusterLabelUpdates() *chan *clusterinfo.Response {
+	return &s.clusterInfoCh
+}
+
+func (s *SLM) String() string {
+	return namespace + "slm"
 }
 
 // SLMStatsResponse is a representation of the SLM stats
@@ -181,6 +242,7 @@ func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 			slmOperationMode,
 			prometheus.GaugeValue,
 			value,
+			s.lastClusterInfo.ClusterName,
 			status,
 		)
 	}
@@ -189,43 +251,51 @@ func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 		slmRetentionRunsTotal,
 		prometheus.CounterValue,
 		float64(slmStatsResp.RetentionRuns),
+		s.lastClusterInfo.ClusterName,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		slmRetentionFailedTotal,
 		prometheus.CounterValue,
 		float64(slmStatsResp.RetentionFailed),
+		s.lastClusterInfo.ClusterName,
 	)
 
 	ch <- prometheus.MustNewConstMetric(
 		slmRetentionTimedOutTotal,
 		prometheus.CounterValue,
 		float64(slmStatsResp.RetentionTimedOut),
+		s.lastClusterInfo.ClusterName,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		slmRetentionDeletionTimeSeconds,
 		prometheus.GaugeValue,
 		float64(slmStatsResp.RetentionDeletionTimeMillis)/1000,
+		s.lastClusterInfo.ClusterName,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		slmTotalSnapshotsTaken,
 		prometheus.CounterValue,
 		float64(slmStatsResp.TotalSnapshotsTaken),
+		s.lastClusterInfo.ClusterName,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		slmTotalSnapshotsFailed,
 		prometheus.CounterValue,
 		float64(slmStatsResp.TotalSnapshotsFailed),
+		s.lastClusterInfo.ClusterName,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		slmTotalSnapshotsDeleted,
 		prometheus.CounterValue,
 		float64(slmStatsResp.TotalSnapshotsDeleted),
+		s.lastClusterInfo.ClusterName,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		slmTotalSnapshotsDeleteFailed,
 		prometheus.CounterValue,
 		float64(slmStatsResp.TotalSnapshotDeletionFailures),
+		s.lastClusterInfo.ClusterName,
 	)
 
 	for _, policy := range slmStatsResp.PolicyStats {
@@ -234,24 +304,28 @@ func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 			prometheus.CounterValue,
 			float64(policy.SnapshotsTaken),
 			policy.Policy,
+			s.lastClusterInfo.ClusterName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			slmSnapshotsFailed,
 			prometheus.CounterValue,
 			float64(policy.SnapshotsFailed),
 			policy.Policy,
+			s.lastClusterInfo.ClusterName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			slmSnapshotsDeleted,
 			prometheus.CounterValue,
 			float64(policy.SnapshotsDeleted),
 			policy.Policy,
+			s.lastClusterInfo.ClusterName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			slmSnapshotsDeletionFailure,
 			prometheus.CounterValue,
 			float64(policy.SnapshotDeletionFailures),
 			policy.Policy,
+			s.lastClusterInfo.ClusterName,
 		)
 	}
 
