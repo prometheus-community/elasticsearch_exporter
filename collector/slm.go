@@ -21,6 +21,8 @@ import (
 	"net/url"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 var statuses = []string{"RUNNING", "STOPPING", "STOPPED"}
@@ -107,7 +109,7 @@ type SLM struct {
 }
 
 // NewSLM defines SLM Prometheus metrics
-func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &SLM{
 		logger: logger,
 		hc:     hc,

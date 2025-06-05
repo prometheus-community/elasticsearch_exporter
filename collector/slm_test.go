@@ -22,9 +22,12 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func TestSLM(t *testing.T) {
@@ -123,7 +126,9 @@ func TestSLM(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s, err := NewSLM(promslog.NewNopLogger(), u, http.DefaultClient)
+			logger := promslog.NewNopLogger()
+			ci := clusterinfo.New(logger, http.DefaultClient, u, time.Duration(300000000000))
+			s, err := NewSLM(logger, u, http.DefaultClient, ci)
 			if err != nil {
 				t.Fatal(err)
 			}

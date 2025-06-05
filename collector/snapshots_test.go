@@ -22,9 +22,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func TestSnapshots(t *testing.T) {
@@ -209,7 +212,9 @@ func TestSnapshots(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewSnapshots(promslog.NewNopLogger(), u, http.DefaultClient)
+			logger := promslog.NewNopLogger()
+			ci := clusterinfo.New(logger, http.DefaultClient, u, time.Duration(300000000000))
+			c, err := NewSnapshots(logger, u, http.DefaultClient, ci)
 			if err != nil {
 				t.Fatal(err)
 			}

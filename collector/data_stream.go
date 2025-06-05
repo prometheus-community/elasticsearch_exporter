@@ -22,6 +22,8 @@ import (
 	"net/url"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 var (
@@ -51,7 +53,7 @@ type DataStream struct {
 }
 
 // NewDataStream defines DataStream Prometheus metrics
-func NewDataStream(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewDataStream(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &DataStream{
 		logger: logger,
 		hc:     hc,
