@@ -139,18 +139,6 @@ func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Re
 		return slm, err
 	}
 
-	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
-	go func() {
-		logger.Debug("starting cluster info receive loop")
-		for ci := range slm.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				slm.lastClusterInfo = ci
-			}
-		}
-		logger.Debug("exiting cluster info receive loop")
-	}()
-
 	return slm, nil
 }
 
@@ -172,6 +160,10 @@ func (s *SLM) Describe(ch chan<- *prometheus.Desc) {
 
 func (s *SLM) ClusterLabelUpdates() *chan *clusterinfo.Response {
 	return &s.clusterInfoCh
+}
+
+func (s *SLM) SetClusterInfo(r *clusterinfo.Response) {
+	s.lastClusterInfo = r
 }
 
 func (s *SLM) String() string {

@@ -113,6 +113,12 @@ func (mc *mockConsumer) ClusterLabelUpdates() *chan *Response {
 	return &mc.ch
 }
 
+func (mc *mockConsumer) SetClusterInfo(r *Response) {
+	mc.mu.Lock()
+	mc.data = r
+	mc.mu.Unlock()
+}
+
 func TestNew(t *testing.T) {
 	u, err := url.Parse("http://localhost:9200")
 	if err != nil {

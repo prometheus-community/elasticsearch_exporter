@@ -46,6 +46,7 @@ type consumer interface {
 	ClusterLabelUpdates() *chan *Response
 	// String implements the stringer interface
 	String() string
+	SetClusterInfo(*Response)
 }
 
 // Retriever periodically gets the cluster info from the / endpoint and
@@ -160,6 +161,18 @@ func (r *Retriever) RegisterConsumer(c consumer) error {
 		return ErrConsumerAlreadyRegistered
 	}
 	r.consumerChannels[c.String()] = c.ClusterLabelUpdates()
+
+	// start go routine to fetch clusterinfo updates and save them to the consumer
+	go func() {
+		r.logger.Debug("starting cluster info receive loop", "consumer", c.String())
+		for ci := range *c.ClusterLabelUpdates() {
+			if ci != nil {
+				r.logger.Debug("received cluster info update", "consumer", c.String(), "cluster", ci.ClusterName)
+				c.SetClusterInfo(ci)
+			}
+		}
+		r.logger.Debug("exiting cluster info receive loop", "consumer", c.String())
+	}()
 	return nil
 }
 
