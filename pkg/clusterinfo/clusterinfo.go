@@ -218,6 +218,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 			return
 		}
 		ticker := time.NewTicker(r.interval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
