@@ -16,8 +16,9 @@ package collector
 import (
 	"context"
 
-	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 )
 
 // wrapCollector is a util to let you test your Collector implementation.
