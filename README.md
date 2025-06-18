@@ -221,6 +221,11 @@ Further Information
 | elasticsearch_jvm_memory_pool_max_bytes                              | counter    | 3           | JVM memory max by pool                                                                              |
 | elasticsearch_jvm_memory_pool_peak_used_bytes                        | counter    | 3           | JVM memory peak used by pool                                                                        |
 | elasticsearch_jvm_memory_pool_peak_max_bytes                         | counter    | 3           | JVM memory peak max by pool                                                                         |
+| elasticsearch_os_cgroup_cpu_cfs_period_micros                        | gauge      | 1           | CPU period length in microseconds (Linux CFS bandwidth control)                                     |
+| elasticsearch_os_cgroup_cpu_cfs_quota_micros                         | gauge      | 1           | CPU quota per CPU period (cgroup_cfs_period_micros) in microseconds (Linux CFS bandwidth control)   |
+| elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled           | counter    | 1           | Number of times the process has been throttled (Linux CFS bandwidth control)                        |
+| elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos                | counter    | 1           | Total time duration (in nanoseconds) for which the process has been throttled (Linux CFS bandwidth control) |
+| elasticsearch_os_cgroup_cpuacct_usage_nanos                          | counter    | 1           | Total CPU usage in nanoseconds (Linux cgroups CPU accounting)                                       |
 | elasticsearch_os_cpu_percent                                         | gauge      | 1           | Percent CPU used by the OS                                                                          |
 | elasticsearch_os_load1                                               | gauge      | 1           | Shortterm load average                                                                              |
 | elasticsearch_os_load5                                               | gauge      | 1           | Midterm load average                                                                                |
