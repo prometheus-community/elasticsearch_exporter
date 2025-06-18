@@ -61,7 +61,6 @@ func (i *InfoProvider) GetInfo(ctx context.Context) (Info, error) {
 
 	// If the cached info is recent enough, return it.
 	if !cachedAt.IsZero() && time.Since(cachedAt) < i.interval {
-
 		if err != nil {
 			return Info{}, err
 		}

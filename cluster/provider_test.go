@@ -103,5 +103,4 @@ func TestInfoProvider_GetInfo(t *testing.T) {
 	if timesURLCalled != 2 {
 		t.Errorf("expected URL to be called only once, got %d", timesURLCalled)
 	}
-
 }
