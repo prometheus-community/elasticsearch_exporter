@@ -145,7 +145,7 @@ type clusterSettingsWatermark struct {
 	Low        interface{} `json:"low"`
 }
 
-func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	u := c.u.ResolveReference(&url.URL{Path: "_cluster/settings"})
 	q := u.Query()
 	q.Set("include_defaults", "true")

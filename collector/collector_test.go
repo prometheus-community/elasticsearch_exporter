@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -32,5 +33,11 @@ func (w wrapCollector) Describe(_ chan<- *prometheus.Desc) {
 }
 
 func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
-	w.c.Update(context.Background(), ch)
+	w.c.Update(context.Background(), &mockUpdateContext{}, ch)
+}
+
+type mockUpdateContext struct{}
+
+func (m *mockUpdateContext) GetClusterInfo(_ context.Context) (cluster.Info, error) {
+	return cluster.Info{}, nil
 }

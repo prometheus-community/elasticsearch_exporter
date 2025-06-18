@@ -300,7 +300,7 @@ func statusValue(value string, color string) float64 {
 	return 0
 }
 
-func (c *HealthReport) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *HealthReport) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	u := c.url.ResolveReference(&url.URL{Path: "/_health_report"})
 	var healthReportResponse HealthReportResponse
 

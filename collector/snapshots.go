@@ -110,7 +110,7 @@ func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, 
 	}, nil
 }
 
-func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	// indices
 	snapshotsStatsResp := make(map[string]SnapshotStatsResponse)
 	u := c.u.ResolveReference(&url.URL{Path: "/_snapshot"})
