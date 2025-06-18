@@ -22,6 +22,8 @@ import (
 	"net/url"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 var (
@@ -49,7 +51,7 @@ type ILM struct {
 	u      *url.URL
 }
 
-func NewILM(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewILM(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &ILM{
 		logger: logger,
 		hc:     hc,

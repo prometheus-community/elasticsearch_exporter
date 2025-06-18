@@ -23,6 +23,8 @@ import (
 	"path"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 var (
@@ -102,7 +104,7 @@ type Snapshots struct {
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &Snapshots{
 		logger: logger,
 		u:      u,

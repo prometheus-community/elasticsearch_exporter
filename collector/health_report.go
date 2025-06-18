@@ -21,6 +21,8 @@ import (
 	"net/url"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 var (
@@ -166,7 +168,7 @@ type HealthReport struct {
 	url    *url.URL
 }
 
-func NewHealthReport(logger *slog.Logger, url *url.URL, client *http.Client) (Collector, error) {
+func NewHealthReport(logger *slog.Logger, url *url.URL, client *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &HealthReport{
 		logger: logger,
 		client: client,

@@ -23,6 +23,8 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func init() {
@@ -35,7 +37,7 @@ type ClusterInfoCollector struct {
 	hc     *http.Client
 }
 
-func NewClusterInfo(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterInfo(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &ClusterInfoCollector{
 		logger: logger,
 		u:      u,

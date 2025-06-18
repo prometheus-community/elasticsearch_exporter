@@ -461,17 +461,6 @@ func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards b
 		},
 	}
 
-	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
-	go func() {
-		logger.Debug("starting cluster info receive loop")
-		for ci := range indices.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				indices.lastClusterInfo = ci
-			}
-		}
-		logger.Debug("exiting cluster info receive loop")
-	}()
 	return indices
 }
 
@@ -479,6 +468,10 @@ func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards b
 // (not exported) clusterinfo.consumer interface
 func (i *Indices) ClusterLabelUpdates() *chan *clusterinfo.Response {
 	return &i.clusterInfoCh
+}
+
+func (i *Indices) SetClusterInfo(r *clusterinfo.Response) {
+	i.lastClusterInfo = r
 }
 
 // String implements the stringer interface. It is part of the clusterinfo.consumer interface
