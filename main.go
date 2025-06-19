@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
@@ -177,12 +178,16 @@ func main() {
 	// version metric
 	prometheus.MustRegister(versioncollector.NewCollector(name))
 
+	// This should replace the below cluster info retriever in the future.
+	infoRetriever := cluster.NewInfoProvider(logger, httpClient, esURL, *esClusterInfoInterval)
+
 	// create the exporter
 	exporter, err := collector.NewElasticsearchCollector(
 		logger,
 		[]string{},
 		collector.WithElasticsearchURL(esURL),
 		collector.WithHTTPClient(httpClient),
+		collector.WithClusterInfoProvider(infoRetriever),
 	)
 	if err != nil {
 		logger.Error("failed to create Elasticsearch collector", "err", err)
