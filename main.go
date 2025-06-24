@@ -177,10 +177,15 @@ func main() {
 	// version metric
 	prometheus.MustRegister(versioncollector.NewCollector(name))
 
+	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
+	// cluster info retriever
+	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
+
 	// create the exporter
 	exporter, err := collector.NewElasticsearchCollector(
 		logger,
 		[]string{},
+		clusterInfoRetriever,
 		collector.WithElasticsearchURL(esURL),
 		collector.WithHTTPClient(httpClient),
 	)
@@ -189,10 +194,6 @@ func main() {
 		os.Exit(1)
 	}
 	prometheus.MustRegister(exporter)
-
-	// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
-	// cluster info retriever
-	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
 	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))

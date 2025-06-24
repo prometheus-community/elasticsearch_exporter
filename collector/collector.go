@@ -26,6 +26,8 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 const (
@@ -36,7 +38,7 @@ const (
 	defaultDisabled = false
 )
 
-type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
+type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error)
 
 var (
 	factories              = make(map[string]factoryFunc)
@@ -97,7 +99,7 @@ type ElasticsearchCollector struct {
 type Option func(*ElasticsearchCollector) error
 
 // NewElasticsearchCollector creates a new ElasticsearchCollector
-func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ...Option) (*ElasticsearchCollector, error) {
+func NewElasticsearchCollector(logger *slog.Logger, filters []string, clusterInfoRetriever *clusterinfo.Retriever, options ...Option) (*ElasticsearchCollector, error) {
 	e := &ElasticsearchCollector{logger: logger}
 	// Apply options to customize the collector
 	for _, o := range options {
@@ -127,7 +129,7 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
+			collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient, clusterInfoRetriever)
 			if err != nil {
 				return nil, err
 			}

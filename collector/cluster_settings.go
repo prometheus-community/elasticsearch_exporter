@@ -26,6 +26,8 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func init() {
@@ -38,7 +40,7 @@ type ClusterSettingsCollector struct {
 	hc     *http.Client
 }
 
-func NewClusterSettings(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterSettings(logger *slog.Logger, u *url.URL, hc *http.Client, ci *clusterinfo.Retriever) (Collector, error) {
 	return &ClusterSettingsCollector{
 		logger: logger,
 		u:      u,
