@@ -1,4 +1,4 @@
-FROM golang:1.24.4 AS builder
+FROM golang:1.24.5 AS builder
 
 ENV CGO_ENABLED=1
 ENV GOEXPERIMENT=boringcrypto
