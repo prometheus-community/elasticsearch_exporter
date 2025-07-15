@@ -29,7 +29,7 @@ func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([
 
 	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get %s: %v", u, err)
+		return nil, err
 	}
 
 	defer func() {
