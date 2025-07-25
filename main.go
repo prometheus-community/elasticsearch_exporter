@@ -38,6 +38,7 @@ import (
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
+	_ "go.uber.org/automaxprocs"
 )
 
 const name = "elasticsearch_exporter"
