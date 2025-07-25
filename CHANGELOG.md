@@ -8,6 +8,10 @@ The flag `--es.ilm` has been renamed to `--collector.ilm`.
 * [CHANGE] Rename --es.data_stream to --collector.data-stream #983
 * [CHANGE] Rename --es.ilm to --collector.ilm #999
 
+## [Unreleased]
+### Added
+- Multi-target scraping via `/probe` endpoint with optional auth modules (compatible with postgres_exporter style) (#PR)
+
 ## 1.9.0 / 2025-02-27
 
 BREAKING CHANGES:

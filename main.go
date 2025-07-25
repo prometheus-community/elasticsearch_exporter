@@ -36,6 +36,7 @@ import (
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
+	"github.com/prometheus-community/elasticsearch_exporter/config"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 )
@@ -109,6 +110,7 @@ func main() {
 		awsRoleArn = kingpin.Flag("aws.role-arn",
 			"Role ARN of an IAM role to assume.").
 			Default("").String()
+		configFile = kingpin.Flag("config.file", "Path to YAML configuration file.").Default("").String()
 	)
 
 	promslogConfig := &promslog.Config{}
@@ -116,6 +118,18 @@ func main() {
 	kingpin.Version(version.Print(name))
 	kingpin.CommandLine.HelpFlag.Short('h')
 	kingpin.Parse()
+
+	// Load optional YAML config
+	var cfg *config.Config
+	if *configFile != "" {
+		var cfgErr error
+		cfg, cfgErr = config.LoadConfig(*configFile)
+		if cfgErr != nil {
+			// At this stage logger not yet created; fallback to stderr
+			fmt.Fprintf(os.Stderr, "failed to load config file: %v\n", cfgErr)
+			os.Exit(1)
+		}
+	}
 
 	var w io.Writer
 	switch strings.ToLower(*logOutput) {
@@ -238,7 +252,19 @@ func main() {
 	// register cluster info retriever as prometheus collector
 	prometheus.MustRegister(clusterInfoRetriever)
 
-	http.Handle(*metricsPath, promhttp.Handler())
+	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
+		// If query has target param treat like probe endpoint
+		if r.URL.Query().Has("target") {
+			// reuse probe logic by delegating to /probe handler implementation
+			r.URL.Path = "/probe" // set path for consistency in logs
+			if probeHandler, _ := http.DefaultServeMux.Handler(&http.Request{URL: &url.URL{Path: "/probe"}}); probeHandler != nil {
+				probeHandler.ServeHTTP(w, r)
+				return
+			}
+		}
+		promhttp.Handler().ServeHTTP(w, r)
+	})
+
 	if *metricsPath != "/" && *metricsPath != "" {
 		landingConfig := web.LandingConfig{
 			Name:        "Elasticsearch Exporter",
@@ -262,6 +288,80 @@ func main() {
 	// health endpoint
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
+	})
+
+	// probe endpoint
+	http.HandleFunc("/probe", func(w http.ResponseWriter, r *http.Request) {
+		origQuery := r.URL.Query()
+		targetStr, am, valErr := validateProbeParams(cfg, origQuery)
+		if valErr != nil {
+			http.Error(w, valErr.Error(), http.StatusBadRequest)
+			return
+		}
+		targetURL, _ := url.Parse(targetStr)
+		if am != nil {
+			if am.UserPass != nil {
+				targetURL.User = url.UserPassword(am.UserPass.Username, am.UserPass.Password)
+			}
+			if len(am.Options) > 0 {
+				q := targetURL.Query()
+				for k, v := range am.Options {
+					q.Set(k, v)
+				}
+				targetURL.RawQuery = q.Encode()
+			}
+		}
+
+		// Build a dedicated HTTP client for this probe request (reuse TLS opts, timeout, etc.).
+		tlsCfg := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
+		var transport http.RoundTripper = &http.Transport{
+			TLSClientConfig: tlsCfg,
+			Proxy:           http.ProxyFromEnvironment,
+		}
+
+		// inject API key header if auth_module is of type apikey
+		if am != nil && strings.EqualFold(am.Type, "apikey") && am.APIKey != "" {
+			transport = &transportWithAPIKey{
+				underlyingTransport: transport,
+				apiKey:              am.APIKey,
+			}
+		}
+		probeClient := &http.Client{
+			Timeout:   *esTimeout,
+			Transport: transport,
+		}
+
+		reg := prometheus.NewRegistry()
+
+		// Core exporter collector
+		exp, err := collector.NewElasticsearchCollector(
+			logger,
+			[]string{},
+			collector.WithElasticsearchURL(targetURL),
+			collector.WithHTTPClient(probeClient),
+		)
+		if err != nil {
+			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
+			return
+		}
+		reg.MustRegister(exp)
+		// Basic additional collectors – reuse global CLI flags
+		reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
+		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
+		if *esExportIndices || *esExportShards {
+			shardsC := collector.NewShards(logger, probeClient, targetURL)
+			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
+			reg.MustRegister(shardsC)
+			reg.MustRegister(indicesC)
+		}
+		if *esExportIndicesSettings {
+			reg.MustRegister(collector.NewIndicesSettings(logger, probeClient, targetURL))
+		}
+		if *esExportIndicesMappings {
+			reg.MustRegister(collector.NewIndicesMappings(logger, probeClient, targetURL))
+		}
+
+		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, r)
 	})
 
 	server := &http.Server{}
