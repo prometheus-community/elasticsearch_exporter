@@ -1,0 +1,19 @@
+scrape_configs:
+  - job_name: es-multi
+    metrics_path: /probe
+    params:
+      auth_module: [prod_key] # default for all targets in this block
+    static_configs:
+      - targets:
+          - https://es-prod:9200 # uses prod_key
+      - targets:
+          - https://es-stage:9200 # will override auth_module below
+        labels:
+          __param_auth_module: staging_basic
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: exporter:9114 # host:port of the single exporter

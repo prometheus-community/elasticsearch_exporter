@@ -1,0 +1,25 @@
+# Example exporter-config.yml demonstrating multiple auth modules
+# Each module can be referenced with ?auth_module=<name> in /probe requests.
+
+auth_modules:
+  # 1. Simple basic-auth over HTTPS ----------------------------------------
+  prod_basic:
+    type: userpass
+    userpass:
+      username: metrics
+      password: s3cr3t
+    # extra URL query parameters are appended to the target DSN
+    options:
+      sslmode: disable # example option – becomes ?sslmode=disable
+
+  # 2. Read-only account for staging cluster
+  staging_ro:
+    type: userpass
+    userpass:
+      username: readonly
+      password: changeme
+
+  # 3. API-Key authentication (future)
+  prod_key:
+    type: apikey
+    apikey: BASE64-ENCODED-KEY==
