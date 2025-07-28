@@ -22,6 +22,13 @@ func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.Auth
 	if target == "" {
 		return "", nil, errMissingTarget
 	}
+
+	// If the target does not contain an URL scheme, default to http.
+	// This allows users to pass "host:port" without the "http://" prefix.
+	if !strings.Contains(target, "://") {
+		target = "http://" + target
+	}
+
 	if _, err := url.Parse(target); err != nil {
 		return "", nil, errInvalidTarget
 	}
