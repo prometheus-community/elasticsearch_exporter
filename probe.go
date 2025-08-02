@@ -46,12 +46,11 @@ func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.Auth
 	}
 	switch strings.ToLower(am.Type) {
 	case "userpass":
-		if am.UserPass != nil {
-			return target, &am, nil
-		}
-		return "", nil, errUnsupportedModule
+		return target, &am, nil
 	case "apikey":
-		if am.APIKey != "" {
+		return target, &am, nil
+	case "aws":
+		if am.AWS != nil && am.AWS.Region != "" {
 			return target, &am, nil
 		}
 		return "", nil, errUnsupportedModule

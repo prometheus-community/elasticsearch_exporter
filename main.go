@@ -324,11 +324,20 @@ func main() {
 			Proxy:           http.ProxyFromEnvironment,
 		}
 
-		// inject API key header if auth_module is of type apikey
-		if am != nil && strings.EqualFold(am.Type, "apikey") && am.APIKey != "" {
-			transport = &transportWithAPIKey{
-				underlyingTransport: transport,
-				apiKey:              am.APIKey,
+		// inject authentication based on auth_module type
+		if am != nil {
+			if strings.EqualFold(am.Type, "apikey") && am.APIKey != "" {
+				transport = &transportWithAPIKey{
+					underlyingTransport: transport,
+					apiKey:              am.APIKey,
+				}
+			} else if strings.EqualFold(am.Type, "aws") && am.AWS != nil {
+				var err error
+				transport, err = roundtripper.NewAWSSigningTransport(transport, am.AWS.Region, am.AWS.RoleARN, logger)
+				if err != nil {
+					http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 		probeClient := &http.Client{

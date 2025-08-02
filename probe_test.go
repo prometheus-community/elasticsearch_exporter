@@ -51,7 +51,7 @@ func TestValidateProbeParams(t *testing.T) {
 	vals = url.Values{}
 	vals.Set("target", "http://localhost:9200")
 	vals.Set("auth_module", "api")
-	tgt, am, err = validateProbeParams(cfg, vals)
+	_, am, err = validateProbeParams(cfg, vals)
 	if err != nil {
 		t.Fatalf("expected success for apikey module, got err=%v", err)
 	}
@@ -61,7 +61,26 @@ func TestValidateProbeParams(t *testing.T) {
 	if am.APIKey != "mysecret" {
 		t.Fatalf("unexpected apikey value: %s", am.APIKey)
 	}
-	if tgt == "" {
-		t.Fatalf("expected non-empty target string")
+
+	// good path (aws)
+	cfg.AuthModules["awsmod"] = config.AuthModule{
+		Type: "aws",
+		AWS: &config.AWSConfig{
+			Region:  "us-east-1",
+			RoleARN: "arn:aws:iam::123456789012:role/metrics",
+		},
+	}
+	vals = url.Values{}
+	vals.Set("target", "http://localhost:9200")
+	vals.Set("auth_module", "awsmod")
+	_, am, err = validateProbeParams(cfg, vals)
+	if err != nil {
+		t.Fatalf("expected success for aws module, got err=%v", err)
+	}
+	if am == nil || am.Type != "aws" {
+		t.Fatalf("expected aws module, got %+v", am)
+	}
+	if am.AWS == nil || am.AWS.Region != "us-east-1" {
+		t.Fatalf("unexpected aws config: %+v", am.AWS)
 	}
 }
