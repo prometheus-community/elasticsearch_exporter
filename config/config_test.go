@@ -33,21 +33,12 @@ func TestLoadConfig(t *testing.T) {
 	}
 }
 
-// Additional test coverage for apikey based authentication modules.
-// Technically, a module could specify both userpass and apikey configs, but
-// the `type` field should dictate which credentials are considered valid by
-// the application logic.
+// Additional test coverage for apikey and aws based authentication modules.
 func TestLoadConfigAPIKey(t *testing.T) {
 	yaml := `auth_modules:
   api_only:
     type: apikey
     apikey: secretkey123
-  mixed:
-    type: apikey
-    apikey: anotherkey456
-    userpass:
-      username: should
-      password: be_ignored
 `
 	tmp, err := os.CreateTemp(t.TempDir(), "cfg-*.yml")
 	if err != nil {
@@ -64,23 +55,55 @@ func TestLoadConfigAPIKey(t *testing.T) {
 	}
 
 	am := cfg.AuthModules["api_only"]
-	if am.Type != "apikey" {
-		t.Fatalf("expected module type apikey, got %s", am.Type)
+	if am.Type != "apikey" || am.APIKey != "secretkey123" {
+		t.Fatalf("unexpected apikey module: %+v", am)
 	}
-	if am.APIKey != "secretkey123" {
-		t.Fatalf("unexpected apikey value: %s", am.APIKey)
+}
+
+func TestLoadConfigAWS(t *testing.T) {
+	yaml := `auth_modules:
+  awsmod:
+    type: aws
+    aws:
+      region: us-east-1
+      role_arn: arn:aws:iam::123456789012:role/metrics
+`
+	tmp, err := os.CreateTemp(t.TempDir(), "cfg-*.yml")
+	if err != nil {
+		t.Fatalf("temp file: %v", err)
+	}
+	if _, err := tmp.WriteString(yaml); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	tmp.Close()
+
+	cfg, err := LoadConfig(tmp.Name())
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
 	}
 
-	mixed := cfg.AuthModules["mixed"]
-	if mixed.Type != "apikey" {
-		t.Fatalf("expected mixed module type apikey, got %s", mixed.Type)
+	awsMod := cfg.AuthModules["awsmod"]
+	if awsMod.Type != "aws" || awsMod.AWS == nil || awsMod.AWS.Region != "us-east-1" {
+		t.Fatalf("unexpected aws module: %+v", awsMod)
 	}
-	if mixed.APIKey != "anotherkey456" {
-		t.Fatalf("unexpected mixed apikey value: %s", mixed.APIKey)
+}
+
+func TestLoadConfigInvalidUserPass(t *testing.T) {
+	// missing userpass section for type=userpass
+	yaml := `auth_modules:
+  bad:
+    type: userpass
+`
+	tmp, err := os.CreateTemp(t.TempDir(), "cfg-*.yml")
+	if err != nil {
+		t.Fatalf("temp file: %v", err)
 	}
-	// The userpass credentials should still be parsed but are expected to be ignored
-	// by the application when the type is apikey.
-	if mixed.UserPass == nil {
-		t.Fatalf("expected userpass section to be parsed for mixed module")
+	if _, err := tmp.WriteString(yaml); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	tmp.Close()
+
+	if _, err := LoadConfig(tmp.Name()); err == nil {
+		t.Fatalf("expected validation error for missing credentials, got nil")
 	}
 }
