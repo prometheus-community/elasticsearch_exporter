@@ -32,7 +32,7 @@ func TestValidateProbeParams(t *testing.T) {
 		t.Fatalf("expected module not found error, got %v", err)
 	}
 
-	// good path
+	// good path (userpass)
 	cfg.AuthModules["foo"] = config.AuthModule{Type: "userpass", UserPass: &config.UserPassConfig{Username: "u", Password: "p"}}
 	vals = url.Values{}
 	vals.Set("target", "http://localhost:9200")
@@ -40,5 +40,28 @@ func TestValidateProbeParams(t *testing.T) {
 	tgt, am, err := validateProbeParams(cfg, vals)
 	if err != nil || am == nil || tgt == "" {
 		t.Fatalf("expected success, got err=%v", err)
+	}
+
+	// good path (apikey) with both userpass and apikey set - apikey should be accepted
+	cfg.AuthModules["api"] = config.AuthModule{
+		Type:     "apikey",
+		APIKey:   "mysecret",
+		UserPass: &config.UserPassConfig{Username: "u", Password: "p"},
+	}
+	vals = url.Values{}
+	vals.Set("target", "http://localhost:9200")
+	vals.Set("auth_module", "api")
+	tgt, am, err = validateProbeParams(cfg, vals)
+	if err != nil {
+		t.Fatalf("expected success for apikey module, got err=%v", err)
+	}
+	if am == nil || am.Type != "apikey" {
+		t.Fatalf("expected apikey module, got %+v", am)
+	}
+	if am.APIKey != "mysecret" {
+		t.Fatalf("unexpected apikey value: %s", am.APIKey)
+	}
+	if tgt == "" {
+		t.Fatalf("expected non-empty target string")
 	}
 }
