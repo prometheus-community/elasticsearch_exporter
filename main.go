@@ -304,7 +304,8 @@ func main() {
 		}
 		targetURL, _ := url.Parse(targetStr)
 		if am != nil {
-			if am.UserPass != nil {
+			// Apply userpass credentials only if the module type is explicitly set to userpass.
+			if strings.EqualFold(am.Type, "userpass") && am.UserPass != nil {
 				targetURL.User = url.UserPassword(am.UserPass.Username, am.UserPass.Password)
 			}
 			if len(am.Options) > 0 {

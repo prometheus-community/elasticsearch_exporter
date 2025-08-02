@@ -19,7 +19,7 @@ auth_modules:
       username: readonly
       password: changeme
 
-  # 3. API-Key authentication (future)
+  # 3. API-Key authentication
   prod_key:
     type: apikey
     apikey: BASE64-ENCODED-KEY==
