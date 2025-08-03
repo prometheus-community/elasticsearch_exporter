@@ -317,7 +317,19 @@ func main() {
 		}
 
 		// Build a dedicated HTTP client for this probe request (reuse TLS opts, timeout, etc.).
-		tlsCfg := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
+		pemCA := *esCA
+		pemCert := *esClientCert
+		pemKey := *esClientPrivateKey
+		insecure := *esInsecureSkipVerify
+		if am != nil && am.TLS != nil {
+			pemCA = am.TLS.CAFile
+			pemCert = am.TLS.CertFile
+			pemKey = am.TLS.KeyFile
+			if am.TLS.InsecureSkipVerify {
+				insecure = true
+			}
+		}
+		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
 		var transport http.RoundTripper = &http.Transport{
 			TLSClientConfig: tlsCfg,
 			Proxy:           http.ProxyFromEnvironment,

@@ -18,6 +18,7 @@ type AuthModule struct {
 	UserPass *UserPassConfig   `yaml:"userpass,omitempty"`
 	APIKey   string            `yaml:"apikey,omitempty"`
 	AWS      *AWSConfig        `yaml:"aws,omitempty"`
+	TLS      *TLSConfig        `yaml:"tls,omitempty"`
 	Options  map[string]string `yaml:"options,omitempty"`
 }
 
@@ -25,6 +26,14 @@ type AuthModule struct {
 type AWSConfig struct {
 	Region  string `yaml:"region"`
 	RoleARN string `yaml:"role_arn,omitempty"`
+}
+
+// TLSConfig allows per-target TLS options.
+type TLSConfig struct {
+	CAFile             string `yaml:"ca_file,omitempty"`
+	CertFile           string `yaml:"cert_file,omitempty"`
+	KeyFile            string `yaml:"key_file,omitempty"`
+	InsecureSkipVerify bool   `yaml:"insecure_skip_verify,omitempty"`
 }
 
 type UserPassConfig struct {
@@ -50,6 +59,21 @@ func (c *Config) validate() error {
 			}
 		default:
 			return fmt.Errorf("auth_module %s has unsupported type %s", name, am.Type)
+		}
+
+		// TLS validation (optional but if specified must be coherent)
+		if am.TLS != nil {
+			if (am.TLS.CertFile == "") != (am.TLS.KeyFile == "") {
+				return fmt.Errorf("auth_module %s tls requires both cert_file and key_file or neither", name)
+			}
+			for _, p := range []string{am.TLS.CAFile, am.TLS.CertFile, am.TLS.KeyFile} {
+				if p == "" {
+					continue
+				}
+				if _, err := os.Stat(p); err != nil {
+					return fmt.Errorf("auth_module %s tls file %s not accessible: %w", name, p, err)
+				}
+			}
 		}
 	}
 	return nil
