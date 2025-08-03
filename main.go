@@ -256,15 +256,8 @@ func main() {
 	}
 
 	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
-		// If query has target param treat like probe endpoint
-		if r.URL.Query().Has("target") {
-			// reuse probe logic by delegating to /probe handler implementation
-			r.URL.Path = "/probe" // set path for consistency in logs
-			if probeHandler, _ := http.DefaultServeMux.Handler(&http.Request{URL: &url.URL{Path: "/probe"}}); probeHandler != nil {
-				probeHandler.ServeHTTP(w, r)
-				return
-			}
-		}
+		// /metrics endpoint is reserved for single-target mode only.
+		// For per-scrape overrides use the dedicated /probe endpoint.
 		promhttp.Handler().ServeHTTP(w, r)
 	})
 
