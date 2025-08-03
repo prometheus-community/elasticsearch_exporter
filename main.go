@@ -247,8 +247,7 @@ func main() {
 		case clusterinfo.ErrInitialCallTimeout:
 			logger.Info("initial cluster info call timed out")
 		default:
-			var err error
-			logger.Error("failed to run cluster info retriever", "err", err)
+			logger.Error("failed to run cluster info retriever", "err", runErr)
 			os.Exit(1)
 		}
 
