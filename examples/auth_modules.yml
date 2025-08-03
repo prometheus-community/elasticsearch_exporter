@@ -2,7 +2,9 @@
 # Each module can be referenced with ?auth_module=<name> in /probe requests.
 
 auth_modules:
-  # 1. Simple basic-auth over HTTPS ----------------------------------------
+  ###########################################################################
+  # 1. Simple basic-auth over HTTPS                                         #
+  ###########################################################################
   prod_basic:
     type: userpass
     userpass:
@@ -10,16 +12,50 @@ auth_modules:
       password: s3cr3t
     # extra URL query parameters are appended to the target DSN
     options:
-      sslmode: disable # example option – becomes ?sslmode=disable
+      sslmode: disable # becomes ?sslmode=disable
 
-  # 2. Read-only account for staging cluster
+  ###########################################################################
+  # 2. Read-only account for staging cluster                               #
+  ###########################################################################
   staging_ro:
     type: userpass
     userpass:
       username: readonly
       password: changeme
 
-  # 3. API-Key authentication
+  ###########################################################################
+  # 3. Userpass + mTLS (per-cluster client certs)                          #
+  ###########################################################################
+  prod_tls:
+    type: userpass
+    userpass:
+      username: metrics
+      password: certsecret
+    tls:
+      ca_file: /etc/ssl/prod/ca.pem
+      cert_file: /etc/ssl/prod/client.pem
+      key_file: /etc/ssl/prod/client-key.pem
+      insecure_skip_verify: false
+
+  ###########################################################################
+  # 4. API-Key authentication                                             #
+  ###########################################################################
   prod_key:
     type: apikey
     apikey: BASE64-ENCODED-KEY==
+    # per-cluster TLS settings can still be supplied if needed
+    # tls:
+    #   ca_file: /etc/ssl/prod/ca.pem
+
+  ###########################################################################
+  # 5. AWS SigV4 signing                                                  #
+  ###########################################################################
+  aws_sigv4:
+    type: aws
+    aws:
+      region: us-east-1
+      # role_arn is optional; uncomment to assume a role
+      # role_arn: arn:aws:iam::123456789012:role/metrics-reader
+    # optional custom TLS
+    tls:
+      insecure_skip_verify: true # e.g. self-signed certs on ALB
