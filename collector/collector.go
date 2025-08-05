@@ -185,7 +185,7 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 		if IsNoDataError(err) {
 			logger.Debug("collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		} else {
-			logger.Error("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			logger.Debug("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		}
 		success = 0
 	} else {
