@@ -70,7 +70,7 @@ func fetchClusterNameOnce(s *Shards) string {
 		return s.lastClusterInfo.ClusterName
 	}
 	u := *s.url
-	u.Path = "/"
+	u.Path = path.Join(u.Path, "/")
 	resp, err := s.client.Get(u.String())
 	if err == nil {
 		defer resp.Body.Close()
