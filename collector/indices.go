@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"sort"
 	"strconv"
 
@@ -628,7 +629,7 @@ func (i *Indices) getClusterName() string {
 		return i.lastClusterInfo.ClusterName
 	}
 	u := *i.url
-	u.Path = "/"
+	u.Path = path.Join(u.Path, "/")
 	resp, err := i.client.Get(u.String())
 	if err == nil {
 		defer resp.Body.Close()
