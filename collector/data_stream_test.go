@@ -21,9 +21,12 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func TestDataStream(t *testing.T) {
@@ -64,7 +67,9 @@ func TestDataStream(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewDataStream(promslog.NewNopLogger(), u, http.DefaultClient)
+			logger := promslog.NewNopLogger()
+			ci := clusterinfo.New(logger, http.DefaultClient, u, time.Duration(300000000000))
+			c, err := NewDataStream(logger, u, http.DefaultClient, ci)
 			if err != nil {
 				t.Fatal(err)
 			}

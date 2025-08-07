@@ -22,9 +22,12 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
 func TestSLM(t *testing.T) {
@@ -45,45 +48,45 @@ func TestSLM(t *testing.T) {
 			file: "7.15.0.json",
 			want: `# HELP elasticsearch_slm_stats_operation_mode Operating status of SLM
             # TYPE elasticsearch_slm_stats_operation_mode gauge
-            elasticsearch_slm_stats_operation_mode{operation_mode="RUNNING"} 0
-            elasticsearch_slm_stats_operation_mode{operation_mode="STOPPED"} 0
-            elasticsearch_slm_stats_operation_mode{operation_mode="STOPPING"} 0
+            elasticsearch_slm_stats_operation_mode{cluster="unknown_cluster",operation_mode="RUNNING"} 0
+            elasticsearch_slm_stats_operation_mode{cluster="unknown_cluster",operation_mode="STOPPED"} 0
+            elasticsearch_slm_stats_operation_mode{cluster="unknown_cluster",operation_mode="STOPPING"} 0
             # HELP elasticsearch_slm_stats_retention_deletion_time_seconds Retention run deletion time
             # TYPE elasticsearch_slm_stats_retention_deletion_time_seconds gauge
-            elasticsearch_slm_stats_retention_deletion_time_seconds 72.491
+            elasticsearch_slm_stats_retention_deletion_time_seconds{cluster="unknown_cluster"} 72.491
             # HELP elasticsearch_slm_stats_retention_failed_total Total failed retention runs
             # TYPE elasticsearch_slm_stats_retention_failed_total counter
-            elasticsearch_slm_stats_retention_failed_total 0
+            elasticsearch_slm_stats_retention_failed_total{cluster="unknown_cluster"} 0
             # HELP elasticsearch_slm_stats_retention_runs_total Total retention runs
             # TYPE elasticsearch_slm_stats_retention_runs_total counter
-            elasticsearch_slm_stats_retention_runs_total 9
+            elasticsearch_slm_stats_retention_runs_total{cluster="unknown_cluster"} 9
             # HELP elasticsearch_slm_stats_retention_timed_out_total Total timed out retention runs
             # TYPE elasticsearch_slm_stats_retention_timed_out_total counter
-            elasticsearch_slm_stats_retention_timed_out_total 0
+            elasticsearch_slm_stats_retention_timed_out_total{cluster="unknown_cluster"} 0
             # HELP elasticsearch_slm_stats_snapshot_deletion_failures_total Total snapshot deletion failures
             # TYPE elasticsearch_slm_stats_snapshot_deletion_failures_total counter
-            elasticsearch_slm_stats_snapshot_deletion_failures_total{policy="everything"} 0
+            elasticsearch_slm_stats_snapshot_deletion_failures_total{cluster="unknown_cluster",policy="everything"} 0
             # HELP elasticsearch_slm_stats_snapshots_deleted_total Total snapshots deleted
             # TYPE elasticsearch_slm_stats_snapshots_deleted_total counter
-            elasticsearch_slm_stats_snapshots_deleted_total{policy="everything"} 20
+            elasticsearch_slm_stats_snapshots_deleted_total{cluster="unknown_cluster",policy="everything"} 20
             # HELP elasticsearch_slm_stats_snapshots_failed_total Total snapshots failed
             # TYPE elasticsearch_slm_stats_snapshots_failed_total counter
-            elasticsearch_slm_stats_snapshots_failed_total{policy="everything"} 2
+            elasticsearch_slm_stats_snapshots_failed_total{cluster="unknown_cluster",policy="everything"} 2
             # HELP elasticsearch_slm_stats_snapshots_taken_total Total snapshots taken
             # TYPE elasticsearch_slm_stats_snapshots_taken_total counter
-            elasticsearch_slm_stats_snapshots_taken_total{policy="everything"} 50
+            elasticsearch_slm_stats_snapshots_taken_total{cluster="unknown_cluster",policy="everything"} 50
             # HELP elasticsearch_slm_stats_total_snapshot_deletion_failures_total Total snapshot deletion failures
             # TYPE elasticsearch_slm_stats_total_snapshot_deletion_failures_total counter
-            elasticsearch_slm_stats_total_snapshot_deletion_failures_total 0
+            elasticsearch_slm_stats_total_snapshot_deletion_failures_total{cluster="unknown_cluster"} 0
             # HELP elasticsearch_slm_stats_total_snapshots_deleted_total Total snapshots deleted
             # TYPE elasticsearch_slm_stats_total_snapshots_deleted_total counter
-            elasticsearch_slm_stats_total_snapshots_deleted_total 20
+            elasticsearch_slm_stats_total_snapshots_deleted_total{cluster="unknown_cluster"} 20
             # HELP elasticsearch_slm_stats_total_snapshots_failed_total Total snapshots failed
             # TYPE elasticsearch_slm_stats_total_snapshots_failed_total counter
-            elasticsearch_slm_stats_total_snapshots_failed_total 2
+            elasticsearch_slm_stats_total_snapshots_failed_total{cluster="unknown_cluster"} 2
             # HELP elasticsearch_slm_stats_total_snapshots_taken_total Total snapshots taken
             # TYPE elasticsearch_slm_stats_total_snapshots_taken_total counter
-            elasticsearch_slm_stats_total_snapshots_taken_total 103
+            elasticsearch_slm_stats_total_snapshots_taken_total{cluster="unknown_cluster"} 103
 						`,
 		},
 	}
@@ -123,7 +126,10 @@ func TestSLM(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s, err := NewSLM(promslog.NewNopLogger(), u, http.DefaultClient)
+			logger := promslog.NewNopLogger()
+			ci := clusterinfo.New(logger, http.DefaultClient, u, time.Duration(300000000000))
+
+			s, err := NewSLM(logger, u, http.DefaultClient, ci)
 			if err != nil {
 				t.Fatal(err)
 			}

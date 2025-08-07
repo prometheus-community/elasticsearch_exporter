@@ -52,6 +52,10 @@ func (s *Shards) ClusterLabelUpdates() *chan *clusterinfo.Response {
 	return &s.clusterInfoCh
 }
 
+func (s *Shards) SetClusterInfo(r *clusterinfo.Response) {
+	s.lastClusterInfo = r
+}
+
 // String implements the stringer interface. It is part of the clusterinfo.consumer interface
 func (s *Shards) String() string {
 	return namespace + "shards"
@@ -110,18 +114,6 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 			Help: "Number of errors while parsing JSON.",
 		}),
 	}
-
-	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
-	go func() {
-		logger.Debug("starting cluster info receive loop")
-		for ci := range shards.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				shards.lastClusterInfo = ci
-			}
-		}
-		logger.Debug("exiting cluster info receive loop")
-	}()
 
 	return shards
 }
