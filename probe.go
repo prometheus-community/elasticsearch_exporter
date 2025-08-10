@@ -78,5 +78,3 @@ func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.Auth
 		return "", nil, errUnsupportedModule
 	}
 }
-
-// region inference removed by design; aws.region must be supplied in config
