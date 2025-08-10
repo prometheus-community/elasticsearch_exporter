@@ -55,7 +55,7 @@ elasticsearch_exporter --help
 | Argument                | Introduced in Version | Description                                                                                                                                                                                                                                                                                                                                                                           | Default     |
 | ----------------------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------- |
 | collector.clustersettings| 1.6.0                | If true, query stats for cluster settings (As of v1.6.0, this flag has replaced "es.cluster_settings").                                                                                                                                                                                                                                                                                | false |
-| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to **when running in single-target mode**. Leave empty (the default) when you want to run the exporter only as a multi-target `/probe` endpoint. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | ״״ |
+| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to **when running in single-target mode**. Leave empty (the default) when you want to run the exporter only as a multi-target `/probe` endpoint. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | "" |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                                                                                                                                                                                                                                                                                           | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                                  | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                         | false |
@@ -120,10 +120,12 @@ From v2.X the exporter exposes `/probe` allowing one running instance to scrape 
 
 Supported `auth_module` types:
 
-| type       | YAML fields                                                       | Injected into request                                              |
-| ---------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `userpass` | `userpass.username`, `userpass.password`, optional `options:` map | Sets HTTP basic-auth header, appends `options` as query parameters |
-| `apikey`   | `apikey:` Base64 API-Key string, optional `options:` map          | Adds `Authorization: ApiKey …` header, appends `options`           |
+| type       | YAML fields                                                       | Injected into request                                                                 |
+| ---------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `userpass` | `userpass.username`, `userpass.password`, optional `options:` map | Sets HTTP basic-auth header, appends `options` as query parameters                    |
+| `apikey`   | `apikey:` Base64 API-Key string, optional `options:` map          | Adds `Authorization: ApiKey …` header, appends `options`                              |
+| `aws`      | `aws.region`, optional `aws.role_arn`, optional `options:` map    | Uses AWS SigV4 signing transport for HTTP(S) requests, appends `options`              |
+| `tls`      | `tls.ca_file`, `tls.cert_file`, `tls.key_file`                    | Uses client certificate authentication via TLS; cannot be mixed with other auth types |
 
 Example config:
 
@@ -166,6 +168,12 @@ Prometheus scrape_config:
     - target_label: __address__
       replacement: exporter:9114
 ```
+
+Notes:
+- `/metrics` serves a single, process-wide registry and is intended for single-target mode.
+- `/probe` creates a fresh registry per scrape for the given `target` allowing multi-target scraping.
+- Any `options:` under an auth module will be appended as URL query parameters to the target URL.
+- The `tls` auth module (client certificate authentication) is intended for self‑managed Elasticsearch/OpenSearch deployments. Amazon OpenSearch Service typically authenticates at the domain edge with IAM/SigV4 and does not support client certificate authentication; use the `aws` auth module instead when scraping Amazon OpenSearch Service domains.
 
 ### Metrics
 

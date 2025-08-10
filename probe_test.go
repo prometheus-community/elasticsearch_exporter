@@ -36,6 +36,14 @@ func TestValidateProbeParams(t *testing.T) {
 		t.Fatalf("expected invalid target error")
 	}
 
+	// invalid scheme
+	vals = url.Values{}
+	vals.Set("target", "ftp://example.com")
+	_, _, err = validateProbeParams(cfg, vals)
+	if err == nil {
+		t.Fatalf("expected invalid target error for unsupported scheme")
+	}
+
 	// unknown module
 	vals = url.Values{}
 	vals.Set("target", "http://localhost:9200")
@@ -95,5 +103,24 @@ func TestValidateProbeParams(t *testing.T) {
 	}
 	if am.AWS == nil || am.AWS.Region != "us-east-1" {
 		t.Fatalf("unexpected aws config: %+v", am.AWS)
+	}
+
+	// invalid path (aws with empty region - rejected at config load; simulate here by passing nil cfg lookup)
+	// No additional test needed as config.LoadConfig enforces region.
+
+	// good path (tls)
+	cfg.AuthModules["mtls"] = config.AuthModule{
+		Type: "tls",
+		TLS:  &config.TLSConfig{CAFile: "/dev/null", CertFile: "/dev/null", KeyFile: "/dev/null"},
+	}
+	vals = url.Values{}
+	vals.Set("target", "http://localhost:9200")
+	vals.Set("auth_module", "mtls")
+	_, am, err = validateProbeParams(cfg, vals)
+	if err != nil {
+		t.Fatalf("expected success for tls module, got err=%v", err)
+	}
+	if am == nil || am.Type != "tls" {
+		t.Fatalf("expected tls module, got %+v", am)
 	}
 }

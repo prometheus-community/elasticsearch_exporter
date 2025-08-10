@@ -57,6 +57,7 @@ type UserPassConfig struct {
 // validate ensures every auth module has the required fields according to its type.
 func (c *Config) validate() error {
 	for name, am := range c.AuthModules {
+		// Validate fields based on auth type
 		switch strings.ToLower(am.Type) {
 		case "userpass":
 			if am.UserPass == nil || am.UserPass.Username == "" || am.UserPass.Password == "" {
@@ -70,21 +71,52 @@ func (c *Config) validate() error {
 			if am.AWS == nil || am.AWS.Region == "" {
 				return fmt.Errorf("auth_module %s type aws requires region", name)
 			}
+		case "tls":
+			// TLS auth type means client certificate authentication only (no other auth)
+			if am.TLS == nil {
+				return fmt.Errorf("auth_module %s type tls requires tls configuration section", name)
+			}
+			if am.TLS.CertFile == "" || am.TLS.KeyFile == "" {
+				return fmt.Errorf("auth_module %s type tls requires cert_file and key_file for client certificate authentication", name)
+			}
+			// Validate that other auth fields are not set when using TLS auth type
+			if am.UserPass != nil {
+				return fmt.Errorf("auth_module %s type tls cannot have userpass configuration", name)
+			}
+			if am.APIKey != "" {
+				return fmt.Errorf("auth_module %s type tls cannot have apikey", name)
+			}
+			if am.AWS != nil {
+				return fmt.Errorf("auth_module %s type tls cannot have aws configuration", name)
+			}
 		default:
 			return fmt.Errorf("auth_module %s has unsupported type %s", name, am.Type)
 		}
 
-		// TLS validation (optional but if specified must be coherent)
+		// Validate TLS configuration (optional for all auth types, provides transport security)
 		if am.TLS != nil {
-			if (am.TLS.CertFile == "") != (am.TLS.KeyFile == "") {
-				return fmt.Errorf("auth_module %s tls requires both cert_file and key_file or neither", name)
+			// For cert-based auth (type: tls), cert and key are required
+			// For other auth types, TLS config is optional and used for transport security
+			if strings.ToLower(am.Type) == "tls" {
+				// Already validated above that cert and key are present
+			} else {
+				// For non-TLS auth types, if cert/key are provided, both must be present
+				if (am.TLS.CertFile != "") != (am.TLS.KeyFile != "") {
+					return fmt.Errorf("auth_module %s: if providing client certificate, both cert_file and key_file must be specified", name)
+				}
 			}
-			for _, p := range []string{am.TLS.CAFile, am.TLS.CertFile, am.TLS.KeyFile} {
-				if p == "" {
+
+			// Validate file accessibility
+			for fileType, path := range map[string]string{
+				"ca_file":   am.TLS.CAFile,
+				"cert_file": am.TLS.CertFile,
+				"key_file":  am.TLS.KeyFile,
+			} {
+				if path == "" {
 					continue
 				}
-				if _, err := os.Stat(p); err != nil {
-					return fmt.Errorf("auth_module %s tls file %s not accessible: %w", name, p, err)
+				if _, err := os.Stat(path); err != nil {
+					return fmt.Errorf("auth_module %s: %s '%s' not accessible: %w", name, fileType, path, err)
 				}
 			}
 		}

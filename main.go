@@ -314,10 +314,20 @@ func main() {
 		pemCert := *esClientCert
 		pemKey := *esClientPrivateKey
 		insecure := *esInsecureSkipVerify
+
+		// Apply TLS configuration from auth module if provided (for transport security)
+		// This matches single-target behavior where TLS settings are always applied
 		if am != nil && am.TLS != nil {
-			pemCA = am.TLS.CAFile
-			pemCert = am.TLS.CertFile
-			pemKey = am.TLS.KeyFile
+			// Override with module-specific TLS settings
+			if am.TLS.CAFile != "" {
+				pemCA = am.TLS.CAFile
+			}
+			if am.TLS.CertFile != "" {
+				pemCert = am.TLS.CertFile
+			}
+			if am.TLS.KeyFile != "" {
+				pemKey = am.TLS.KeyFile
+			}
 			if am.TLS.InsecureSkipVerify {
 				insecure = true
 			}
@@ -330,18 +340,31 @@ func main() {
 
 		// inject authentication based on auth_module type
 		if am != nil {
-			if strings.EqualFold(am.Type, "apikey") && am.APIKey != "" {
-				transport = &transportWithAPIKey{
-					underlyingTransport: transport,
-					apiKey:              am.APIKey,
+			switch strings.ToLower(am.Type) {
+			case "apikey":
+				if am.APIKey != "" {
+					transport = &transportWithAPIKey{
+						underlyingTransport: transport,
+						apiKey:              am.APIKey,
+					}
 				}
-			} else if strings.EqualFold(am.Type, "aws") && am.AWS != nil {
-				var err error
-				transport, err = roundtripper.NewAWSSigningTransport(transport, am.AWS.Region, am.AWS.RoleARN, logger)
-				if err != nil {
-					http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
-					return
+			case "aws":
+				if am.AWS != nil {
+					if am.AWS.Region == "" {
+						http.Error(w, "aws.region is required for aws auth_module", http.StatusBadRequest)
+						return
+					}
+					var err error
+					transport, err = roundtripper.NewAWSSigningTransport(transport, am.AWS.Region, am.AWS.RoleARN, logger)
+					if err != nil {
+						http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
+						return
+					}
 				}
+			case "tls":
+				// No additional auth wrapper needed - client certificates in TLS config handle authentication
+			case "userpass":
+				// Already handled above by setting targetURL.User
 			}
 		}
 		probeClient := &http.Client{

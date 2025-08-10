@@ -42,7 +42,11 @@ func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.Auth
 		target = "http://" + target
 	}
 
-	if _, err := url.Parse(target); err != nil {
+	u, err := url.Parse(target)
+	if err != nil {
+		return "", nil, errInvalidTarget
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
 		return "", nil, errInvalidTarget
 	}
 
@@ -63,11 +67,16 @@ func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.Auth
 	case "apikey":
 		return target, &am, nil
 	case "aws":
-		if am.AWS != nil && am.AWS.Region != "" {
-			return target, &am, nil
+		if am.AWS == nil || am.AWS.Region == "" {
+			return "", nil, errUnsupportedModule
 		}
-		return "", nil, errUnsupportedModule
+		return target, &am, nil
+	case "tls":
+		// TLS auth type is valid; detailed TLS validation is performed during config load.
+		return target, &am, nil
 	default:
 		return "", nil, errUnsupportedModule
 	}
 }
+
+// region inference removed by design; aws.region must be supplied in config
