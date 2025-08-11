@@ -97,9 +97,7 @@ func (c *Config) validate() error {
 		if am.TLS != nil {
 			// For cert-based auth (type: tls), cert and key are required
 			// For other auth types, TLS config is optional and used for transport security
-			if strings.ToLower(am.Type) == "tls" {
-				// Already validated above that cert and key are present
-			} else {
+			if strings.ToLower(am.Type) != "tls" {
 				// For non-TLS auth types, if cert/key are provided, both must be present
 				if (am.TLS.CertFile != "") != (am.TLS.KeyFile != "") {
 					return fmt.Errorf("auth_module %s: if providing client certificate, both cert_file and key_file must be specified", name)
