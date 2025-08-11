@@ -11,7 +11,10 @@ func mustTempFile(t *testing.T) string {
 		t.Fatalf("temp file: %v", err)
 	}
 	f.Close()
-	return f.Name()
+	// Ensure temp file is removed even if created outside of test's TempDir semantics change
+	path := f.Name()
+	t.Cleanup(func() { _ = os.Remove(path) })
+	return path
 }
 
 // ---------------------------- Positive cases ----------------------------
@@ -80,8 +83,9 @@ func TestLoadConfigPositiveVariants(t *testing.T) {
 
 	for _, c := range positive {
 		tmp, _ := os.CreateTemp(t.TempDir(), "cfg-*.yml")
-		tmp.WriteString(c.yaml)
-		tmp.Close()
+		_, _ = tmp.WriteString(c.yaml)
+		_ = tmp.Close()
+		t.Cleanup(func() { _ = os.Remove(tmp.Name()) })
 		if _, err := LoadConfig(tmp.Name()); err != nil {
 			t.Fatalf("%s: expected success, got %v", c.name, err)
 		}
@@ -156,8 +160,9 @@ func TestLoadConfigNegativeVariants(t *testing.T) {
 
 	for _, c := range negative {
 		tmp, _ := os.CreateTemp(t.TempDir(), "cfg-*.yml")
-		tmp.WriteString(c.yaml)
-		tmp.Close()
+		_, _ = tmp.WriteString(c.yaml)
+		_ = tmp.Close()
+		t.Cleanup(func() { _ = os.Remove(tmp.Name()) })
 		if _, err := LoadConfig(tmp.Name()); err == nil {
 			t.Fatalf("%s: expected validation error, got none", c.name)
 		}
