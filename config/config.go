@@ -68,7 +68,7 @@ func (c *Config) validate() error {
 				return fmt.Errorf("auth_module %s type apikey requires apikey", name)
 			}
 		case "aws":
-			if am.AWS == nil || am.AWS.Region == "" {
+			if am.AWS == nil {
 				return fmt.Errorf("auth_module %s type aws requires region", name)
 			}
 		case "tls":

@@ -350,10 +350,6 @@ func main() {
 				}
 			case "aws":
 				if am.AWS != nil {
-					if am.AWS.Region == "" {
-						http.Error(w, "aws.region is required for aws auth_module", http.StatusBadRequest)
-						return
-					}
 					var err error
 					transport, err = roundtripper.NewAWSSigningTransport(transport, am.AWS.Region, am.AWS.RoleARN, logger)
 					if err != nil {
