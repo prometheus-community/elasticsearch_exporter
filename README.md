@@ -55,7 +55,7 @@ elasticsearch_exporter --help
 | Argument                | Introduced in Version | Description                                                                                                                                                                                                                                                                                                                                                                           | Default     |
 | ----------------------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------- |
 | collector.clustersettings| 1.6.0                | If true, query stats for cluster settings (As of v1.6.0, this flag has replaced "es.cluster_settings").                                                                                                                                                                                                                                                                                | false |
-| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to. This could be a local node (`localhost:9200`, for instance), or the address of a remote Elasticsearch server. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | <http://localhost:9200> |
+| es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to **when running in single-target mode**. Leave empty (the default) when you want to run the exporter only as a multi-target `/probe` endpoint. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | "" |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                                                                                                                                                                                                                                                                                           | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                                  | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                         | false |
@@ -77,6 +77,7 @@ elasticsearch_exporter --help
 | web.telemetry-path      | 1.0.2                 | Path under which to expose metrics.                                                                                                                                                                                                                                                                                                                                                   | /metrics |
 | aws.region              | 1.5.0                 | Region for AWS elasticsearch                                                                                                                                                                                                                                                                                                                                                          | |
 | aws.role-arn            | 1.6.0                 | Role ARN of an IAM role to assume.                                                                                                                                                                                                                                                                                                                                                    | |
+| config.file             | 2.0.0                 | Path to a YAML configuration file that defines `auth_modules:` used by the `/probe` multi-target endpoint. Leave unset when not using multi-target mode.                                                                                                                                                                                                                              | |
 | version                 | 1.0.2                 | Show version info on stdout and exit.                                                                                                                                                                                                                                                                                                                                                 | |
 
 Commandline parameters start with a single `-` for versions less than `1.1.0rc1`.
@@ -112,6 +113,67 @@ Further Information
 - [Built in Users](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/built-in-users.html)
 - [Defining Roles](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/defining-roles.html)
 - [Privileges](https://www.elastic.co/guide/en/elastic-stack-overview/7.3/security-privileges.html)
+
+### Multi-Target Scraping (beta)
+
+From v2.X the exporter exposes `/probe` allowing one running instance to scrape many clusters.
+
+Supported `auth_module` types:
+
+| type       | YAML fields                                                       | Injected into request                                                                 |
+| ---------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `userpass` | `userpass.username`, `userpass.password`, optional `options:` map | Sets HTTP basic-auth header, appends `options` as query parameters                    |
+| `apikey`   | `apikey:` Base64 API-Key string, optional `options:` map          | Adds `Authorization: ApiKey …` header, appends `options`                              |
+| `aws`      | `aws.region`, optional `aws.role_arn`, optional `options:` map    | Uses AWS SigV4 signing transport for HTTP(S) requests, appends `options`              |
+| `tls`      | `tls.ca_file`, `tls.cert_file`, `tls.key_file`                    | Uses client certificate authentication via TLS; cannot be mixed with other auth types |
+
+Example config:
+
+```yaml
+# exporter-config.yml
+auth_modules:
+  prod_basic:
+    type: userpass
+    userpass:
+      username: metrics
+      password: s3cr3t
+
+  staging_key:
+    type: apikey
+    apikey: "bXk6YXBpa2V5Ig=="  # base64 id:key
+    options:
+      sslmode: disable
+```
+
+Run exporter:
+
+```bash
+./elasticsearch_exporter --config.file=exporter-config.yml
+```
+
+Prometheus scrape_config:
+
+```yaml
+- job_name: es
+  metrics_path: /probe
+  params:
+    auth_module: [staging_key]
+  static_configs:
+    - targets: ["https://es-stage:9200"]
+  relabel_configs:
+    - source_labels: [__address__]
+      target_label: __param_target
+    - source_labels: [__param_target]
+      target_label: instance
+    - target_label: __address__
+      replacement: exporter:9114
+```
+
+Notes:
+- `/metrics` serves a single, process-wide registry and is intended for single-target mode.
+- `/probe` creates a fresh registry per scrape for the given `target` allowing multi-target scraping.
+- Any `options:` under an auth module will be appended as URL query parameters to the target URL.
+- The `tls` auth module (client certificate authentication) is intended for self‑managed Elasticsearch/OpenSearch deployments. Amazon OpenSearch Service typically authenticates at the domain edge with IAM/SigV4 and does not support client certificate authentication; use the `aws` auth module instead when scraping Amazon OpenSearch Service domains.
 
 ### Metrics
 
