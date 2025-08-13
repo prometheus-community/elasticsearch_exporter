@@ -37,7 +37,7 @@ type AuthModule struct {
 
 // AWSConfig contains settings for SigV4 authentication.
 type AWSConfig struct {
-	Region  string `yaml:"region"`
+	Region  string `yaml:"region,omitempty"`
 	RoleARN string `yaml:"role_arn,omitempty"`
 }
 
@@ -68,9 +68,7 @@ func (c *Config) validate() error {
 				return fmt.Errorf("auth_module %s type apikey requires apikey", name)
 			}
 		case "aws":
-			if am.AWS == nil {
-				return fmt.Errorf("auth_module %s type aws requires region", name)
-			}
+			// No strict validation: region can come from environment/defaults; role_arn is optional.
 		case "tls":
 			// TLS auth type means client certificate authentication only (no other auth)
 			if am.TLS == nil {

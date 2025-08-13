@@ -42,7 +42,12 @@ type AWSSigningTransport struct {
 }
 
 func NewAWSSigningTransport(transport http.RoundTripper, region string, roleArn string, log *slog.Logger) (*AWSSigningTransport, error) {
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+	// Only set region explicitly when provided; otherwise allow env/IMDS resolution
+	var opts []func(*config.LoadOptions) error
+	if region != "" {
+		opts = append(opts, config.WithRegion(region))
+	}
+	cfg, err := config.LoadDefaultConfig(context.Background(), opts...)
 	if err != nil {
 		log.Error("failed to load aws default config", "err", err)
 		return nil, err

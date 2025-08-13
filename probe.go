@@ -67,9 +67,7 @@ func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.Auth
 	case "apikey":
 		return target, &am, nil
 	case "aws":
-		if am.AWS == nil || am.AWS.Region == "" {
-			return "", nil, errUnsupportedModule
-		}
+		// Accept module even if region omitted; environment resolver can provide it.
 		return target, &am, nil
 	case "tls":
 		// TLS auth type is valid; detailed TLS validation is performed during config load.

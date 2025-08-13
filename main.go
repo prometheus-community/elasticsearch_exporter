@@ -349,13 +349,15 @@ func main() {
 					}
 				}
 			case "aws":
-				if am.AWS != nil {
-					var err error
-					transport, err = roundtripper.NewAWSSigningTransport(transport, am.AWS.Region, am.AWS.RoleARN, logger)
-					if err != nil {
-						http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
-						return
-					}
+				var region string
+				if am.AWS.Region != "" {
+					region = am.AWS.Region
+				}
+				var err error
+				transport, err = roundtripper.NewAWSSigningTransport(transport, region, am.AWS.RoleARN, logger)
+				if err != nil {
+					http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
+					return
 				}
 			case "tls":
 				// No additional auth wrapper needed - client certificates in TLS config handle authentication
@@ -369,6 +371,9 @@ func main() {
 		}
 
 		reg := prometheus.NewRegistry()
+
+		// version metric
+		reg.MustRegister(versioncollector.NewCollector(name))
 
 		// Core exporter collector
 		exp, err := collector.NewElasticsearchCollector(
