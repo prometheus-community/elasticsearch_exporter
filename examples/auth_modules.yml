@@ -1,0 +1,55 @@
+# Example exporter-config.yml demonstrating multiple auth modules
+# Each module can be referenced with ?auth_module=<name> in /probe requests.
+
+auth_modules:
+  ###########################################################################
+  # 1. Simple basic-auth over HTTPS                                         #
+  ###########################################################################
+  prod_basic:
+    type: userpass
+    userpass:
+      username: metrics
+      password: s3cr3t
+    # extra URL query parameters are appended to the target DSN
+    options:
+      sslmode: disable # becomes ?sslmode=disable
+
+  ###########################################################################
+  # 2. Read-only account for staging cluster                               #
+  ###########################################################################
+  staging_ro:
+    type: userpass
+    userpass:
+      username: readonly
+      password: changeme
+
+  ###########################################################################
+  # 3. API-Key authentication                                             #
+  ###########################################################################
+  prod_key:
+    type: apikey
+    apikey: BASE64-ENCODED-KEY==
+
+  ###########################################################################
+  # 5. AWS SigV4 signing with optional TLS settings                       #
+  ###########################################################################
+  aws_sigv4:
+    type: aws
+    aws:
+      region: us-east-1
+      # role_arn is optional
+    # Optional TLS configuration for transport security
+    tls:
+      ca_file: /etc/ssl/ca.pem
+      insecure_skip_verify: false
+
+  ###########################################################################
+  # 6. Client certificate authentication only (no username/password)       #
+  ###########################################################################
+  pki_mtls:
+    type: tls # This auth type uses ONLY client certificates for authentication
+    tls:
+      ca_file: /etc/ssl/pki/ca.pem # Optional: CA for server verification
+      cert_file: /etc/ssl/pki/client.pem # Required: Client certificate for auth
+      key_file: /etc/ssl/pki/client-key.pem # Required: Client private key for auth
+      insecure_skip_verify: false # Optional: Skip server cert validation

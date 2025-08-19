@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"sort"
 	"strconv"
 
@@ -620,12 +621,27 @@ func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsRespo
 	return isr, nil
 }
 
-// getCluserName returns the name of the cluster from the clusterinfo
-// if the clusterinfo is nil, it returns "unknown_cluster"
-// TODO(@sysadmind): this should be removed once we have a better way to handle clusterinfo
+// getClusterName returns the cluster name. If no clusterinfo retriever is
+// attached (e.g. /probe mode) it performs a lightweight call to the root
+// endpoint once and caches the result.
 func (i *Indices) getClusterName() string {
-	if i.lastClusterInfo != nil {
+	if i.lastClusterInfo != nil && i.lastClusterInfo.ClusterName != "unknown_cluster" {
 		return i.lastClusterInfo.ClusterName
+	}
+	u := *i.url
+	u.Path = path.Join(u.Path, "/")
+	resp, err := i.client.Get(u.String())
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var root struct {
+				ClusterName string `json:"cluster_name"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&root); err == nil && root.ClusterName != "" {
+				i.lastClusterInfo = &clusterinfo.Response{ClusterName: root.ClusterName}
+				return root.ClusterName
+			}
+		}
 	}
 	return "unknown_cluster"
 }

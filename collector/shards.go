@@ -64,23 +64,50 @@ type nodeShardMetric struct {
 	Labels labels
 }
 
+// fetchClusterNameOnce performs a single request to the root endpoint to obtain the cluster name.
+func fetchClusterNameOnce(s *Shards) string {
+	if s.lastClusterInfo != nil && s.lastClusterInfo.ClusterName != "unknown_cluster" {
+		return s.lastClusterInfo.ClusterName
+	}
+	u := *s.url
+	u.Path = path.Join(u.Path, "/")
+	resp, err := s.client.Get(u.String())
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var root struct {
+				ClusterName string `json:"cluster_name"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&root); err == nil && root.ClusterName != "" {
+				s.lastClusterInfo = &clusterinfo.Response{ClusterName: root.ClusterName}
+				return root.ClusterName
+			}
+		}
+	}
+	return "unknown_cluster"
+}
+
 // NewShards defines Shards Prometheus metrics
 func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
+	var shardPtr *Shards
 	nodeLabels := labels{
 		keys: func(...string) []string {
 			return []string{"node", "cluster"}
 		},
-		values: func(lastClusterinfo *clusterinfo.Response, s ...string) []string {
+		values: func(lastClusterinfo *clusterinfo.Response, base ...string) []string {
 			if lastClusterinfo != nil {
-				return append(s, lastClusterinfo.ClusterName)
+				return append(base, lastClusterinfo.ClusterName)
 			}
-			// this shouldn't happen, as the clusterinfo Retriever has a blocking
-			// Run method. It blocks until the first clusterinfo call has succeeded
-			return append(s, "unknown_cluster")
+			if shardPtr != nil {
+				return append(base, fetchClusterNameOnce(shardPtr))
+			}
+			return append(base, "unknown_cluster")
 		},
 	}
 
 	shards := &Shards{
+		// will assign later
+
 		logger: logger,
 		client: client,
 		url:    url,
@@ -123,6 +150,7 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 		logger.Debug("exiting cluster info receive loop")
 	}()
 
+	shardPtr = shards
 	return shards
 }
 
