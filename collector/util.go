@@ -19,6 +19,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 )
 
 func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([]byte, error) {
@@ -29,7 +30,13 @@ func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([
 
 	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get %s: %v", u, err)
+		// Parse URL to safely format error message without exposing credentials
+		if parsedURL, parseErr := url.Parse(u); parseErr == nil {
+			return nil, fmt.Errorf("failed to get %s://%s:%s%s: %v",
+				parsedURL.Scheme, parsedURL.Hostname(), parsedURL.Port(), parsedURL.Path, err)
+		}
+		// Fallback if URL parsing fails - still avoid exposing full URL
+		return nil, fmt.Errorf("failed to get URL: %v", err)
 	}
 
 	defer func() {
