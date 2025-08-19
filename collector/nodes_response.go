@@ -13,7 +13,9 @@
 
 package collector
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // nodeStatsResponse is a representation of an Elasticsearch Node Stats
 type nodeStatsResponse struct {
@@ -289,10 +291,11 @@ type NodeStatsOSResponse struct {
 	Uptime    int64 `json:"uptime_in_millis"`
 	// LoadAvg was an array of per-cpu values pre-2.0, and is a string in 2.0
 	// Leaving this here in case we want to implement parsing logic later
-	LoadAvg json.RawMessage         `json:"load_average"`
-	CPU     NodeStatsOSCPUResponse  `json:"cpu"`
-	Mem     NodeStatsOSMemResponse  `json:"mem"`
-	Swap    NodeStatsOSSwapResponse `json:"swap"`
+	LoadAvg json.RawMessage           `json:"load_average"`
+	Cgroup  NodeStatsOSCgroupResponse `json:"cgroup"`
+	CPU     NodeStatsOSCPUResponse    `json:"cpu"`
+	Mem     NodeStatsOSMemResponse    `json:"mem"`
+	Swap    NodeStatsOSSwapResponse   `json:"swap"`
 }
 
 // NodeStatsOSMemResponse defines node stats operating system memory usage structure
@@ -320,6 +323,30 @@ type NodeStatsOSCPULoadResponse struct {
 	Load1  float64 `json:"1m"`
 	Load5  float64 `json:"5m"`
 	Load15 float64 `json:"15m"`
+}
+
+// NodeStatsOSCgroupResponse defines statistics related to Linux control groups (currently only CPU-related)
+type NodeStatsOSCgroupResponse struct {
+	CPU     NodeStatsOSCgroupCPUResponse     `json:"cpu"`
+	CPUAcct NodeStatsOCCgroupCPUAcctResponse `json:"cpuacct"`
+}
+
+// NodeStatsOSCgroupCPUResponse represents the current CPU quota (quota value and the corresponding period), as well as the related CPU throttling stats (Linux CFS bandwidth control)
+type NodeStatsOSCgroupCPUResponse struct {
+	CfsPeriodMicros int64                             `json:"cfs_period_micros"`
+	CfsQuotaMicros  int64                             `json:"cfs_quota_micros"`
+	Stat            NodeStatsOSCgroupCPUStatsResponse `json:"stat"`
+}
+
+// NodeStatsOSCgroupCPUStatsResponse represents the CPU throttling stats (Linux CFS bandwidth control)
+type NodeStatsOSCgroupCPUStatsResponse struct {
+	NumberOfTimesThrottled int64 `json:"number_of_times_throttled"`
+	TimeThrottledNanos     int64 `json:"time_throttled_nanos"`
+}
+
+// NodeStatsOCCgroupCPUAcctResponse represents the Linux control groups CPU accounting stats
+type NodeStatsOCCgroupCPUAcctResponse struct {
+	UsageNanos int64 `json:"usage_nanos"`
 }
 
 // NodeStatsProcessResponse is a representation of a process statistics, memory consumption, cpu usage, open file descriptors
