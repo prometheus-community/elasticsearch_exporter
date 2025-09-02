@@ -1,6 +1,11 @@
 ## master / unreleased
 
+### Added
+- Multi-target scraping via `/probe` endpoint with optional auth modules (compatible with postgres_exporter style) #1063
+
 BREAKING CHANGES:
+
+* [CHANGE] Set `--es.uri` by default to empty string #1063
 
 The flag `--es.data_stream` has been renamed to `--collector.data-stream`.
 The flag `--es.ilm` has been renamed to `--collector.ilm`.
