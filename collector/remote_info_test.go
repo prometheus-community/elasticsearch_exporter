@@ -19,38 +19,179 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
 
-func TestRemoteInfoStats(t *testing.T) {
+func TestRemoteInfo(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
-	//  curl http://localhost:9200/_cluster/settings/?include_defaults=true
-	files := []string{"../fixtures/settings-5.4.2.json", "../fixtures/settings-merge-5.4.2.json"}
-	for _, filename := range files {
-		f, _ := os.Open(filename)
-		defer f.Close()
-		for hn, handler := range map[string]http.Handler{
-			"plain": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	//  curl http://localhost:9200/_remote/info
+
+	tests := []struct {
+		name string
+		file string
+		want string
+	}{
+		{
+			name: "7.15.0",
+			file: "../fixtures/remote_info/7.15.0.json",
+			want: `
+				# HELP elasticsearch_remote_info_max_connections_per_cluster Max connections per cluster
+				# TYPE elasticsearch_remote_info_max_connections_per_cluster gauge
+				elasticsearch_remote_info_max_connections_per_cluster{remote_cluster="cluster_remote_1"} 10
+				elasticsearch_remote_info_max_connections_per_cluster{remote_cluster="cluster_remote_2"} 5
+				# HELP elasticsearch_remote_info_num_nodes_connected Number of nodes connected
+				# TYPE elasticsearch_remote_info_num_nodes_connected gauge
+				elasticsearch_remote_info_num_nodes_connected{remote_cluster="cluster_remote_1"} 3
+				elasticsearch_remote_info_num_nodes_connected{remote_cluster="cluster_remote_2"} 0
+				# HELP elasticsearch_remote_info_num_proxy_sockets_connected Number of proxy sockets connected
+				# TYPE elasticsearch_remote_info_num_proxy_sockets_connected gauge
+				elasticsearch_remote_info_num_proxy_sockets_connected{remote_cluster="cluster_remote_1"} 5
+				elasticsearch_remote_info_num_proxy_sockets_connected{remote_cluster="cluster_remote_2"} 0
+				# HELP elasticsearch_remote_info_stats_json_parse_failures Number of errors while parsing JSON.
+				# TYPE elasticsearch_remote_info_stats_json_parse_failures counter
+				elasticsearch_remote_info_stats_json_parse_failures 0
+				# HELP elasticsearch_remote_info_stats_total_scrapes Current total ElasticSearch remote info scrapes.
+				# TYPE elasticsearch_remote_info_stats_total_scrapes counter
+				elasticsearch_remote_info_stats_total_scrapes 1
+				# HELP elasticsearch_remote_info_stats_up Was the last scrape of the ElasticSearch remote info endpoint successful.
+				# TYPE elasticsearch_remote_info_stats_up gauge
+				elasticsearch_remote_info_stats_up 1
+			`,
+		},
+		{
+			name: "8.0.0",
+			file: "../fixtures/remote_info/8.0.0.json",
+			want: `
+				# HELP elasticsearch_remote_info_max_connections_per_cluster Max connections per cluster
+				# TYPE elasticsearch_remote_info_max_connections_per_cluster gauge
+				elasticsearch_remote_info_max_connections_per_cluster{remote_cluster="prod_cluster"} 30
+				# HELP elasticsearch_remote_info_num_nodes_connected Number of nodes connected
+				# TYPE elasticsearch_remote_info_num_nodes_connected gauge
+				elasticsearch_remote_info_num_nodes_connected{remote_cluster="prod_cluster"} 15
+				# HELP elasticsearch_remote_info_num_proxy_sockets_connected Number of proxy sockets connected
+				# TYPE elasticsearch_remote_info_num_proxy_sockets_connected gauge
+				elasticsearch_remote_info_num_proxy_sockets_connected{remote_cluster="prod_cluster"} 25
+				# HELP elasticsearch_remote_info_stats_json_parse_failures Number of errors while parsing JSON.
+				# TYPE elasticsearch_remote_info_stats_json_parse_failures counter
+				elasticsearch_remote_info_stats_json_parse_failures 0
+				# HELP elasticsearch_remote_info_stats_total_scrapes Current total ElasticSearch remote info scrapes.
+				# TYPE elasticsearch_remote_info_stats_total_scrapes counter
+				elasticsearch_remote_info_stats_total_scrapes 1
+				# HELP elasticsearch_remote_info_stats_up Was the last scrape of the ElasticSearch remote info endpoint successful.
+				# TYPE elasticsearch_remote_info_stats_up gauge
+				elasticsearch_remote_info_stats_up 1
+			`,
+		},
+		{
+			name: "empty",
+			file: "../fixtures/remote_info/empty.json",
+			want: `
+				# HELP elasticsearch_remote_info_stats_json_parse_failures Number of errors while parsing JSON.
+				# TYPE elasticsearch_remote_info_stats_json_parse_failures counter
+				elasticsearch_remote_info_stats_json_parse_failures 0
+				# HELP elasticsearch_remote_info_stats_total_scrapes Current total ElasticSearch remote info scrapes.
+				# TYPE elasticsearch_remote_info_stats_total_scrapes counter
+				elasticsearch_remote_info_stats_total_scrapes 1
+				# HELP elasticsearch_remote_info_stats_up Was the last scrape of the ElasticSearch remote info endpoint successful.
+				# TYPE elasticsearch_remote_info_stats_up gauge
+				elasticsearch_remote_info_stats_up 1
+			`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f, err := os.Open(tt.file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				io.Copy(w, f)
-			}),
-		} {
-			ts := httptest.NewServer(handler)
+			}))
 			defer ts.Close()
 
 			u, err := url.Parse(ts.URL)
 			if err != nil {
-				t.Fatalf("Failed to parse URL: %s", err)
+				t.Fatal(err)
 			}
-			c := NewRemoteInfo(promslog.NewNopLogger(), http.DefaultClient, u)
-			nsr, err := c.fetchAndDecodeRemoteInfoStats()
-			if err != nil {
-				t.Fatalf("Failed to fetch or decode remote info stats: %s", err)
-			}
-			t.Logf("[%s/%s] Remote Info Stats Response: %+v", hn, filename, nsr)
 
-		}
+			c := NewRemoteInfo(promslog.NewNopLogger(), http.DefaultClient, u)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestRemoteInfoError(t *testing.T) {
+	// Test error handling when endpoint is unavailable
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := NewRemoteInfo(promslog.NewNopLogger(), http.DefaultClient, u)
+
+	expected := `
+		# HELP elasticsearch_remote_info_stats_json_parse_failures Number of errors while parsing JSON.
+		# TYPE elasticsearch_remote_info_stats_json_parse_failures counter
+		elasticsearch_remote_info_stats_json_parse_failures 0
+		# HELP elasticsearch_remote_info_stats_total_scrapes Current total ElasticSearch remote info scrapes.
+		# TYPE elasticsearch_remote_info_stats_total_scrapes counter
+		elasticsearch_remote_info_stats_total_scrapes 1
+		# HELP elasticsearch_remote_info_stats_up Was the last scrape of the ElasticSearch remote info endpoint successful.
+		# TYPE elasticsearch_remote_info_stats_up gauge
+		elasticsearch_remote_info_stats_up 0
+	`
+
+	if err := testutil.CollectAndCompare(c, strings.NewReader(expected)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRemoteInfoJSONParseError(t *testing.T) {
+	// Test JSON parse error handling
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("invalid json"))
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := NewRemoteInfo(promslog.NewNopLogger(), http.DefaultClient, u)
+
+	expected := `
+		# HELP elasticsearch_remote_info_stats_json_parse_failures Number of errors while parsing JSON.
+		# TYPE elasticsearch_remote_info_stats_json_parse_failures counter
+		elasticsearch_remote_info_stats_json_parse_failures 1
+		# HELP elasticsearch_remote_info_stats_total_scrapes Current total ElasticSearch remote info scrapes.
+		# TYPE elasticsearch_remote_info_stats_total_scrapes counter
+		elasticsearch_remote_info_stats_total_scrapes 1
+		# HELP elasticsearch_remote_info_stats_up Was the last scrape of the ElasticSearch remote info endpoint successful.
+		# TYPE elasticsearch_remote_info_stats_up gauge
+		elasticsearch_remote_info_stats_up 0
+	`
+
+	if err := testutil.CollectAndCompare(c, strings.NewReader(expected)); err != nil {
+		t.Fatal(err)
 	}
 }

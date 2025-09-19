@@ -161,7 +161,6 @@ func (ri *RemoteInfo) Collect(ch chan<- prometheus.Metric) {
 		)
 		return
 	}
-	ri.totalScrapes.Inc()
 	ri.up.Set(1)
 
 	// Remote Info
