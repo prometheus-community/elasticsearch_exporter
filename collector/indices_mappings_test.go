@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestMapping(t *testing.T) {
@@ -113,7 +113,7 @@ elasticsearch_indices_mappings_stats_fields{index="test-data-2023.01.20"} 40
 				t.Fatal(err)
 			}
 
-			c := NewIndicesMappings(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewIndicesMappings(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}

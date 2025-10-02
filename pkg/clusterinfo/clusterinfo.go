@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,13 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -53,7 +52,7 @@ type consumer interface {
 // sends it to all registered consumer channels
 type Retriever struct {
 	consumerChannels      map[string]*chan *Response
-	logger                log.Logger
+	logger                *slog.Logger
 	client                *http.Client
 	url                   *url.URL
 	interval              time.Duration
@@ -65,7 +64,7 @@ type Retriever struct {
 }
 
 // New creates a new Retriever
-func New(logger log.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
+func New(logger *slog.Logger, client *http.Client, u *url.URL, interval time.Duration) *Retriever {
 	return &Retriever{
 		consumerChannels: make(map[string]*chan *Response),
 		logger:           logger,
@@ -131,7 +130,7 @@ func (r *Retriever) updateMetrics(res *Response) {
 	u := *r.url
 	u.User = nil
 	url := u.String()
-	level.Debug(r.logger).Log("msg", "updating cluster info metrics")
+	r.logger.Debug("updating cluster info metrics")
 	// scrape failed, response is nil
 	if res == nil {
 		r.up.WithLabelValues(url).Set(0.0)
@@ -174,19 +173,17 @@ func (r *Retriever) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
-				level.Info(r.logger).Log(
-					"msg", "context cancelled, exiting cluster info update loop",
+				r.logger.Info(
+					"context cancelled, exiting cluster info update loop",
 					"err", ctx.Err(),
 				)
 				return
 			case <-r.sync:
-				level.Info(r.logger).Log(
-					"msg", "providing consumers with updated cluster info label",
-				)
+				r.logger.Info("providing consumers with updated cluster info label")
 				res, err := r.fetchAndDecodeClusterInfo()
 				if err != nil {
-					level.Error(r.logger).Log(
-						"msg", "failed to retrieve cluster info from ES",
+					r.logger.Error(
+						"failed to retrieve cluster info from ES",
 						"err", err,
 					)
 					r.updateMetrics(nil)
@@ -194,8 +191,8 @@ func (r *Retriever) Run(ctx context.Context) error {
 				}
 				r.updateMetrics(res)
 				for name, consumerCh := range r.consumerChannels {
-					level.Debug(r.logger).Log(
-						"msg", "sending update",
+					r.logger.Debug(
+						"sending update",
 						"consumer", name,
 						"res", fmt.Sprintf("%+v", res),
 					)
@@ -211,32 +208,27 @@ func (r *Retriever) Run(ctx context.Context) error {
 		}
 	}(ctx)
 	// trigger initial cluster info call
-	level.Info(r.logger).Log(
-		"msg", "triggering initial cluster info call",
-	)
+	r.logger.Info("triggering initial cluster info call")
 	r.sync <- struct{}{}
 
 	// start a ticker routine
 	go func(ctx context.Context) {
 		if r.interval <= 0 {
-			level.Info(r.logger).Log(
-				"msg", "no periodic cluster info label update requested",
-			)
+			r.logger.Info("no periodic cluster info label update requested")
 			return
 		}
 		ticker := time.NewTicker(r.interval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
-				level.Info(r.logger).Log(
-					"msg", "context cancelled, exiting cluster info trigger loop",
+				r.logger.Info(
+					"context cancelled, exiting cluster info trigger loop",
 					"err", ctx.Err(),
 				)
 				return
 			case <-ticker.C:
-				level.Debug(r.logger).Log(
-					"msg", "triggering periodic update",
-				)
+				r.logger.Debug("triggering periodic update")
 				r.sync <- struct{}{}
 			}
 		}
@@ -246,7 +238,7 @@ func (r *Retriever) Run(ctx context.Context) error {
 	select {
 	case <-startupComplete:
 		// first sync has been successful
-		level.Debug(r.logger).Log("msg", "initial clusterinfo sync succeeded")
+		r.logger.Debug("initial clusterinfo sync succeeded")
 		return nil
 	case <-time.After(initialTimeout):
 		// initial call timed out
@@ -264,8 +256,8 @@ func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
 
 	res, err := r.client.Get(u.String())
 	if err != nil {
-		level.Error(r.logger).Log(
-			"msg", "failed to get cluster info",
+		r.logger.Error(
+			"failed to get cluster info",
 			"err", err,
 		)
 		return nil, err
@@ -274,8 +266,8 @@ func (r *Retriever) fetchAndDecodeClusterInfo() (*Response, error) {
 	defer func() {
 		err = res.Body.Close()
 		if err != nil {
-			level.Warn(r.logger).Log(
-				"msg", "failed to close http.Client",
+			r.logger.Warn(
+				"failed to close http.Client",
 				"err", err,
 			)
 		}

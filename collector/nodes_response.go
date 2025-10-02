@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,24 +23,25 @@ type nodeStatsResponse struct {
 
 // NodeStatsNodeResponse defines node stats information structure for nodes
 type NodeStatsNodeResponse struct {
-	Name             string                                     `json:"name"`
-	Host             string                                     `json:"host"`
-	Timestamp        int64                                      `json:"timestamp"`
-	TransportAddress string                                     `json:"transport_address"`
-	Hostname         string                                     `json:"hostname"`
-	Roles            []string                                   `json:"roles"`
-	Attributes       map[string]string                          `json:"attributes"`
-	Indices          NodeStatsIndicesResponse                   `json:"indices"`
-	OS               NodeStatsOSResponse                        `json:"os"`
-	Network          NodeStatsNetworkResponse                   `json:"network"`
-	FS               NodeStatsFSResponse                        `json:"fs"`
-	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse `json:"thread_pool"`
-	JVM              NodeStatsJVMResponse                       `json:"jvm"`
-	Breakers         map[string]NodeStatsBreakersResponse       `json:"breakers"`
-	HTTP             map[string]interface{}                     `json:"http"`
-	Transport        NodeStatsTransportResponse                 `json:"transport"`
-	Process          NodeStatsProcessResponse                   `json:"process"`
-	FileCache        NodeStatsFileCacheResponse                 `json:"file_cache"`
+	Name             string                                       `json:"name"`
+	Host             string                                       `json:"host"`
+	Timestamp        int64                                        `json:"timestamp"`
+	TransportAddress string                                       `json:"transport_address"`
+	Hostname         string                                       `json:"hostname"`
+	Roles            []string                                     `json:"roles"`
+	Attributes       map[string]string                            `json:"attributes"`
+	Indices          NodeStatsIndicesResponse                     `json:"indices"`
+	OS               NodeStatsOSResponse                          `json:"os"`
+	Network          NodeStatsNetworkResponse                     `json:"network"`
+	FS               NodeStatsFSResponse                          `json:"fs"`
+	ThreadPool       map[string]NodeStatsThreadPoolPoolResponse   `json:"thread_pool"`
+	JVM              NodeStatsJVMResponse                         `json:"jvm"`
+	Breakers         map[string]NodeStatsBreakersResponse         `json:"breakers"`
+	HTTP             map[string]interface{}                       `json:"http"`
+	Transport        NodeStatsTransportResponse                   `json:"transport"`
+	Process          NodeStatsProcessResponse                     `json:"process"`
+	IndexingPressure map[string]NodeStatsIndexingPressureResponse `json:"indexing_pressure"`
+  FileCache        NodeStatsFileCacheResponse                   `json:"file_cache"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
@@ -49,6 +50,17 @@ type NodeStatsBreakersResponse struct {
 	LimitSize     int64   `json:"limit_size_in_bytes"`
 	Overhead      float64 `json:"overhead"`
 	Tripped       int64   `json:"tripped"`
+}
+
+// NodeStatsIndexingPressureResponse is a representation of a elasticsearch indexing pressure
+type NodeStatsIndexingPressureResponse struct {
+	Current      NodeStatsIndexingPressureCurrentResponse `json:"current"`
+	LimitInBytes int64                                    `json:"limit_in_bytes"`
+}
+
+// NodeStatsIndexingPressureMemoryCurrentResponse is a representation of a elasticsearch indexing pressure current memory usage
+type NodeStatsIndexingPressureCurrentResponse struct {
+	AllInBytes int64 `json:"all_in_bytes"`
 }
 
 // NodeStatsJVMResponse is a representation of a JVM stats, memory pool information, garbage collection, buffer pools, number of loaded/unloaded classes
@@ -161,8 +173,10 @@ type NodeStatsIndicesDocsResponse struct {
 
 // NodeStatsIndicesRefreshResponse defines node stats refresh information structure for indices
 type NodeStatsIndicesRefreshResponse struct {
-	Total     int64 `json:"total"`
-	TotalTime int64 `json:"total_time_in_millis"`
+	Total                     int64 `json:"total"`
+	TotalTime                 int64 `json:"total_time_in_millis"`
+	ExternalTotal             int64 `json:"external_total"`
+	ExternalTotalTimeInMillis int64 `json:"external_total_time_in_millis"`
 }
 
 // NodeStatsIndicesTranslogResponse defines node stats translog information structure for indices

@@ -1,6 +1,7 @@
 go:
-    # This must match .circle/config.yml.
-    version: 1.21
+    # Whenever the Go version is updated here,
+    # .github/workflows should also be updated.
+    version: 1.23
 repository:
     path: github.com/prometheus-community/elasticsearch_exporter
 build:

@@ -1,0 +1,111 @@
+{
+  "status": "green",
+  "cluster_name": "docker-cluster",
+  "indicators": {
+    "master_is_stable": {
+      "status": "green",
+      "symptom": "The cluster has a stable master node",
+      "details": {
+        "current_master": {
+          "node_id": "X8BAj1mfQ3qgcSoAlG3HHw",
+          "name": "5da1610e99a7"
+        },
+        "recent_masters": [
+          {
+            "node_id": "X8BAj1mfQ3qgcSoAlG3HHw",
+            "name": "5da1610e99a7"
+          }
+        ]
+      }
+    },
+    "repository_integrity": {
+      "status": "green",
+      "symptom": "All repositories are healthy.",
+      "details": {
+        "total_repositories": 1
+      }
+    },
+    "shards_capacity": {
+      "status": "green",
+      "symptom": "The cluster has enough room to add new shards.",
+      "details": {
+        "data": {
+          "max_shards_in_cluster": 13500
+        },
+        "frozen": {
+          "max_shards_in_cluster": 9000
+        }
+      }
+    },
+    "shards_availability": {
+      "status": "green",
+      "symptom": "This cluster has all shards available.",
+      "details": {
+        "restarting_replicas": 0,
+        "creating_primaries": 0,
+        "initializing_replicas": 0,
+        "unassigned_replicas": 0,
+        "started_primaries": 11703,
+        "restarting_primaries": 0,
+        "initializing_primaries": 0,
+        "creating_replicas": 0,
+        "started_replicas": 1701,
+        "unassigned_primaries": 0
+      },
+      "impacts": [
+        {
+          "id": "elasticsearch:health:shards_availability:impact:replica_unassigned",
+          "severity": 2,
+          "description": "Searches might be slower than usual. Fewer redundant copies of the data exist on 1 index [twitter].",
+          "impact_areas": [
+            "search"
+          ]
+        }
+      ],
+      "diagnosis": [
+        {
+          "id": "elasticsearch:health:shards_availability:diagnosis:increase_tier_capacity_for_allocations:tier:data_content",
+          "cause": "Elasticsearch isn't allowed to allocate some shards from these indices to any of the nodes in the desired data tier because there are not enough nodes in the [data_content] tier to allocate each shard copy on a different node.",
+          "action": "Increase the number of nodes in this tier or decrease the number of replica shards in the affected indices.",
+          "help_url": "https://ela.st/tier-capacity",
+          "affected_resources": {
+            "indices": [
+              "twitter"
+            ]
+          }
+        }
+      ]
+    },
+    "disk": {
+      "status": "green",
+      "symptom": "The cluster has enough available disk space.",
+      "details": {
+        "indices_with_readonly_block": 0,
+        "nodes_with_enough_disk_space": 1,
+        "nodes_with_unknown_disk_status": 0,
+        "nodes_over_high_watermark": 0,
+        "nodes_over_flood_stage_watermark": 0
+      }
+    },
+    "data_stream_lifecycle": {
+      "status": "green",
+      "symptom": "No data stream lifecycle health data available yet. Health information will be reported after the first run."
+    },
+    "ilm": {
+      "status": "green",
+      "symptom": "Index Lifecycle Management is running",
+      "details": {
+        "policies": 17,
+        "ilm_status": "RUNNING"
+      }
+    },
+    "slm": {
+      "status": "green",
+      "symptom": "No Snapshot Lifecycle Management policies configured",
+      "details": {
+        "slm_status": "RUNNING",
+        "policies": 0
+      }
+    }
+  }
+}

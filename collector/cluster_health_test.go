@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestClusterHealth(t *testing.T) {
@@ -189,7 +189,7 @@ func TestClusterHealth(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewClusterHealth(log.NewNopLogger(), http.DefaultClient, u)
+			c := NewClusterHealth(promslog.NewNopLogger(), http.DefaultClient, u)
 			if err != nil {
 				t.Fatal(err)
 			}

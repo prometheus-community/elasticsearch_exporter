@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 package collector
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -23,21 +22,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
-
-type wrapCollector struct {
-	c Collector
-}
-
-func (w wrapCollector) Describe(ch chan<- *prometheus.Desc) {
-}
-
-func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
-	w.c.Update(context.Background(), ch)
-}
 
 func TestClusterSettingsStats(t *testing.T) {
 	// Testcases created using:
@@ -149,7 +136,7 @@ elasticsearch_clustersettings_allocation_watermark_low_bytes 5.24288e+07
 				t.Fatal(err)
 			}
 
-			c, err := NewClusterSettings(log.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewClusterSettings(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}

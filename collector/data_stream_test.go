@@ -1,4 +1,4 @@
-// Copyright 2022 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,12 +22,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestDataStream(t *testing.T) {
-
 	tests := []struct {
 		name string
 		file string
@@ -65,12 +64,12 @@ func TestDataStream(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewDataStream(log.NewNopLogger(), http.DefaultClient, u)
+			c, err := NewDataStream(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})

@@ -1,4 +1,4 @@
-// Copyright 2022 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,11 +17,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,12 +30,12 @@ func init() {
 }
 
 type ClusterInfoCollector struct {
-	logger log.Logger
+	logger *slog.Logger
 	u      *url.URL
 	hc     *http.Client
 }
 
-func NewClusterInfo(logger log.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterInfo(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &ClusterInfoCollector{
 		logger: logger,
 		u:      u,
@@ -77,7 +77,7 @@ type VersionInfo struct {
 	LuceneVersion semver.Version `json:"lucene_version"`
 }
 
-func (c *ClusterInfoCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *ClusterInfoCollector) Update(_ context.Context, ch chan<- prometheus.Metric) error {
 	resp, err := c.hc.Get(c.u.String())
 	if err != nil {
 		return err

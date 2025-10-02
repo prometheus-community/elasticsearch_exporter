@@ -1,4 +1,4 @@
-// Copyright 2021 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/promslog"
 )
 
 func TestSnapshots(t *testing.T) {
@@ -209,7 +209,7 @@ func TestSnapshots(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewSnapshots(log.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewSnapshots(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}

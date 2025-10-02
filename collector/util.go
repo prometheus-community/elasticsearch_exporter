@@ -1,4 +1,4 @@
-// Copyright 2023 The Prometheus Authors
+// Copyright The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,13 +17,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
-func getURL(ctx context.Context, hc *http.Client, log log.Logger, u string) ([]byte, error) {
+func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
@@ -37,8 +35,8 @@ func getURL(ctx context.Context, hc *http.Client, log log.Logger, u string) ([]b
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
-			level.Warn(log).Log(
-				"msg", "failed to close response body",
+			log.Warn(
+				"failed to close response body",
 				"err", err,
 			)
 		}
@@ -54,4 +52,12 @@ func getURL(ctx context.Context, hc *http.Client, log log.Logger, u string) ([]b
 	}
 
 	return b, nil
+}
+
+// bool2Float converts a bool to a float64. True is 1, false is 0.
+func bool2Float(managed bool) float64 {
+	if managed {
+		return 1
+	}
+	return 0
 }
