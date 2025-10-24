@@ -140,9 +140,9 @@ type clusterSettingsDisk struct {
 
 // clusterSettingsWatermark is representation of Elasticsearch Cluster shard routing disk allocation watermark settings
 type clusterSettingsWatermark struct {
-	FloodStage string `json:"flood_stage"`
-	High       string `json:"high"`
-	Low        string `json:"low"`
+	FloodStage interface{} `json:"flood_stage"`
+	High       interface{} `json:"high"`
+	Low        interface{} `json:"low"`
 }
 
 func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
@@ -222,78 +222,108 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	)
 
 	// Watermark bytes or ratio metrics
-	if strings.HasSuffix(merged.Cluster.Routing.Allocation.Disk.Watermark.High, "b") {
-		flooodStageBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
-		if err != nil {
-			c.logger.Error("failed to parse flood_stage bytes", "err", err)
+	watermarkFlood, err := parseWatermarkValue(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
+	if err != nil {
+		c.logger.Error("failed to parse flood stage watermark", "err", err)
+	} else {
+		if strings.HasSuffix(watermarkFlood, "b") {
+			floodStageBytes, err := getValueInBytes(watermarkFlood)
+			if err != nil {
+				c.logger.Error("failed to parse flood_stage bytes", "err", err)
+			} else {
+				ch <- prometheus.MustNewConstMetric(
+					clusterSettingsDesc["floodStageBytes"],
+					prometheus.GaugeValue,
+					floodStageBytes,
+				)
+			}
 		} else {
-			ch <- prometheus.MustNewConstMetric(
-				clusterSettingsDesc["floodStageBytes"],
-				prometheus.GaugeValue,
-				flooodStageBytes,
-			)
+			floodStageRatio, err := getValueAsRatio(watermarkFlood)
+			if err != nil {
+				c.logger.Error("failed to parse flood_stage ratio", "err", err)
+			} else {
+				ch <- prometheus.MustNewConstMetric(
+					clusterSettingsDesc["floodStageRatio"],
+					prometheus.GaugeValue,
+					floodStageRatio,
+				)
+			}
 		}
-
-		highBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
-		if err != nil {
-			c.logger.Error("failed to parse high bytes", "err", err)
-		} else {
-			ch <- prometheus.MustNewConstMetric(
-				clusterSettingsDesc["highBytes"],
-				prometheus.GaugeValue,
-				highBytes,
-			)
-		}
-
-		lowBytes, err := getValueInBytes(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
-		if err != nil {
-			c.logger.Error("failed to parse low bytes", "err", err)
-		} else {
-			ch <- prometheus.MustNewConstMetric(
-				clusterSettingsDesc["lowBytes"],
-				prometheus.GaugeValue,
-				lowBytes,
-			)
-		}
-
-		return nil
 	}
 
-	// Watermark ratio metrics
-	floodRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.FloodStage)
+	watermarkHigh, err := parseWatermarkValue(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
 	if err != nil {
-		c.logger.Error("failed to parse flood_stage ratio", "err", err)
+		c.logger.Error("failed to parse high watermark", "err", err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(
-			clusterSettingsDesc["floodStageRatio"],
-			prometheus.GaugeValue,
-			floodRatio,
-		)
+		if strings.HasSuffix(watermarkHigh, "b") {
+			highBytes, err := getValueInBytes(watermarkHigh)
+			if err != nil {
+				c.logger.Error("failed to parse high bytes", "err", err)
+			} else {
+				ch <- prometheus.MustNewConstMetric(
+					clusterSettingsDesc["highBytes"],
+					prometheus.GaugeValue,
+					highBytes,
+				)
+			}
+		} else {
+			highRatio, err := getValueAsRatio(watermarkHigh)
+			if err != nil {
+				c.logger.Error("failed to parse high ratio", "err", err)
+			} else {
+				ch <- prometheus.MustNewConstMetric(
+					clusterSettingsDesc["highRatio"],
+					prometheus.GaugeValue,
+					highRatio,
+				)
+			}
+		}
 	}
 
-	highRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.High)
+	watermarkLow, err := parseWatermarkValue(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
 	if err != nil {
-		c.logger.Error("failed to parse high ratio", "err", err)
+		c.logger.Error("failed to parse low watermark", "err", err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(
-			clusterSettingsDesc["highRatio"],
-			prometheus.GaugeValue,
-			highRatio,
-		)
-	}
-
-	lowRatio, err := getValueAsRatio(merged.Cluster.Routing.Allocation.Disk.Watermark.Low)
-	if err != nil {
-		c.logger.Error("failed to parse low ratio", "err", err)
-	} else {
-		ch <- prometheus.MustNewConstMetric(
-			clusterSettingsDesc["lowRatio"],
-			prometheus.GaugeValue,
-			lowRatio,
-		)
+		if strings.HasSuffix(watermarkLow, "b") {
+			lowBytes, err := getValueInBytes(watermarkLow)
+			if err != nil {
+				c.logger.Error("failed to parse low bytes", "err", err)
+			} else {
+				ch <- prometheus.MustNewConstMetric(
+					clusterSettingsDesc["lowBytes"],
+					prometheus.GaugeValue,
+					lowBytes,
+				)
+			}
+		} else {
+			lowRatio, err := getValueAsRatio(watermarkLow)
+			if err != nil {
+				c.logger.Error("failed to parse low ratio", "err", err)
+			} else {
+				ch <- prometheus.MustNewConstMetric(
+					clusterSettingsDesc["lowRatio"],
+					prometheus.GaugeValue,
+					lowRatio,
+				)
+			}
+		}
 	}
 
 	return nil
+}
+
+func parseWatermarkValue(value interface{}) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case map[string]interface{}:
+		if val, ok := v["value"].(string); ok {
+			return val, nil
+		}
+		return "", fmt.Errorf("unexpected structure in watermark value: %v", v)
+	default:
+		return "", fmt.Errorf("unsupported type for watermark value: %T", v)
+	}
 }
 
 func getValueInBytes(value string) (float64, error) {
