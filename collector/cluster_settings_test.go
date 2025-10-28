@@ -116,6 +116,30 @@ elasticsearch_clustersettings_allocation_watermark_high_bytes 2.147483648e+11
 elasticsearch_clustersettings_allocation_watermark_low_bytes 5.24288e+07
 `,
 		},
+		{
+			name: "8.9.1-persistent-watermark-percent",
+			file: "../fixtures/settings-8.9.1-watermark.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_max_shards_per_node Current maximum number of shards per node setting.
+# TYPE elasticsearch_clustersettings_stats_max_shards_per_node gauge
+elasticsearch_clustersettings_stats_max_shards_per_node 1000
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+# HELP elasticsearch_clustersettings_allocation_threshold_enabled Is disk allocation decider enabled.
+# TYPE elasticsearch_clustersettings_allocation_threshold_enabled gauge
+elasticsearch_clustersettings_allocation_threshold_enabled 1
+# HELP elasticsearch_clustersettings_allocation_watermark_flood_stage_ratio Flood stage watermark as a ratio.
+# TYPE elasticsearch_clustersettings_allocation_watermark_flood_stage_ratio gauge
+elasticsearch_clustersettings_allocation_watermark_flood_stage_ratio 0.96
+# HELP elasticsearch_clustersettings_allocation_watermark_high_ratio High watermark for disk usage as a ratio.
+# TYPE elasticsearch_clustersettings_allocation_watermark_high_ratio gauge
+elasticsearch_clustersettings_allocation_watermark_high_ratio 0.92
+# HELP elasticsearch_clustersettings_allocation_watermark_low_ratio Low watermark for disk usage as a ratio.
+# TYPE elasticsearch_clustersettings_allocation_watermark_low_ratio gauge
+elasticsearch_clustersettings_allocation_watermark_low_ratio 0.88
+`,
+		},
 	}
 
 	for _, tt := range tests {
