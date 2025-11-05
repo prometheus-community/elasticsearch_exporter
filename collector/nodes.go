@@ -1519,6 +1519,54 @@ func NewNodes(logger *slog.Logger, client *http.Client, url *url.URL, all bool, 
 				},
 				Labels: defaultNodeLabelValues,
 			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_count"),
+					"Total number of ingest count since the last JVM restart",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.Count)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_time_seconds"),
+					"Total number of ingest time in seconds since the last JVM restart",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.TimeInMillis) * 0.001
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_current"),
+					"Total number of current ingest docs since the last JVM restart",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.Current)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "ingest", "total_failed"),
+					"Total number of ingest failed docs since the last JVM restart",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Ingest.Total.Failed)
+				},
+				Labels: defaultNodeLabelValues,
+			},
 		},
 		gcCollectionMetrics: []*gcCollectionMetric{
 			{
