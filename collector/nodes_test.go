@@ -352,6 +352,21 @@ func TestNodesStats(t *testing.T) {
             elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="ml"} 0
             elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="remote_cluster_client"} 0
             elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="transform"} 0
+            # HELP elasticsearch_os_cgroup_cpu_cfs_period_micros CPU period length in microseconds (Linux CFS bandwidth control)
+            # TYPE elasticsearch_os_cgroup_cpu_cfs_period_micros gauge
+            elasticsearch_os_cgroup_cpu_cfs_period_micros{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_os_cgroup_cpu_cfs_quota_micros CPU quota per CPU period (cgroup_cfs_period_micros) in microseconds (Linux CFS bandwidth control)
+            # TYPE elasticsearch_os_cgroup_cpu_cfs_quota_micros gauge
+            elasticsearch_os_cgroup_cpu_cfs_quota_micros{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled Number of times the process has been throttled (Linux CFS bandwidth control)
+            # TYPE elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled counter
+            elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos Total time duration (in nanoseconds) for which the process has been throttled (Linux CFS bandwidth control)
+            # TYPE elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos counter
+            elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_os_cgroup_cpuacct_usage_nanos Total CPU usage in nanoseconds (Linux cgroups CPU accounting)
+            # TYPE elasticsearch_os_cgroup_cpuacct_usage_nanos counter
+            elasticsearch_os_cgroup_cpuacct_usage_nanos{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
             # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
             # TYPE elasticsearch_os_cpu_percent gauge
             elasticsearch_os_cpu_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 23
@@ -811,6 +826,21 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="ml"} 0
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="remote_cluster_client"} 0
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="transform"} 0
+             # HELP elasticsearch_os_cgroup_cpu_cfs_period_micros CPU period length in microseconds (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_cfs_period_micros gauge
+             elasticsearch_os_cgroup_cpu_cfs_period_micros{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 100000
+             # HELP elasticsearch_os_cgroup_cpu_cfs_quota_micros CPU quota per CPU period (cgroup_cfs_period_micros) in microseconds (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_cfs_quota_micros gauge
+             elasticsearch_os_cgroup_cpu_cfs_quota_micros{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} -1
+             # HELP elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled Number of times the process has been throttled (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled counter
+             elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
+             # HELP elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos Total time duration (in nanoseconds) for which the process has been throttled (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos counter
+             elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
+             # HELP elasticsearch_os_cgroup_cpuacct_usage_nanos Total CPU usage in nanoseconds (Linux cgroups CPU accounting)
+             # TYPE elasticsearch_os_cgroup_cpuacct_usage_nanos counter
+             elasticsearch_os_cgroup_cpuacct_usage_nanos{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 3.3206615382e+10
              # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
              # TYPE elasticsearch_os_cpu_percent gauge
              elasticsearch_os_cpu_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 30
@@ -1334,6 +1364,21 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="ml"} 1
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="remote_cluster_client"} 1
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="transform"} 1
+             # HELP elasticsearch_os_cgroup_cpu_cfs_period_micros CPU period length in microseconds (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_cfs_period_micros gauge
+             elasticsearch_os_cgroup_cpu_cfs_period_micros{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 100000
+             # HELP elasticsearch_os_cgroup_cpu_cfs_quota_micros CPU quota per CPU period (cgroup_cfs_period_micros) in microseconds (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_cfs_quota_micros gauge
+             elasticsearch_os_cgroup_cpu_cfs_quota_micros{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} -1
+             # HELP elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled Number of times the process has been throttled (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled counter
+             elasticsearch_os_cgroup_cpu_stat_number_of_times_throttled{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos Total time duration (in nanoseconds) for which the process has been throttled (Linux CFS bandwidth control)
+             # TYPE elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos counter
+             elasticsearch_os_cgroup_cpu_stat_time_throttled_nanos{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_os_cgroup_cpuacct_usage_nanos Total CPU usage in nanoseconds (Linux cgroups CPU accounting)
+             # TYPE elasticsearch_os_cgroup_cpuacct_usage_nanos counter
+             elasticsearch_os_cgroup_cpuacct_usage_nanos{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 5.2445263941e+10
              # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
              # TYPE elasticsearch_os_cpu_percent gauge
              elasticsearch_os_cpu_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 37
