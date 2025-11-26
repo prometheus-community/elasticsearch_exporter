@@ -66,10 +66,10 @@ func TestNodesStats(t *testing.T) {
             elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
 			# HELP elasticsearch_filecache_active_in_bytes file_cache active memory in bytes
 			# TYPE elasticsearch_filecache_active_in_bytes gauge
-			elasticsearch_filecache_active_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			elasticsearch_filecache_active_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
 			# HELP elasticsearch_filecache_active_percent file_cache active memory as percent
 			# TYPE elasticsearch_filecache_active_percent gauge
-			elasticsearch_filecache_active_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			elasticsearch_filecache_active_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
 			# HELP elasticsearch_filecache_evictions_in_bytes file_cache evicted memory in bytes
 			# TYPE elasticsearch_filecache_evictions_in_bytes gauge
 			elasticsearch_filecache_evictions_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
