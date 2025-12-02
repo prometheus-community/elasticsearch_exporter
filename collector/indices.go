@@ -432,11 +432,6 @@ var (
 	)
 )
 
-type labels struct {
-	keys   func(...string) []string
-	values func(*clusterinfo.Response, ...string) []string
-}
-
 // Indices information struct
 type Indices struct {
 	logger          *slog.Logger
