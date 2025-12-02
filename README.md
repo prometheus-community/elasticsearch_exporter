@@ -67,6 +67,7 @@ elasticsearch_exporter --help
 | collector.health-report | 1.10.0                 | If true, query the health report (requires elasticsearch 8.7.0 or later)                                                                                                                                                                                                                                                                                                              | false |
 | es.slm                  |                       | If true, query stats for SLM.                                                                                                                                                                                                                                                                                                                                                         | false |
 | es.data_stream          |                       | If true, query state for Data Steams.                                                                                                                                                                                                                                                                                                                                                 | false |
+| es.remote_info          | 2.x.x                 | If true, query stats for configured remote clusters in the Elasticsearch cluster. Exposes connection metrics for cross-cluster search and replication.                                                                                                                                                                                                                                | false |
 | es.timeout              | 1.0.2                 | Timeout for trying to get stats from Elasticsearch. (ex: 20s)                                                                                                                                                                                                                                                                                                                         | 5s |
 | es.ca                   | 1.0.2                 | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.                                                                                                                                                                                                                                                                                      | |
 | es.client-private-key   | 1.0.2                 | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.                                                                                                                                                                                                                                                                                      | |
@@ -107,6 +108,7 @@ es.shards | not sure if `indices` or `cluster` `monitor` or both |
 collector.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 es.slm | `manage_slm`
 es.data_stream | `monitor` or `manage` (per index or `*`) |
+es.remote_info | `cluster` `monitor` | Required for accessing remote cluster connection information via the `/_remote/info` endpoint
 
 Further Information
 
@@ -174,6 +176,49 @@ Notes:
 - `/probe` creates a fresh registry per scrape for the given `target` allowing multi-target scraping.
 - Any `options:` under an auth module will be appended as URL query parameters to the target URL.
 - The `tls` auth module (client certificate authentication) is intended for self‑managed Elasticsearch/OpenSearch deployments. Amazon OpenSearch Service typically authenticates at the domain edge with IAM/SigV4 and does not support client certificate authentication; use the `aws` auth module instead when scraping Amazon OpenSearch Service domains.
+
+### Remote Cluster Monitoring
+
+The remote info collector (`es.remote_info`) provides monitoring capabilities for Elasticsearch cross-cluster search and cross-cluster replication configurations. This collector queries the `/_remote/info` endpoint to gather connection statistics for configured remote clusters.
+
+#### When to Enable
+
+Enable this collector when you have:
+- Cross-cluster search configured
+- Cross-cluster replication set up
+- Multiple Elasticsearch clusters connected via remote cluster connections
+- Need to monitor the health and connectivity of remote cluster connections
+
+#### Metrics Provided
+
+The collector provides connection metrics labeled by `remote_cluster` name, including:
+- Active node connections to remote clusters
+- Proxy socket connections (for clusters behind proxies)
+- Maximum connection limits per cluster
+- Connection health and scrape statistics
+
+#### Prerequisites
+
+- Remote clusters must be properly configured in your Elasticsearch cluster
+- The user account must have `cluster:monitor` privileges to access the `/_remote/info` endpoint
+- Remote clusters should be accessible and properly configured with seeds
+
+#### Example Configuration
+
+To enable remote cluster monitoring:
+
+```bash
+./elasticsearch_exporter --es.uri=http://localhost:9200 --es.remote_info
+```
+
+The collector will automatically discover all configured remote clusters and expose metrics for each one.
+
+The remote info collector can also be enabled via the `ES_REMOTE_INFO` environment variable:
+
+```bash
+export ES_REMOTE_INFO=true
+./elasticsearch_exporter --es.uri=http://localhost:9200
+```
 
 ### Metrics
 
