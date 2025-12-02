@@ -96,6 +96,7 @@ var (
 			fmt.Sprintf("%t", roles["data"]),
 			fmt.Sprintf("%t", roles["ingest"]),
 			fmt.Sprintf("%t", roles["client"]),
+			fmt.Sprintf("%t", roles["search"]),
 		}
 	}
 	defaultThreadPoolLabelValues = func(cluster string, node NodeStatsNodeResponse, pool string) []string {
