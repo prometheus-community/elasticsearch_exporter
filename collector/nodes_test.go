@@ -558,12 +558,6 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_breakers_overhead{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 1
              # HELP elasticsearch_breakers_tripped tripped for breaker
              # TYPE elasticsearch_breakers_tripped counter
-             elasticsearch_breakers_tripped{breaker="accounting",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
-             elasticsearch_breakers_tripped{breaker="fielddata",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
-             elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
-             elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
-             elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
-             # HELP elasticsearch_filesystem_data_available_bytes Available space on block device in bytes
              elasticsearch_breakers_tripped{breaker="accounting",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
              elasticsearch_breakers_tripped{breaker="fielddata",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
              elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
@@ -1105,13 +1099,6 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_breakers_overhead{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 1
              # HELP elasticsearch_breakers_tripped tripped for breaker
              # TYPE elasticsearch_breakers_tripped counter
-             elasticsearch_breakers_tripped{breaker="accounting",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
-             elasticsearch_breakers_tripped{breaker="fielddata",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
-             elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
-             elasticsearch_breakers_tripped{breaker="model_inference",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
-             elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
-             elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
-             # HELP elasticsearch_filesystem_data_available_bytes Available space on block device in bytes
              elasticsearch_breakers_tripped{breaker="accounting",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              elasticsearch_breakers_tripped{breaker="fielddata",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
