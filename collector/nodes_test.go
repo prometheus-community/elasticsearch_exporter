@@ -64,10 +64,6 @@ func TestNodesStats(t *testing.T) {
             elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
             elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
             elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
-            elasticsearch_breakers_tripped{breaker="fielddata",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
-            elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
-            elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
-            elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
 			# HELP elasticsearch_filecache_active_in_bytes file_cache active memory in bytes
 			# TYPE elasticsearch_filecache_active_in_bytes gauge
 			elasticsearch_filecache_active_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
