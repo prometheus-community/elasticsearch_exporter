@@ -41,6 +41,7 @@ type NodeStatsNodeResponse struct {
 	Transport        NodeStatsTransportResponse                   `json:"transport"`
 	Process          NodeStatsProcessResponse                     `json:"process"`
 	IndexingPressure map[string]NodeStatsIndexingPressureResponse `json:"indexing_pressure"`
+	FileCache        NodeStatsFileCacheResponse                   `json:"file_cache"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
