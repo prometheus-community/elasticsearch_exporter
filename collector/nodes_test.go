@@ -68,6 +68,30 @@ func TestNodesStats(t *testing.T) {
             elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
             elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
             elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_active_in_bytes file_cache active memory in bytes
+			# TYPE elasticsearch_filecache_active_in_bytes gauge
+			elasticsearch_filecache_active_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_active_percent file_cache active memory as percent
+			# TYPE elasticsearch_filecache_active_percent gauge
+			elasticsearch_filecache_active_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_evictions_in_bytes file_cache evicted memory in bytes
+			# TYPE elasticsearch_filecache_evictions_in_bytes gauge
+			elasticsearch_filecache_evictions_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_hit_count file_cache hit count
+			# TYPE elasticsearch_filecache_hit_count gauge
+			elasticsearch_filecache_hit_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_miss_count file_cache miss count
+			# TYPE elasticsearch_filecache_miss_count gauge
+			elasticsearch_filecache_miss_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_total_in_bytes file_cache total memory in bytes
+			# TYPE elasticsearch_filecache_total_in_bytes gauge
+			elasticsearch_filecache_total_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_used_in_bytes file_cache used memory in bytes
+			# TYPE elasticsearch_filecache_used_in_bytes gauge
+			elasticsearch_filecache_used_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
+			# HELP elasticsearch_filecache_used_percent file_cache used memory as percent
+			# TYPE elasticsearch_filecache_used_percent gauge
+			elasticsearch_filecache_used_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",name="bVrN1Hx"} 0
             # HELP elasticsearch_filesystem_data_available_bytes Available space on block device in bytes
             # TYPE elasticsearch_filesystem_data_available_bytes gauge
             elasticsearch_filesystem_data_available_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="127.0.0.1",mount="/usr/share/elasticsearch/data (/dev/mapper/vg0-root)",name="bVrN1Hx",path="/usr/share/elasticsearch/data/nodes/0"} 7.7533405184e+10
@@ -549,6 +573,30 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_breakers_tripped{breaker="in_flight_requests",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
              elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
              elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+             # HELP elasticsearch_filecache_active_in_bytes file_cache active memory in bytes
+			 # TYPE elasticsearch_filecache_active_in_bytes gauge
+			 elasticsearch_filecache_active_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_active_percent file_cache active memory as percent
+			 # TYPE elasticsearch_filecache_active_percent gauge
+			 elasticsearch_filecache_active_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_evictions_in_bytes file_cache evicted memory in bytes
+			 # TYPE elasticsearch_filecache_evictions_in_bytes gauge
+			 elasticsearch_filecache_evictions_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_hit_count file_cache hit count
+			 # TYPE elasticsearch_filecache_hit_count gauge
+			 elasticsearch_filecache_hit_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_miss_count file_cache miss count
+			 # TYPE elasticsearch_filecache_miss_count gauge
+			 elasticsearch_filecache_miss_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_total_in_bytes file_cache total memory in bytes
+			 # TYPE elasticsearch_filecache_total_in_bytes gauge
+			 elasticsearch_filecache_total_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_used_in_bytes file_cache used memory in bytes
+			 # TYPE elasticsearch_filecache_used_in_bytes gauge
+			 elasticsearch_filecache_used_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
+			 # HELP elasticsearch_filecache_used_percent file_cache used memory as percent
+			 # TYPE elasticsearch_filecache_used_percent gauge
+			 elasticsearch_filecache_used_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="9_P7yui"} 0
 			 # HELP elasticsearch_filesystem_data_available_bytes Available space on block device in bytes
              # TYPE elasticsearch_filesystem_data_available_bytes gauge
              elasticsearch_filesystem_data_available_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",mount="/ (overlay)",name="9_P7yui",path="/usr/share/elasticsearch/data/nodes/0"} 7.753281536e+10
@@ -1074,6 +1122,31 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_breakers_tripped{breaker="model_inference",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              elasticsearch_breakers_tripped{breaker="parent",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              elasticsearch_breakers_tripped{breaker="request",cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_active_in_bytes file_cache active memory in bytes
+			 # TYPE elasticsearch_filecache_active_in_bytes gauge
+			 elasticsearch_filecache_active_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_active_percent file_cache active memory as percent
+			 # TYPE elasticsearch_filecache_active_percent gauge
+			 elasticsearch_filecache_active_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_evictions_in_bytes file_cache evicted memory in bytes
+			 # TYPE elasticsearch_filecache_evictions_in_bytes gauge
+			 elasticsearch_filecache_evictions_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_hit_count file_cache hit count
+			 # TYPE elasticsearch_filecache_hit_count gauge
+			 elasticsearch_filecache_hit_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_miss_count file_cache miss count
+			 # TYPE elasticsearch_filecache_miss_count gauge
+			 elasticsearch_filecache_miss_count{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_total_in_bytes file_cache total memory in bytes
+			 # TYPE elasticsearch_filecache_total_in_bytes gauge
+			 elasticsearch_filecache_total_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_used_in_bytes file_cache used memory in bytes
+			 # TYPE elasticsearch_filecache_used_in_bytes gauge
+			 elasticsearch_filecache_used_in_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filecache_used_percent file_cache used memory as percent
+			 # TYPE elasticsearch_filecache_used_percent gauge
+			 elasticsearch_filecache_used_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+			 # HELP elasticsearch_filesystem_data_available_bytes Available space on block device in bytes
              # TYPE elasticsearch_filesystem_data_available_bytes gauge
              elasticsearch_filesystem_data_available_bytes{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",es_search_node="false",host="172.17.0.2",mount="/ (overlay)",name="aaf5a8a0bceb",path="/usr/share/elasticsearch/data/nodes/0"} 6.3425642496e+10
              # HELP elasticsearch_filesystem_data_free_bytes Free space on block device in bytes
