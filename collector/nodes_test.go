@@ -340,18 +340,18 @@ func TestNodesStats(t *testing.T) {
             elasticsearch_jvm_uptime_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx",type="mapped"} 14.845
             # HELP elasticsearch_nodes_roles Node roles
             # TYPE elasticsearch_nodes_roles gauge
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="client"} 1
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="data"} 1
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="data_cold"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="data_content"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="data_frozen"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="data_hot"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="data_warm"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="ingest"} 1
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="master"} 1
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="ml"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="remote_cluster_client"} 0
-            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",role="transform"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="client"} 1
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="data"} 1
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="data_cold"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="data_content"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="data_frozen"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="data_hot"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="data_warm"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="ingest"} 1
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="master"} 1
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="ml"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="remote_cluster_client"} 0
+            elasticsearch_nodes_roles{cluster="elasticsearch",host="127.0.0.1",name="bVrN1Hx",node="bVrN1HxvQLy795ZLNg2XNw",role="transform"} 0
             # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
             # TYPE elasticsearch_os_cpu_percent gauge
             elasticsearch_os_cpu_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 23
@@ -799,18 +799,18 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_jvm_uptime_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui",type="mapped"} 16.456
              # HELP elasticsearch_nodes_roles Node roles
              # TYPE elasticsearch_nodes_roles gauge
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="client"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="data"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="data_cold"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="data_content"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="data_frozen"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="data_hot"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="data_warm"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="ingest"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="master"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="ml"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="remote_cluster_client"} 0
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",role="transform"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="client"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="data"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="data_cold"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="data_content"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="data_frozen"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="data_hot"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="data_warm"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="ingest"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="master"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="ml"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="remote_cluster_client"} 0
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="9_P7yui",node="9_P7yuiySjG7OAN6NRbBRA",role="transform"} 0
              # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
              # TYPE elasticsearch_os_cpu_percent gauge
              elasticsearch_os_cpu_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 30
@@ -1322,18 +1322,18 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_jvm_uptime_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb",type="mapped"} 21.844
              # HELP elasticsearch_nodes_roles Node roles
              # TYPE elasticsearch_nodes_roles gauge
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="client"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="data"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="data_cold"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="data_content"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="data_frozen"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="data_hot"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="data_warm"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="ingest"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="master"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="ml"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="remote_cluster_client"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",role="transform"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="client"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="data"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="data_cold"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="data_content"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="data_frozen"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="data_hot"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="data_warm"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="ingest"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="master"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="ml"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="remote_cluster_client"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="transform"} 1
              # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
              # TYPE elasticsearch_os_cpu_percent gauge
              elasticsearch_os_cpu_percent{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 37
