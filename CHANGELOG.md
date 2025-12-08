@@ -17,7 +17,7 @@
 * [FEATURE] Add multi-target scraping via /probe endpoint #1063
 * [FEATURE] Add health-report collector #1002
 * [FEATURE] Add pprof profiling #1033
-* [PERF] Ensure time.Ticker is released #1049
+* [ENHANCEMENT] Ensure time.Ticker is released #1049
 * [BUGFIX] Fix disk watermark values json parsing #1055
 * [BUGFIX] Change collector failure log level to warning #1050
 
