@@ -1,17 +1,25 @@
 ## master / unreleased
 
-### Added
-- Multi-target scraping via `/probe` endpoint with optional auth modules (compatible with postgres_exporter style) #1063
 
-BREAKING CHANGES:
+## 1.10.0 / 2025-12-02
 
-* [CHANGE] Set `--es.uri` by default to empty string #1063
+### BREAKING CHANGES
 
-The flag `--es.data_stream` has been renamed to `--collector.data-stream`.
-The flag `--es.ilm` has been renamed to `--collector.ilm`.
+* `--es.uri` now defaults to empty string #1063
+* The flag `--es.data_stream` has been renamed to `--collector.data-stream`.
+* The flag `--es.ilm` has been renamed to `--collector.ilm`.
 
+### Changelog
+
+* [SECURITY] Remove logging unsanitized URL when HTTP request fails #1051
 * [CHANGE] Rename --es.data_stream to --collector.data-stream #983
 * [CHANGE] Rename --es.ilm to --collector.ilm #999
+* [FEATURE] Add multi-target scraping via /probe endpoint #1063
+* [FEATURE] Add health-report collector #1002
+* [FEATURE] Add pprof profiling #1033
+* [ENHANCEMENT] Ensure time.Ticker is released #1049
+* [BUGFIX] Fix disk watermark values json parsing #1055
+* [BUGFIX] Change collector failure log level to warning #1050
 
 ## 1.9.0 / 2025-02-27
 
