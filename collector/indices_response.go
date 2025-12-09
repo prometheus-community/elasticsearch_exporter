@@ -223,3 +223,10 @@ type IndexStatsIndexRecoveryResponse struct {
 	CurrentAsTarget      int64 `json:"current_as_target"`
 	ThrottleTimeInMillis int64 `json:"throttle_time_in_millis"`
 }
+
+// nodesResponse is a representation of Elasticsearch Nodes API with name filter
+type nodesResponse struct {
+	Nodes map[string]struct {
+		Name string `json:"name"`
+	} `json:"nodes"`
+}
