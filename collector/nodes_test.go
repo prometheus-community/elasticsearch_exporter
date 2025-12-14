@@ -1407,7 +1407,7 @@ func TestNodesStats(t *testing.T) {
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="master"} 1
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="ml"} 1
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="remote_cluster_client"} 1
-             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="search"} 1
+             elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="search"} 0
              elasticsearch_nodes_roles{cluster="elasticsearch",host="172.17.0.2",name="aaf5a8a0bceb",node="byoDEtBRSRGZyMKaIpmhCQ",role="transform"} 1
              # HELP elasticsearch_os_cpu_percent Percent CPU used by OS
              # TYPE elasticsearch_os_cpu_percent gauge
