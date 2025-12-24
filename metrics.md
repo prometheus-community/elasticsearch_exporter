@@ -89,6 +89,8 @@
 | elasticsearch_indices_settings_replicas                              | gauge      |             | Index setting value for index.replicas                                                              |
 | elasticsearch_indices_shards_docs                                    | gauge      | 3           | Count of documents on this shard                                                                    |
 | elasticsearch_indices_shards_docs_deleted                            | gauge      | 3           | Count of deleted documents on each shard                                                            |
+| elasticsearch_node_shards_total                                      | gauge      | 2           | Total shards per node                                                                               |
+| elasticsearch_node_shards_state                                      | gauge      | 4           | Shard state allocated per node by index and shard (0=unassigned, 10=primary started, 11=primary initializing, 12=primary relocating, 20=replica started, 21=replica initializing, 22=replica relocating). |
 | elasticsearch_indices_store_size_bytes                               | gauge      | 1           | Current size of stored index data in bytes                                                          |
 | elasticsearch_indices_store_size_bytes_primary                       | gauge      |             | Current size of stored index data in bytes with only primary shards on all nodes                    |
 | elasticsearch_indices_store_size_bytes_total                         | gauge      |             | Current size of stored index data in bytes with all shards on all nodes                             |
