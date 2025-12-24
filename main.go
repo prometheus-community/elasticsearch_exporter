@@ -336,6 +336,8 @@ func main() {
 		var transport http.RoundTripper = &http.Transport{
 			TLSClientConfig: tlsCfg,
 			Proxy:           http.ProxyFromEnvironment,
+			IdleConnTimeout: 30 * time.Second,
+			MaxIdleConns:    100,
 		}
 
 		// inject authentication based on auth_module type
