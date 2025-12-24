@@ -2081,22 +2081,22 @@ func TestIndices(t *testing.T) {
              elasticsearch_indices_segment_version_map_memory_bytes_total{cluster="unknown_cluster",index="foo_3"} 0
              # HELP elasticsearch_indices_shards_docs Count of documents on this shard
              # TYPE elasticsearch_indices_shards_docs gauge
-             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 37
-             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 2
-             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 3
-             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 37
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 2
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 3
+             elasticsearch_indices_shards_docs{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 0
              # HELP elasticsearch_indices_shards_docs_deleted Count of deleted documents on this shard
              # TYPE elasticsearch_indices_shards_docs_deleted gauge
-             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
-             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
-             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
-             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 0
+             elasticsearch_indices_shards_docs_deleted{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 0
              # HELP elasticsearch_indices_shards_store_size_in_bytes Store size of this shard
              # TYPE elasticsearch_indices_shards_store_size_in_bytes gauge
-             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 3.7286036e+07
-             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 8600
-             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 12925
-             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",primary="true",shard="0"} 226
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index=".geoip_databases",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 3.7286036e+07
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_1",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 8600
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_2",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 12925
+             elasticsearch_indices_shards_store_size_in_bytes{cluster="unknown_cluster",index="foo_3",node="49nZYKtiQdGg7Nl_sVsI1A",node_name="es-node-1",primary="true",shard="0"} 226
              # HELP elasticsearch_indices_store_size_bytes_primary Current total size of stored index data in bytes with only primary shards on all nodes
              # TYPE elasticsearch_indices_store_size_bytes_primary gauge
              elasticsearch_indices_store_size_bytes_primary{cluster="unknown_cluster",index=".geoip_databases"} 3.7286036e+07
@@ -2139,6 +2139,17 @@ func TestIndices(t *testing.T) {
 			}
 			defer fAlias.Close()
 
+			var fNodes io.ReadCloser
+			fNodes, err = os.Open(path.Join("../fixtures/nodes/", tt.file))
+			if err != nil {
+				if os.IsNotExist(err) {
+					fNodes = io.NopCloser(strings.NewReader("{}"))
+				} else {
+					t.Fatal(err)
+				}
+			}
+			defer fNodes.Close()
+
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/_all/_stats":
@@ -2150,6 +2161,8 @@ func TestIndices(t *testing.T) {
 					}
 				case "/_alias":
 					io.Copy(w, fAlias)
+				case "/_nodes":
+					io.Copy(w, fNodes)
 				default:
 					http.Error(w, "Not Found", http.StatusNotFound)
 				}
@@ -2161,7 +2174,7 @@ func TestIndices(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true)
+			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, tt.shards, true)
 			if err != nil {
 				t.Fatal(err)
 			}
