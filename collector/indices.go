@@ -267,6 +267,26 @@ var (
 		"Total indexing throttle time in seconds",
 		indicesLabels, nil,
 	)
+	indicesIndexingIndexFailed = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "index_stats", "indexing_index_failed_total"),
+		"Total number of failed indexing operations",
+		indicesLabels, nil,
+	)
+	indicesIndexingDeleteCurrent = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "index_stats", "indexing_delete_current"),
+		"The number of documents currently being deleted from an index",
+		indicesLabels, nil,
+	)
+	indicesIndexingWriteLoad = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "index_stats", "indexing_write_load"),
+		"Write load for indexing operations",
+		indicesLabels, nil,
+	)
+	indicesIndexingIsThrottled = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices", "indexing_is_throttled"),
+		"Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)",
+		indicesLabels, nil,
+	)
 	indicesGetTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "get_time_seconds_total"),
 		"Total get time in seconds",
@@ -536,6 +556,10 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- indicesIndexingDeleteTotal
 	ch <- indicesIndexingNoopUpdateTotal
 	ch <- indicesIndexingThrottleSecondsTotal
+	ch <- indicesIndexingIndexFailed
+	ch <- indicesIndexingDeleteCurrent
+	ch <- indicesIndexingWriteLoad
+	ch <- indicesIndexingIsThrottled
 	ch <- indicesGetTimeTotal
 	ch <- indicesGetTotal
 	ch <- indicesMergeTimeTotal
@@ -1049,6 +1073,38 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			indicesIndexingThrottleSecondsTotal,
 			prometheus.CounterValue,
 			float64(indexStats.Total.Indexing.ThrottleTimeInMillis)/1000,
+			indexName,
+			i.getClusterName(),
+		)
+
+		ch <- prometheus.MustNewConstMetric(
+			indicesIndexingIndexFailed,
+			prometheus.CounterValue,
+			float64(indexStats.Total.Indexing.IndexFailed),
+			indexName,
+			i.getClusterName(),
+		)
+
+		ch <- prometheus.MustNewConstMetric(
+			indicesIndexingDeleteCurrent,
+			prometheus.GaugeValue,
+			float64(indexStats.Total.Indexing.DeleteCurrent),
+			indexName,
+			i.getClusterName(),
+		)
+
+		ch <- prometheus.MustNewConstMetric(
+			indicesIndexingWriteLoad,
+			prometheus.GaugeValue,
+			indexStats.Total.Indexing.WriteLoad,
+			indexName,
+			i.getClusterName(),
+		)
+
+		ch <- prometheus.MustNewConstMetric(
+			indicesIndexingIsThrottled,
+			prometheus.GaugeValue,
+			bool2Float(indexStats.Total.Indexing.IsThrottled),
 			indexName,
 			i.getClusterName(),
 		)
