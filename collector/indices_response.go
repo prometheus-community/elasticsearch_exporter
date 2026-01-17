@@ -89,16 +89,17 @@ type IndexStatsIndexStoreResponse struct {
 
 // IndexStatsIndexIndexingResponse defines index stats index indexing information structure
 type IndexStatsIndexIndexingResponse struct {
-	IndexTotal           int64 `json:"index_total"`
-	IndexTimeInMillis    int64 `json:"index_time_in_millis"`
-	IndexCurrent         int64 `json:"index_current"`
-	IndexFailed          int64 `json:"index_failed"`
-	DeleteTotal          int64 `json:"delete_total"`
-	DeleteTimeInMillis   int64 `json:"delete_time_in_millis"`
-	DeleteCurrent        int64 `json:"delete_current"`
-	NoopUpdateTotal      int64 `json:"noop_update_total"`
-	IsThrottled          bool  `json:"is_throttled"`
-	ThrottleTimeInMillis int64 `json:"throttle_time_in_millis"`
+	IndexTotal           int64    `json:"index_total"`
+	IndexTimeInMillis    int64    `json:"index_time_in_millis"`
+	IndexCurrent         int64    `json:"index_current"`
+	IndexFailed          *int64   `json:"index_failed,omitempty"`
+	DeleteTotal          int64    `json:"delete_total"`
+	DeleteTimeInMillis   int64    `json:"delete_time_in_millis"`
+	DeleteCurrent        int64    `json:"delete_current"`
+	NoopUpdateTotal      int64    `json:"noop_update_total"`
+	IsThrottled          bool     `json:"is_throttled"`
+	ThrottleTimeInMillis int64    `json:"throttle_time_in_millis"`
+	WriteLoad            *float64 `json:"write_load,omitempty"`
 }
 
 // IndexStatsIndexGetResponse defines index stats index get information structure

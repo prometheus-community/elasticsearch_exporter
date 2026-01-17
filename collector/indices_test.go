@@ -103,6 +103,14 @@ func TestIndices(t *testing.T) {
              # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_current The number of documents currently being deleted from an index
+             # TYPE elasticsearch_index_stats_indexing_delete_current gauge
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_indexing_is_throttled Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)
+             # TYPE elasticsearch_indices_indexing_is_throttled gauge
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_2"} 0
              # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
              # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
              elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 0
@@ -409,6 +417,18 @@ func TestIndices(t *testing.T) {
              # TYPE elasticsearch_index_stats_indexing_throttle_time_seconds_total counter
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_current The number of documents currently being deleted from an index
+             # TYPE elasticsearch_index_stats_indexing_delete_current gauge
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_index_failed_total Total number of failed indexing operations
+             # TYPE elasticsearch_index_stats_indexing_index_failed_total counter
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_indexing_is_throttled Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)
+             # TYPE elasticsearch_indices_indexing_is_throttled gauge
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_2"} 0
              # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
              # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
              elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index="foo_1"} 1.048576e+08
@@ -755,6 +775,27 @@ func TestIndices(t *testing.T) {
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index=".watches"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_current The number of documents currently being deleted from an index
+             # TYPE elasticsearch_index_stats_indexing_delete_current gauge
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_indexing_index_failed_total Total number of failed indexing operations
+             # TYPE elasticsearch_index_stats_indexing_index_failed_total counter
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_indices_indexing_is_throttled Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)
+             # TYPE elasticsearch_indices_indexing_is_throttled gauge
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_2"} 0
              # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
              # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
              elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".monitoring-data-2"} 2.097152e+07
@@ -1271,6 +1312,24 @@ func TestIndices(t *testing.T) {
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_current The number of documents currently being deleted from an index
+             # TYPE elasticsearch_index_stats_indexing_delete_current gauge
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_failed_total Total number of failed indexing operations
+             # TYPE elasticsearch_index_stats_indexing_index_failed_total counter
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_indexing_is_throttled Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)
+             # TYPE elasticsearch_indices_indexing_is_throttled gauge
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_3"} 0
              # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
              # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
              elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2.097152e+07
@@ -1726,6 +1785,24 @@ func TestIndices(t *testing.T) {
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_2"} 0
              elasticsearch_index_stats_indexing_throttle_time_seconds_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_delete_current The number of documents currently being deleted from an index
+             # TYPE elasticsearch_index_stats_indexing_delete_current gauge
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_delete_current{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_indexing_index_failed_total Total number of failed indexing operations
+             # TYPE elasticsearch_index_stats_indexing_index_failed_total counter
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_indexing_index_failed_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_indices_indexing_is_throttled Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)
+             # TYPE elasticsearch_indices_indexing_is_throttled gauge
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_indices_indexing_is_throttled{cluster="unknown_cluster",index="foo_3"} 0
              # HELP elasticsearch_index_stats_merge_auto_throttle_bytes_total Total bytes that were auto-throttled during merging
              # TYPE elasticsearch_index_stats_merge_auto_throttle_bytes_total counter
              elasticsearch_index_stats_merge_auto_throttle_bytes_total{cluster="unknown_cluster",index=".geoip_databases"} 2.097152e+07
