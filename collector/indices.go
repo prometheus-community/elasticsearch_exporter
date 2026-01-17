@@ -1077,13 +1077,15 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			i.getClusterName(),
 		)
 
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingIndexFailed,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.IndexFailed),
-			indexName,
-			i.getClusterName(),
-		)
+		if indexStats.Total.Indexing.IndexFailed != nil {
+			ch <- prometheus.MustNewConstMetric(
+				indicesIndexingIndexFailed,
+				prometheus.CounterValue,
+				float64(*indexStats.Total.Indexing.IndexFailed),
+				indexName,
+				i.getClusterName(),
+			)
+		}
 
 		ch <- prometheus.MustNewConstMetric(
 			indicesIndexingDeleteCurrent,
@@ -1093,13 +1095,15 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			i.getClusterName(),
 		)
 
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingWriteLoad,
-			prometheus.GaugeValue,
-			indexStats.Total.Indexing.WriteLoad,
-			indexName,
-			i.getClusterName(),
-		)
+		if indexStats.Total.Indexing.WriteLoad != nil {
+			ch <- prometheus.MustNewConstMetric(
+				indicesIndexingWriteLoad,
+				prometheus.GaugeValue,
+				*indexStats.Total.Indexing.WriteLoad,
+				indexName,
+				i.getClusterName(),
+			)
+		}
 
 		ch <- prometheus.MustNewConstMetric(
 			indicesIndexingIsThrottled,
