@@ -369,6 +369,13 @@ func main() {
 			Timeout:   *esTimeout,
 			Transport: transport,
 		}
+		// Close idle connections when handler completes to prevent resource leaks
+		defer func() {
+			if t, ok := transport.(*http.Transport); ok {
+				t.CloseIdleConnections()
+			}
+			probeClient.CloseIdleConnections()
+		}()
 
 		reg := prometheus.NewRegistry()
 
