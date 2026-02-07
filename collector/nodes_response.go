@@ -41,6 +41,7 @@ type NodeStatsNodeResponse struct {
 	Transport        NodeStatsTransportResponse                   `json:"transport"`
 	Process          NodeStatsProcessResponse                     `json:"process"`
 	IndexingPressure map[string]NodeStatsIndexingPressureResponse `json:"indexing_pressure"`
+	FileCache        NodeStatsFileCacheResponse                   `json:"file_cache"`
 }
 
 // NodeStatsBreakersResponse is a representation of a statistics about the field data circuit breaker
@@ -397,4 +398,16 @@ type ClusterHealthResponse struct {
 	Status                  string `json:"status"`
 	TimedOut                bool   `json:"timed_out"`
 	UnassignedShards        int64  `json:"unassigned_shards"`
+}
+
+// NodeStatsFileCacheResponse is a representation of OpenSearch Searchable Snapshots File_cache
+type NodeStatsFileCacheResponse struct {
+	ActiveInBytes    int64 `json:"active_in_bytes"`
+	TotalInBytes     int64 `json:"total_in_bytes"`
+	UsedInBytes      int64 `json:"used_in_bytes"`
+	EvictionsInBytes int64 `json:"evictions_in_bytes"`
+	ActivePercent    int64 `json:"active_percent"`
+	UsedPercent      int64 `json:"used_percent"`
+	HitCount         int64 `json:"hit_count"`
+	MissCount        int64 `json:"miss_count"`
 }
