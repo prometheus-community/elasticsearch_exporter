@@ -1,0 +1,24 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: rtkwlf-elasticsearch-exporter
+  title: Elasticsearch Exporter fork to include remote info
+  description: A cell to build Elasticsearch Exporter with remote info support
+  annotations:
+    backstage.io/code-coverage: disabled
+    backstage.io/source-location: url:https://github.com/rtkwlf/elasticsearch_exporter/tree/main/
+    github.com/project-slug: 'rtkwlf/elasticsearch_exporter'
+    jira/project-key: DPLT
+    jira/label: elasticsearch-exporter
+    snyk.io/org-id: 7094e6d4-5396-43de-8cf1-3c3ec491e8bb
+    snyk.io/targets: rtkwlf/elasticsearch_exporter
+  labels:
+    distributed: "false"
+  tags:
+    - go
+spec:
+  lifecycle: production
+  type: service
+  owner: storage-warriors
+  system: observation-stores
