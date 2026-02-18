@@ -181,7 +181,7 @@ See the [metrics documentation](metrics.md)
 
 ### Alerts & Recording Rules
 
-We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
+We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as a [Grafana](http://www.grafana.org) [Dashboard](elasticsearch-mixin/compiles/dashboards/cluster.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
 The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the Elasticsearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:
