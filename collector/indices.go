@@ -598,7 +598,7 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsResponse, error) {
 	var isr indexStatsResponse
 
-	u := i.url.ResolveReference(&url.URL{Path: "/_all/_stats"})
+	u := i.url.ResolveReference(&url.URL{Path: "_all/_stats"})
 	q := u.Query()
 	q.Set("ignore_unavailable", "true")
 	if i.shards {
