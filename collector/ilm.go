@@ -74,7 +74,7 @@ type IlmStatusResponse struct {
 	OperationMode string `json:"operation_mode"`
 }
 
-func (i *ILM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (i *ILM) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	var ir IlmResponse
 
 	indexURL := i.u.ResolveReference(&url.URL{Path: "/_all/_ilm/explain"})
