@@ -106,7 +106,7 @@ func TestDataStream(t *testing.T) {
 				switch {
 				case r.URL.Path == "/_data_stream/*/_stats":
 					io.Copy(w, fDsStats)
-				case strings.HasSuffix(r.URL.Path, "/_stats"):
+				case strings.HasPrefix(r.URL.Path, "/_all/_stats"):
 					io.Copy(w, fIndexStats)
 				default:
 					http.Error(w, "Not Found", http.StatusNotFound)

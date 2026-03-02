@@ -198,9 +198,10 @@ func (ds *DataStream) Update(ctx context.Context, ch chan<- prometheus.Metric) e
 		dsNames = append(dsNames, d.DataStream)
 	}
 
-	indexStatsURL := ds.u.ResolveReference(&url.URL{Path: "/" + strings.Join(dsNames, ",") + "/_stats"})
+	indexStatsURL := ds.u.ResolveReference(&url.URL{Path: "/_all/_stats/indexing,search,docs"})
 	q := indexStatsURL.Query()
 	q.Set("ignore_unavailable", "true")
+	q.Set("filter_path", "indices.*.primaries.indexing,indices.*.primaries.search,indices.*.primaries.docs")
 	indexStatsURL.RawQuery = q.Encode()
 
 	indexResp, err := getURL(ctx, ds.hc, ds.logger, indexStatsURL.String())
