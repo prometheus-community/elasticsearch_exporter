@@ -146,16 +146,16 @@ type DataStreamStatsDataStream struct {
 
 // dataStreamAggregatedStats holds aggregated index stats for a single data stream
 type dataStreamAggregatedStats struct {
-	indexingIndexTotal        int64
-	indexingIndexTimeMillis   int64
-	indexingIndexCurrent      int64
-	indexingDeleteTotal       int64
-	indexingDeleteTimeMillis  int64
-	searchQueryTotal          int64
-	searchQueryTimeMillis     int64
-	searchFetchTotal          int64
-	searchFetchTimeMillis     int64
-	docsCount                 int64
+	indexingIndexTotal       int64
+	indexingIndexTimeMillis  int64
+	indexingIndexCurrent     int64
+	indexingDeleteTotal      int64
+	indexingDeleteTimeMillis int64
+	searchQueryTotal         int64
+	searchQueryTimeMillis    int64
+	searchFetchTotal         int64
+	searchFetchTimeMillis    int64
+	docsCount                int64
 }
 
 func (ds *DataStream) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
