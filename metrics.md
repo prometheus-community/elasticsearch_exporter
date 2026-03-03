@@ -35,6 +35,8 @@
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum    | gauge      | 1           | Total kilobytes written to disk                                                                     |
 | elasticsearch_ilm_status                                             | gauge      | 1           | Current status of ILM. Status can be `STOPPED`, `RUNNING`, `STOPPING`.                              |
 | elasticsearch_ilm_index_status                                       | gauge      | 4           | Status of ILM policy for index                                                                      |
+| elasticsearch_ism_index_status                                       | gauge      | 6           | Status of ISM policy for index (OpenSearch Index State Management)                                  |
+| elasticsearch_ism_index_failed                                       | gauge      | 6           | Whether ISM is currently in a failed step/action for the index (OpenSearch Index State Management)  |
 | elasticsearch_indices_active_queries                                 | gauge      | 1           | The number of currently active queries                                                              |
 | elasticsearch_indices_docs                                           | gauge      | 1           | Count of documents on this node                                                                     |
 | elasticsearch_indices_docs_deleted                                   | gauge      | 1           | Count of deleted documents on this node                                                             |

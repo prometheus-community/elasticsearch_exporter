@@ -1,0 +1,59 @@
+{
+  "test-logs-001": {
+    "index": "test-logs-001",
+    "index_uuid": "LmJgKNatQZWHQu-qIHlcJw",
+    "policy_id": "test-lifecycle-policy",
+    "enabled": true,
+    "state": {
+      "name": "hot",
+      "start_time": 1730308447644
+    },
+    "action": {
+      "name": "rollover",
+      "start_time": 1730308447644,
+      "index": 0,
+      "failed": false,
+      "consumed_retries": 0,
+      "last_retry_time": 0
+    },
+    "step": {
+      "name": "attempt_rollover",
+      "start_time": 1730308447644,
+      "step_status": "starting"
+    },
+    "retry_info": {
+      "failed": false,
+      "consumed_retries": 0
+    }
+  },
+  "test-logs-002": {
+    "index": "test-logs-002",
+    "index_uuid": "p8iZQ2R8T7u9cN9h2TqzWw",
+    "policy_id": "test-lifecycle-policy",
+    "enabled": true,
+    "state": {
+      "name": "warm",
+      "start_time": 1730309447644
+    },
+    "action": {
+      "name": "allocation",
+      "start_time": 1730309447644,
+      "index": 0,
+      "failed": true,
+      "consumed_retries": 1,
+      "last_retry_time": 1730309547644
+    },
+    "step": {
+      "name": "attempt_allocation",
+      "start_time": 1730309447644,
+      "step_status": "failed"
+    },
+    "retry_info": {
+      "failed": true,
+      "consumed_retries": 1
+    },
+    "failed_step": "attempt_allocation"
+  },
+  "total_managed_indices": 2
+}
+
