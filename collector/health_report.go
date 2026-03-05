@@ -134,9 +134,9 @@ var (
 		"Shards capacity status",
 		[]string{"cluster", "color"}, nil,
 	)
-	healthReportShardsAvailabiltystatus = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "health_report", "shards_availabilty_status"),
-		"Shards availabilty status",
+	healthReportShardsAvailabilityStatus = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "health_report", "shards_availability_status"),
+		"Shards availability status",
 		[]string{"cluster", "color"}, nil,
 	)
 	healthReportDataStreamLifecycleStatus = prometheus.NewDesc(
@@ -443,7 +443,7 @@ func (c *HealthReport) Update(ctx context.Context, ch chan<- prometheus.Metric) 
 			healthReportResponse.ClusterName, color,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			healthReportShardsAvailabiltystatus,
+			healthReportShardsAvailabilityStatus,
 			prometheus.GaugeValue,
 			statusValue(healthReportResponse.Indicators.ShardsAvailability.Status, color),
 			healthReportResponse.ClusterName, color,
