@@ -22,10 +22,13 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
+	ccrDetailedMetrics bool
+
 	ccrAutoFollowFailedFollowIndicesTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "ccr_auto_follow", "failed_follow_indices_total"),
 		"Number of indices that auto-follow failed to follow",
@@ -397,6 +400,11 @@ var (
 )
 
 func init() {
+	kingpin.Flag(
+		"collector.ccr.detailed",
+		"Enable high-cardinality CCR metrics (per-shard and follower parameter metrics).",
+	).Default("false").BoolVar(&ccrDetailedMetrics)
+
 	registerCollector("ccr", defaultDisabled, NewCCR)
 }
 
@@ -583,8 +591,12 @@ func (c *CCR) collectFollowStats(ch chan<- prometheus.Metric, stats CCRFollowSta
 			indexStats.Index,
 		)
 
+		if !ccrDetailedMetrics {
+			continue
+		}
+
 		for _, shard := range indexStats.Shards {
-			labels := []string{
+			shardLabels := []string{
 				shard.RemoteCluster,
 				shard.LeaderIndex,
 				shard.FollowerIndex,
@@ -595,7 +607,7 @@ func (c *CCR) collectFollowStats(ch chan<- prometheus.Metric, stats CCRFollowSta
 					metric.desc,
 					metric.valueType,
 					metric.valueFn(shard),
-					labels...,
+					shardLabels...,
 				)
 			}
 		}
@@ -603,9 +615,9 @@ func (c *CCR) collectFollowStats(ch chan<- prometheus.Metric, stats CCRFollowSta
 }
 
 func (c *CCR) collectFollowerInfo(ch chan<- prometheus.Metric, info CCRFollowInfoResponse) {
-	statuses := []string{"active", "paused"}
+	followerStatuses := []string{"active", "paused"}
 	for _, follower := range info.FollowerIndices {
-		for _, status := range statuses {
+		for _, status := range followerStatuses {
 			ch <- prometheus.MustNewConstMetric(
 				ccrFollowerStatus,
 				prometheus.GaugeValue,
@@ -615,6 +627,10 @@ func (c *CCR) collectFollowerInfo(ch chan<- prometheus.Metric, info CCRFollowInf
 				follower.RemoteCluster,
 				status,
 			)
+		}
+
+		if !ccrDetailedMetrics {
+			continue
 		}
 
 		if follower.Parameters == nil {

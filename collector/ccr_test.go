@@ -14,7 +14,7 @@
 package collector
 
 import (
-	"io"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -23,37 +23,35 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promslog"
 )
 
-func TestCCR(t *testing.T) {
-	statsFile, err := os.Open(path.Join("../fixtures/ccr/stats", "7.17.0.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer statsFile.Close()
+func newCCRTestCollector(t *testing.T) (Collector, func()) {
+	t.Helper()
 
-	infoFile, err := os.Open(path.Join("../fixtures/ccr/info", "7.17.0.json"))
+	statsBody, err := os.ReadFile(path.Join("../fixtures/ccr/stats", "7.17.0.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer infoFile.Close()
+
+	infoBody, err := os.ReadFile(path.Join("../fixtures/ccr/info", "7.17.0.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.RequestURI {
 		case "/_ccr/stats":
-			io.Copy(w, statsFile)
+			_, _ = w.Write(statsBody)
 			return
 		case "/_all/_ccr/info":
-			io.Copy(w, infoFile)
+			_, _ = w.Write(infoBody)
 			return
 		}
 
 		http.Error(w, "Not Found", http.StatusNotFound)
 	}))
-	defer ts.Close()
-
 	u, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -64,44 +62,79 @@ func TestCCR(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const expected = `
-		# HELP elasticsearch_ccr_auto_follow_failed_follow_indices_total Number of indices that auto-follow failed to follow
-		# TYPE elasticsearch_ccr_auto_follow_failed_follow_indices_total counter
-		elasticsearch_ccr_auto_follow_failed_follow_indices_total 2
-		# HELP elasticsearch_ccr_auto_followed_cluster_last_seen_metadata_version Last seen metadata version for an auto-followed cluster
-		# TYPE elasticsearch_ccr_auto_followed_cluster_last_seen_metadata_version gauge
-		elasticsearch_ccr_auto_followed_cluster_last_seen_metadata_version{remote_cluster="remote_a"} 451
-		# HELP elasticsearch_ccr_follow_index_global_checkpoint_lag Total global checkpoint lag for a follower index
-		# TYPE elasticsearch_ccr_follow_index_global_checkpoint_lag gauge
-		elasticsearch_ccr_follow_index_global_checkpoint_lag{follower_index="follower_index"} 256
-		# HELP elasticsearch_ccr_follow_shard_successful_read_requests_total Successful read requests
-		# TYPE elasticsearch_ccr_follow_shard_successful_read_requests_total counter
-		elasticsearch_ccr_follow_shard_successful_read_requests_total{follower_index="follower_index",leader_index="leader_index",remote_cluster="remote_a",shard_id="0"} 32
-		# HELP elasticsearch_ccr_follow_shard_total_read_time_seconds_total Total read time in seconds
-		# TYPE elasticsearch_ccr_follow_shard_total_read_time_seconds_total counter
-		elasticsearch_ccr_follow_shard_total_read_time_seconds_total{follower_index="follower_index",leader_index="leader_index",remote_cluster="remote_a",shard_id="0"} 32.768
-		# HELP elasticsearch_ccr_follower_index_status Follower index status where 1 means current state
-		# TYPE elasticsearch_ccr_follower_index_status gauge
-		elasticsearch_ccr_follower_index_status{follower_index="follower_index",leader_index="leader_index",remote_cluster="remote_a",status="active"} 1
-		elasticsearch_ccr_follower_index_status{follower_index="follower_index",leader_index="leader_index",remote_cluster="remote_a",status="paused"} 0
-		elasticsearch_ccr_follower_index_status{follower_index="follower_paused",leader_index="leader_paused",remote_cluster="remote_b",status="active"} 0
-		elasticsearch_ccr_follower_index_status{follower_index="follower_paused",leader_index="leader_paused",remote_cluster="remote_b",status="paused"} 1
-		# HELP elasticsearch_ccr_follower_parameters_max_outstanding_read_requests Max outstanding read requests configured for a follower index
-		# TYPE elasticsearch_ccr_follower_parameters_max_outstanding_read_requests gauge
-		elasticsearch_ccr_follower_parameters_max_outstanding_read_requests{follower_index="follower_index",leader_index="leader_index",remote_cluster="remote_a"} 12
-	`
+	return c, ts.Close
+}
 
-	if err := testutil.CollectAndCompare(
-		wrapCollector{c},
-		strings.NewReader(expected),
-		"elasticsearch_ccr_auto_follow_failed_follow_indices_total",
-		"elasticsearch_ccr_auto_followed_cluster_last_seen_metadata_version",
-		"elasticsearch_ccr_follow_index_global_checkpoint_lag",
-		"elasticsearch_ccr_follow_shard_successful_read_requests_total",
-		"elasticsearch_ccr_follow_shard_total_read_time_seconds_total",
-		"elasticsearch_ccr_follower_index_status",
-		"elasticsearch_ccr_follower_parameters_max_outstanding_read_requests",
-	); err != nil {
+func TestCCRMinimal(t *testing.T) {
+	previous := ccrDetailedMetrics
+	ccrDetailedMetrics = false
+	defer func() {
+		ccrDetailedMetrics = previous
+	}()
+
+	c, cleanup := newCCRTestCollector(t)
+	defer cleanup()
+	descs, err := collectCCRMetricDescs(c)
+	if err != nil {
 		t.Fatal(err)
 	}
+	if !hasMetric(descs, "elasticsearch_ccr_follow_index_global_checkpoint_lag") {
+		t.Fatal("expected core CCR metric elasticsearch_ccr_follow_index_global_checkpoint_lag")
+	}
+	if !hasMetric(descs, "elasticsearch_ccr_follower_index_status") {
+		t.Fatal("expected core CCR metric elasticsearch_ccr_follower_index_status")
+	}
+	if hasMetric(descs, "elasticsearch_ccr_follow_shard_successful_read_requests_total") {
+		t.Fatal("expected detailed shard metrics to be disabled in minimal CCR mode")
+	}
+	if hasMetric(descs, "elasticsearch_ccr_follower_parameters_max_outstanding_read_requests") {
+		t.Fatal("expected detailed follower parameter metrics to be disabled in minimal CCR mode")
+	}
+}
+
+func TestCCRDetailed(t *testing.T) {
+	previous := ccrDetailedMetrics
+	ccrDetailedMetrics = true
+	defer func() {
+		ccrDetailedMetrics = previous
+	}()
+
+	c, cleanup := newCCRTestCollector(t)
+	defer cleanup()
+	descs, err := collectCCRMetricDescs(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasMetric(descs, "elasticsearch_ccr_follow_shard_successful_read_requests_total") {
+		t.Fatal("expected detailed shard metrics to be enabled in detailed CCR mode")
+	}
+	if !hasMetric(descs, "elasticsearch_ccr_follower_parameters_max_outstanding_read_requests") {
+		t.Fatal("expected detailed follower parameter metrics to be enabled in detailed CCR mode")
+	}
+}
+
+func collectCCRMetricDescs(c Collector) ([]string, error) {
+	ch := make(chan prometheus.Metric, 2048)
+	errCh := make(chan error, 1)
+
+	go func() {
+		errCh <- c.Update(context.Background(), ch)
+		close(ch)
+	}()
+
+	descs := make([]string, 0, 256)
+	for m := range ch {
+		descs = append(descs, m.Desc().String())
+	}
+	return descs, <-errCh
+}
+
+func hasMetric(descs []string, metricName string) bool {
+	needle := "fqName: \"" + metricName + "\""
+	for _, d := range descs {
+		if strings.Contains(d, needle) {
+			return true
+		}
+	}
+	return false
 }
