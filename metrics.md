@@ -25,6 +25,21 @@
 | elasticsearch_clustersettings_allocation_watermark_flood_stage_ratio | gauge      | 0           | Flood stage watermark as a ratio.                                                                   |
 | elasticsearch_clustersettings_allocation_watermark_high_ratio        | gauge      | 0           | High watermark for disk usage as a ratio.                                                           |
 | elasticsearch_clustersettings_allocation_watermark_low_ratio         | gauge      | 0           | Low watermark for disk usage as a ratio.                                                            |
+| elasticsearch_ccr_auto_follow_failed_follow_indices_total            | counter    | 0           | Number of indices that auto-follow failed to follow                                                 |
+| elasticsearch_ccr_auto_follow_failed_remote_cluster_state_requests_total | counter | 0           | Number of failed remote cluster state requests from auto-follow                                     |
+| elasticsearch_ccr_auto_follow_successful_follow_indices_total        | counter    | 0           | Number of indices auto-follow successfully followed                                                 |
+| elasticsearch_ccr_auto_follow_recent_errors_total                    | counter    | 0           | Number of recent auto-follow errors currently reported                                              |
+| elasticsearch_ccr_auto_followed_cluster_last_seen_metadata_version   | gauge      | 1           | Last seen metadata version for an auto-followed cluster                                             |
+| elasticsearch_ccr_auto_followed_cluster_time_since_last_check_milliseconds | gauge | 1           | Time since last auto-follow check in milliseconds for an auto-followed cluster                     |
+| elasticsearch_ccr_follow_index_global_checkpoint_lag                 | gauge      | 1           | Total global checkpoint lag for a follower index                                                    |
+| elasticsearch_ccr_follow_shard_successful_read_requests_total        | counter    | 4           | Successful read requests for a follower shard                                                       |
+| elasticsearch_ccr_follow_shard_failed_read_requests_total            | counter    | 4           | Failed read requests for a follower shard                                                           |
+| elasticsearch_ccr_follow_shard_operations_written_total              | counter    | 4           | Write operations for a follower shard                                                               |
+| elasticsearch_ccr_follow_shard_total_read_time_seconds_total         | counter    | 4           | Total read time in seconds for a follower shard                                                     |
+| elasticsearch_ccr_follow_shard_total_write_time_seconds_total        | counter    | 4           | Total write time in seconds for a follower shard                                                    |
+| elasticsearch_ccr_follower_index_status                              | gauge      | 4           | Follower index status where 1 means current state                                                   |
+| elasticsearch_ccr_follower_parameters_max_outstanding_read_requests  | gauge      | 3           | Max outstanding read requests configured for a follower index                                       |
+| elasticsearch_ccr_follower_parameters_max_outstanding_write_requests | gauge      | 3           | Max outstanding write requests configured for a follower index                                      |
 | elasticsearch_filesystem_data_available_bytes                        | gauge      | 1           | Available space on block device in bytes                                                            |
 | elasticsearch_filesystem_data_free_bytes                             | gauge      | 1           | Free space on block device in bytes                                                                 |
 | elasticsearch_filesystem_data_size_bytes                             | gauge      | 1           | Size of block device in bytes                                                                       |
