@@ -47,8 +47,8 @@ var (
 		nil,
 		nil,
 	)
-	ccrAutoFollowRecentErrorsTotal = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "ccr_auto_follow", "recent_errors_total"),
+	ccrAutoFollowRecentErrors = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_auto_follow", "recent_errors"),
 		"Number of recent auto-follow errors currently reported",
 		nil,
 		nil,
@@ -561,8 +561,8 @@ func (c *CCR) collectAutoFollowStats(ch chan<- prometheus.Metric, stats CCRAutoF
 		float64(stats.NumberOfSuccessfulFollowIndices),
 	)
 	ch <- prometheus.MustNewConstMetric(
-		ccrAutoFollowRecentErrorsTotal,
-		prometheus.CounterValue,
+		ccrAutoFollowRecentErrors,
+		prometheus.GaugeValue,
 		float64(len(stats.RecentAutoFollowErrors)),
 	)
 
