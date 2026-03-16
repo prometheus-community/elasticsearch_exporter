@@ -39,11 +39,9 @@ const (
 type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
 
 var (
-	factories              = make(map[string]factoryFunc)
-	initiatedCollectorsMtx = sync.Mutex{}
-	initiatedCollectors    = make(map[string]Collector)
-	collectorState         = make(map[string]*bool)
-	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	factories        = make(map[string]factoryFunc)
+	collectorState   = make(map[string]*bool)
+	forcedCollectors = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
 var (
@@ -92,7 +90,6 @@ type ElasticsearchCollector struct {
 	logger     *slog.Logger
 	esURL      *url.URL
 	httpClient *http.Client
-	skipCache  bool
 }
 
 type Option func(*ElasticsearchCollector) error
@@ -119,26 +116,15 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 		f[filter] = true
 	}
 	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
 	for key, enabled := range collectorState {
 		if !*enabled || (len(f) > 0 && !f[key]) {
 			continue
-		}
-		if !e.skipCache {
-			if collector, ok := initiatedCollectors[key]; ok {
-				collectors[key] = collector
-				continue
-			}
 		}
 		collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
 		if err != nil {
 			return nil, err
 		}
 		collectors[key] = collector
-		if !e.skipCache {
-			initiatedCollectors[key] = collector
-		}
 	}
 
 	e.Collectors = collectors
@@ -156,13 +142,6 @@ func WithElasticsearchURL(esURL *url.URL) Option {
 func WithHTTPClient(hc *http.Client) Option {
 	return func(e *ElasticsearchCollector) error {
 		e.httpClient = hc
-		return nil
-	}
-}
-
-func WithSkipCache(skip bool) Option {
-	return func(e *ElasticsearchCollector) error {
-		e.skipCache = skip
 		return nil
 	}
 }
