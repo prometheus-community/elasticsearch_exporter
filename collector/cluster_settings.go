@@ -341,9 +341,10 @@ func getValueInBytes(value string) (float64, error) {
 		{"b", 1},
 	}
 
+	lowerValue := strings.ToLower(value)
 	for _, uv := range unitValues {
-		if strings.HasSuffix(value, uv.unit) {
-			numberStr := strings.TrimSuffix(value, uv.unit)
+		if strings.HasSuffix(lowerValue, uv.unit) {
+			numberStr := strings.TrimSuffix(lowerValue, uv.unit)
 
 			number, err := strconv.ParseFloat(numberStr, 64)
 			if err != nil {
