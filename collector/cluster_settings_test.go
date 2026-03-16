@@ -186,6 +186,12 @@ func Test_getValueInBytes(t *testing.T) {
 		{name: "Tebibytes", input: "500tb", want: 549755813888000},
 		{name: "Pebibytes", input: "600pb", want: 675539944105574400},
 		{name: "Unknown", input: "9ab", wantErr: true},
+		{name: "Bytes uppercase", input: "100B", want: 100},
+		{name: "Kibibytes uppercase", input: "200KB", want: 204800},
+		{name: "Mebibytes uppercase", input: "300MB", want: 314572800},
+		{name: "Gibibytes uppercase", input: "400GB", want: 429496729600},
+		{name: "Tebibytes uppercase", input: "500TB", want: 549755813888000},
+		{name: "Pebibytes uppercase", input: "600PB", want: 675539944105574400},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
