@@ -381,6 +381,7 @@ func main() {
 			[]string{},
 			collector.WithElasticsearchURL(targetURL),
 			collector.WithHTTPClient(probeClient),
+			collector.WithSkipCache(true),
 		)
 		if err != nil {
 			http.Error(w, "failed to create exporter", http.StatusInternalServerError)

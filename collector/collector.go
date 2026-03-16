@@ -92,6 +92,7 @@ type ElasticsearchCollector struct {
 	logger     *slog.Logger
 	esURL      *url.URL
 	httpClient *http.Client
+	skipCache  bool
 }
 
 type Option func(*ElasticsearchCollector) error
@@ -124,14 +125,18 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 		if !*enabled || (len(f) > 0 && !f[key]) {
 			continue
 		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
-			if err != nil {
-				return nil, err
+		if !e.skipCache {
+			if collector, ok := initiatedCollectors[key]; ok {
+				collectors[key] = collector
+				continue
 			}
-			collectors[key] = collector
+		}
+		collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
+		if err != nil {
+			return nil, err
+		}
+		collectors[key] = collector
+		if !e.skipCache {
 			initiatedCollectors[key] = collector
 		}
 	}
@@ -151,6 +156,13 @@ func WithElasticsearchURL(esURL *url.URL) Option {
 func WithHTTPClient(hc *http.Client) Option {
 	return func(e *ElasticsearchCollector) error {
 		e.httpClient = hc
+		return nil
+	}
+}
+
+func WithSkipCache(skip bool) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.skipCache = skip
 		return nil
 	}
 }
