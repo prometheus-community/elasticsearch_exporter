@@ -59,9 +59,9 @@ var (
 		[]string{"remote_cluster"},
 		nil,
 	)
-	ccrAutoFollowedClusterTimeSinceLastCheckMilliseconds = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "ccr_auto_followed_cluster", "time_since_last_check_milliseconds"),
-		"Time since last auto-follow check in milliseconds for an auto-followed cluster",
+	ccrAutoFollowedClusterTimeSinceLastCheckSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_auto_followed_cluster", "time_since_last_check_seconds"),
+		"Time since last auto-follow check in seconds for an auto-followed cluster",
 		[]string{"remote_cluster"},
 		nil,
 	)
@@ -71,296 +71,150 @@ var (
 		[]string{"follower_index"},
 		nil,
 	)
-	ccrFollowShardInfo = []ccrShardMetric{
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "leader_global_checkpoint"),
-				"Leader global checkpoint",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.LeaderGlobalCheckpoint)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "leader_max_seq_no"),
-				"Leader max sequence number",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.LeaderMaxSeqNo)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_global_checkpoint"),
-				"Follower global checkpoint",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FollowerGlobalCheckpoint)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_max_seq_no"),
-				"Follower max sequence number",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FollowerMaxSeqNo)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "last_requested_seq_no"),
-				"Last requested sequence number",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.LastRequestedSeqNo)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "outstanding_read_requests"),
-				"Outstanding read requests",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.OutstandingReadRequests)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "outstanding_write_requests"),
-				"Outstanding write requests",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.OutstandingWriteRequests)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "write_buffer_operation_count"),
-				"Write buffer operation count",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.WriteBufferOperationCount)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_mapping_version"),
-				"Follower mapping version",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FollowerMappingVersion)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_settings_version"),
-				"Follower settings version",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FollowerSettingsVersion)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_aliases_version"),
-				"Follower aliases version",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FollowerAliasesVersion)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "total_read_time_seconds_total"),
-				"Total read time in seconds",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.TotalReadTimeMillis) / 1000
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "total_read_remote_exec_time_seconds_total"),
-				"Total remote read execution time in seconds",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.TotalReadRemoteExecTimeMillis) / 1000
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "successful_read_requests_total"),
-				"Successful read requests",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.SuccessfulReadRequests)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "failed_read_requests_total"),
-				"Failed read requests",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FailedReadRequests)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "operations_read_total"),
-				"Read operations",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.OperationsRead)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "bytes_read_total"),
-				"Read bytes",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.BytesRead)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "total_write_time_seconds_total"),
-				"Total write time in seconds",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.TotalWriteTimeMillis) / 1000
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "write_buffer_size_bytes"),
-				"Write buffer size in bytes",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.WriteBufferSizeBytes)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "successful_write_requests_total"),
-				"Successful write requests",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.SuccessfulWriteRequests)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "failed_write_requests_total"),
-				"Failed write requests",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.FailedWriteRequests)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "operations_written_total"),
-				"Write operations",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.OperationsWritten)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "time_since_last_read_milliseconds"),
-				"Time since last read in milliseconds",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.GaugeValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(s.TimeSinceLastReadMillis)
-			},
-		},
-		{
-			desc: prometheus.NewDesc(
-				prometheus.BuildFQName(namespace, "ccr_follow_shard", "read_exceptions_total"),
-				"Number of read exceptions",
-				[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
-				nil,
-			),
-			valueType: prometheus.CounterValue,
-			valueFn: func(s CCRShardStatsResponse) float64 {
-				return float64(len(s.ReadExceptions))
-			},
-		},
-	}
+	ccrFollowShardLeaderGlobalCheckpoint = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "leader_global_checkpoint"),
+		"Leader global checkpoint",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardLeaderMaxSeqNo = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "leader_max_seq_no"),
+		"Leader max sequence number",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFollowerGlobalCheckpoint = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_global_checkpoint"),
+		"Follower global checkpoint",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFollowerMaxSeqNo = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_max_seq_no"),
+		"Follower max sequence number",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardLastRequestedSeqNo = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "last_requested_seq_no"),
+		"Last requested sequence number",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardOutstandingReadRequests = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "outstanding_read_requests"),
+		"Outstanding read requests",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardOutstandingWriteRequests = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "outstanding_write_requests"),
+		"Outstanding write requests",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardWriteBufferOperationCount = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "write_buffer_operation_count"),
+		"Write buffer operation count",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFollowerMappingVersion = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_mapping_version"),
+		"Follower mapping version",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFollowerSettingsVersion = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_settings_version"),
+		"Follower settings version",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFollowerAliasesVersion = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "follower_aliases_version"),
+		"Follower aliases version",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardTotalReadTimeSecondsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "total_read_time_seconds_total"),
+		"Total read time in seconds",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardTotalReadRemoteExecTimeSecondsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "total_read_remote_exec_time_seconds_total"),
+		"Total remote read execution time in seconds",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardSuccessfulReadRequestsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "successful_read_requests_total"),
+		"Successful read requests",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFailedReadRequestsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "failed_read_requests_total"),
+		"Failed read requests",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardOperationsReadTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "operations_read_total"),
+		"Read operations",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardBytesReadTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "bytes_read_total"),
+		"Read bytes",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardTotalWriteTimeSecondsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "total_write_time_seconds_total"),
+		"Total write time in seconds",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardWriteBufferSizeBytes = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "write_buffer_size_bytes"),
+		"Write buffer size in bytes",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardSuccessfulWriteRequestsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "successful_write_requests_total"),
+		"Successful write requests",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardFailedWriteRequestsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "failed_write_requests_total"),
+		"Failed write requests",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardOperationsWrittenTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "operations_written_total"),
+		"Write operations",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardTimeSinceLastReadSeconds = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "time_since_last_read_seconds"),
+		"Time since last read in seconds",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
+	ccrFollowShardReadExceptionsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "ccr_follow_shard", "read_exceptions_total"),
+		"Number of read exceptions",
+		[]string{"remote_cluster", "leader_index", "follower_index", "shard_id"},
+		nil,
+	)
 	ccrFollowerStatus = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "ccr_follower_index", "status"),
 		"Follower index status where 1 means current state",
@@ -406,12 +260,6 @@ func init() {
 	).Default("false").BoolVar(&ccrDetailedMetrics)
 
 	registerCollector("ccr", defaultDisabled, NewCCR)
-}
-
-type ccrShardMetric struct {
-	desc      *prometheus.Desc
-	valueType prometheus.ValueType
-	valueFn   func(CCRShardStatsResponse) float64
 }
 
 // CCR collects metrics from Elasticsearch cross-cluster replication APIs.
@@ -574,9 +422,9 @@ func (c *CCR) collectAutoFollowStats(ch chan<- prometheus.Metric, stats CCRAutoF
 			cluster.ClusterName,
 		)
 		ch <- prometheus.MustNewConstMetric(
-			ccrAutoFollowedClusterTimeSinceLastCheckMilliseconds,
+			ccrAutoFollowedClusterTimeSinceLastCheckSeconds,
 			prometheus.GaugeValue,
-			float64(cluster.TimeSinceLastCheckMs),
+			float64(cluster.TimeSinceLastCheckMs)/1000,
 			cluster.ClusterName,
 		)
 	}
@@ -602,14 +450,30 @@ func (c *CCR) collectFollowStats(ch chan<- prometheus.Metric, stats CCRFollowSta
 				shard.FollowerIndex,
 				strconv.FormatInt(shard.ShardID, 10),
 			}
-			for _, metric := range ccrFollowShardInfo {
-				ch <- prometheus.MustNewConstMetric(
-					metric.desc,
-					metric.valueType,
-					metric.valueFn(shard),
-					shardLabels...,
-				)
-			}
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardLeaderGlobalCheckpoint, prometheus.GaugeValue, float64(shard.LeaderGlobalCheckpoint), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardLeaderMaxSeqNo, prometheus.GaugeValue, float64(shard.LeaderMaxSeqNo), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFollowerGlobalCheckpoint, prometheus.GaugeValue, float64(shard.FollowerGlobalCheckpoint), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFollowerMaxSeqNo, prometheus.GaugeValue, float64(shard.FollowerMaxSeqNo), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardLastRequestedSeqNo, prometheus.GaugeValue, float64(shard.LastRequestedSeqNo), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardOutstandingReadRequests, prometheus.GaugeValue, float64(shard.OutstandingReadRequests), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardOutstandingWriteRequests, prometheus.GaugeValue, float64(shard.OutstandingWriteRequests), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardWriteBufferOperationCount, prometheus.GaugeValue, float64(shard.WriteBufferOperationCount), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFollowerMappingVersion, prometheus.GaugeValue, float64(shard.FollowerMappingVersion), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFollowerSettingsVersion, prometheus.GaugeValue, float64(shard.FollowerSettingsVersion), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFollowerAliasesVersion, prometheus.GaugeValue, float64(shard.FollowerAliasesVersion), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardTotalReadTimeSecondsTotal, prometheus.CounterValue, float64(shard.TotalReadTimeMillis)/1000, shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardTotalReadRemoteExecTimeSecondsTotal, prometheus.CounterValue, float64(shard.TotalReadRemoteExecTimeMillis)/1000, shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardSuccessfulReadRequestsTotal, prometheus.CounterValue, float64(shard.SuccessfulReadRequests), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFailedReadRequestsTotal, prometheus.CounterValue, float64(shard.FailedReadRequests), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardOperationsReadTotal, prometheus.CounterValue, float64(shard.OperationsRead), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardBytesReadTotal, prometheus.CounterValue, float64(shard.BytesRead), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardTotalWriteTimeSecondsTotal, prometheus.CounterValue, float64(shard.TotalWriteTimeMillis)/1000, shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardWriteBufferSizeBytes, prometheus.GaugeValue, float64(shard.WriteBufferSizeBytes), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardSuccessfulWriteRequestsTotal, prometheus.CounterValue, float64(shard.SuccessfulWriteRequests), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardFailedWriteRequestsTotal, prometheus.CounterValue, float64(shard.FailedWriteRequests), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardOperationsWrittenTotal, prometheus.CounterValue, float64(shard.OperationsWritten), shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardTimeSinceLastReadSeconds, prometheus.GaugeValue, float64(shard.TimeSinceLastReadMillis)/1000, shardLabels...)
+			ch <- prometheus.MustNewConstMetric(ccrFollowShardReadExceptionsTotal, prometheus.CounterValue, float64(len(shard.ReadExceptions)), shardLabels...)
 		}
 	}
 }
