@@ -116,6 +116,9 @@
 | elasticsearch_process_mem_share_size_bytes                           | gauge      | 1           | Shared memory in use by process in bytes                                                            |
 | elasticsearch_process_mem_virtual_size_bytes                         | gauge      | 1           | Total virtual memory used in bytes                                                                  |
 | elasticsearch_process_open_files_count                               | gauge      | 1           | Open file descriptors                                                                               |
+| elasticsearch_remote_info_num_nodes_connected                        | gauge      | 1           | Number of nodes connected to the remote cluster                                                     |
+| elasticsearch_remote_info_num_proxy_sockets_connected                | gauge      | 1           | Number of proxy sockets connected to the remote cluster                                             |
+| elasticsearch_remote_info_max_connections_per_cluster                | gauge      | 1           | Maximum number of connections allowed per remote cluster                                            |
 | elasticsearch_snapshot_stats_number_of_snapshots                     | gauge      | 1           | Total number of snapshots                                                                           |
 | elasticsearch_snapshot_stats_oldest_snapshot_timestamp               | gauge      | 1           | Oldest snapshot timestamp                                                                           |
 | elasticsearch_snapshot_stats_snapshot_start_time_timestamp           | gauge      | 1           | Last snapshot start timestamp                                                                       |
