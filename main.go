@@ -333,10 +333,12 @@ func main() {
 			}
 		}
 		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
-		var transport http.RoundTripper = &http.Transport{
-			TLSClientConfig: tlsCfg,
-			Proxy:           http.ProxyFromEnvironment,
+		baseTransport := &http.Transport{
+			TLSClientConfig:   tlsCfg,
+			Proxy:             http.ProxyFromEnvironment,
+			DisableKeepAlives: true,
 		}
+		var transport http.RoundTripper = baseTransport
 
 		// inject authentication based on auth_module type
 		if am != nil {
@@ -369,6 +371,8 @@ func main() {
 			Timeout:   *esTimeout,
 			Transport: transport,
 		}
+		// Close idle connections when handler completes to prevent resource leaks.
+		defer baseTransport.CloseIdleConnections()
 
 		reg := prometheus.NewRegistry()
 
