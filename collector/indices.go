@@ -429,6 +429,12 @@ var (
 		[]string{"index", "alias", "cluster"},
 		nil,
 	)
+	indicesAliasesWithNode = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices", "aliases"),
+		"Record aliases associated with an index (includes node label)",
+		[]string{"index", "alias", "node", "cluster"},
+		nil,
+	)
 
 	indicesShardsLabels = []string{"index", "shard", "node", "primary", "cluster"}
 
@@ -464,19 +470,29 @@ type Indices struct {
 	url             *url.URL
 	shards          bool
 	aliases         bool
+	aliasNodeLabels bool
+	aliasesDesc     *prometheus.Desc
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
 }
 
 // NewIndices defines Indices Prometheus metrics
-func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool) *Indices {
+func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards bool, includeAliases bool, aliasNodeLabels bool) *Indices {
+	aliasesDesc := indicesAliases
+	useAliasNodes := includeAliases && aliasNodeLabels
+	if useAliasNodes {
+		aliasesDesc = indicesAliasesWithNode
+	}
+
 	indices := &Indices{
-		logger:        logger,
-		client:        client,
-		url:           url,
-		shards:        shards,
-		aliases:       includeAliases,
-		clusterInfoCh: make(chan *clusterinfo.Response),
+		logger:          logger,
+		client:          client,
+		url:             url,
+		shards:          shards,
+		aliases:         includeAliases,
+		aliasNodeLabels: useAliasNodes,
+		aliasesDesc:     aliasesDesc,
+		clusterInfoCh:   make(chan *clusterinfo.Response),
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
 		},
@@ -588,7 +604,9 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- indicesFielddataMemory
 	ch <- indicesFielddataEvictions
 
-	ch <- indicesAliases
+	if i.aliases && i.aliasesDesc != nil {
+		ch <- i.aliasesDesc
+	}
 
 	ch <- indicesShardDocs
 	ch <- indicesShardDocsDeleted
@@ -640,9 +658,50 @@ func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsRespo
 				isr.Aliases[indexName] = aliasList
 			}
 		}
+
+		// If shard-level stats are not already requested, fetch just enough shard information
+		// to derive node placement for alias metrics.
+		if i.aliasNodeLabels && !i.shards {
+			if err := i.populateShardRouting(ctx, &isr); err != nil {
+				i.logger.Warn("failed to fetch shard-level routing information for aliases", "err", err)
+			}
+		}
 	}
 
 	return isr, nil
+}
+
+func (i *Indices) populateShardRouting(ctx context.Context, isr *indexStatsResponse) error {
+	u := i.url.ResolveReference(&url.URL{Path: "/_all/_stats"})
+	q := u.Query()
+	q.Set("ignore_unavailable", "true")
+	q.Set("level", "shards")
+	q.Set("metric", "docs")
+	u.RawQuery = q.Encode()
+
+	resp, err := getURL(ctx, i.client, i.logger, u.String())
+	if err != nil {
+		return err
+	}
+
+	var shardResp indexStatsResponse
+	if err := json.Unmarshal(resp, &shardResp); err != nil {
+		return err
+	}
+
+	for indexName, shardIndex := range shardResp.Indices {
+		if len(shardIndex.Shards) == 0 {
+			continue
+		}
+		index, ok := isr.Indices[indexName]
+		if !ok {
+			continue
+		}
+		index.Shards = shardIndex.Shards
+		isr.Indices[indexName] = index
+	}
+
+	return nil
 }
 
 // getClusterName returns the cluster name. If no clusterinfo retriever is
@@ -681,22 +740,6 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			"err", err,
 		)
 		return
-	}
-
-	// Alias stats
-	if i.aliases {
-		for indexName, aliases := range indexStatsResp.Aliases {
-			for _, alias := range aliases {
-				ch <- prometheus.MustNewConstMetric(
-					indicesAliases,
-					prometheus.GaugeValue,
-					1,
-					indexName,
-					alias,
-					i.getClusterName(),
-				)
-			}
-		}
 	}
 
 	// Index stats
@@ -1366,4 +1409,91 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 	}
+
+	// Emit alias metrics (optionally with node information)
+	if i.aliases {
+		// deterministic order: sort indices and aliases
+		indexNames := make([]string, 0, len(indexStatsResp.Aliases))
+		for indexName := range indexStatsResp.Aliases {
+			indexNames = append(indexNames, indexName)
+		}
+		sort.Strings(indexNames)
+
+		for _, indexName := range indexNames {
+			aliasNames := indexStatsResp.Aliases[indexName]
+
+			// Legacy behavior: emit once per (index, alias)
+			if !i.aliasNodeLabels {
+				for _, alias := range aliasNames {
+					ch <- prometheus.MustNewConstMetric(
+						i.aliasesDesc,
+						prometheus.GaugeValue,
+						1,
+						indexName,
+						alias,
+						i.getClusterName(),
+					)
+				}
+				continue
+			}
+
+			// Node-aware behavior: emit once per (index, alias, node)
+			nodeList := collectAliasNodes(indexStatsResp.Indices[indexName].Shards)
+
+			for _, alias := range aliasNames {
+				if len(nodeList) == 0 {
+					// No node information available, emit with empty node label
+					ch <- prometheus.MustNewConstMetric(
+						i.aliasesDesc,
+						prometheus.GaugeValue,
+						1,
+						indexName,
+						alias,
+						"", // empty node label indicates no node info available due to disabled shards or indices without shards stats
+						i.getClusterName(),
+					)
+					continue
+				}
+
+				for _, node := range nodeList {
+					ch <- prometheus.MustNewConstMetric(
+						i.aliasesDesc,
+						prometheus.GaugeValue,
+						1,
+						indexName,
+						alias,
+						node,
+						i.getClusterName(),
+					)
+				}
+			}
+		}
+	}
+}
+
+func collectAliasNodes(shards map[string][]IndexStatsIndexShardsDetailResponse) []string {
+	if len(shards) == 0 {
+		return nil
+	}
+
+	nodes := make(map[string]struct{})
+	for _, shardCopies := range shards {
+		for _, shard := range shardCopies {
+			if shard.Routing.Node == "" {
+				continue
+			}
+			nodes[shard.Routing.Node] = struct{}{}
+		}
+	}
+
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	nodeList := make([]string, 0, len(nodes))
+	for node := range nodes {
+		nodeList = append(nodeList, node)
+	}
+	sort.Strings(nodeList)
+	return nodeList
 }
