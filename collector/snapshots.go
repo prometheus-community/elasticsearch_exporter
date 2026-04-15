@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -116,27 +115,17 @@ func (c *Snapshots) Update(ctx context.Context, ch chan<- prometheus.Metric) err
 	u := c.u.ResolveReference(&url.URL{Path: "/_snapshot"})
 
 	var srr SnapshotRepositoriesResponse
-	resp, err := getURL(ctx, c.hc, c.logger, u.String())
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(resp, &srr)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal JSON: %v", err)
+	if err := getAndDecodeURL(ctx, c.hc, c.logger, u.String(), &srr); err != nil {
+		return fmt.Errorf("failed to get snapshot repositories: %v", err)
 	}
 
 	for repository := range srr {
 		pathPart := path.Join("/_snapshot", repository, "/_all")
 		u := c.u.ResolveReference(&url.URL{Path: pathPart})
 		var ssr SnapshotStatsResponse
-		resp, err := getURL(ctx, c.hc, c.logger, u.String())
-		if err != nil {
+		if err := getAndDecodeURL(ctx, c.hc, c.logger, u.String(), &ssr); err != nil {
+			c.logger.Warn("failed to get snapshot stats", "repository", repository, "err", err)
 			continue
-		}
-		err = json.Unmarshal(resp, &ssr)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal JSON: %v", err)
 		}
 		snapshotsStatsResp[repository] = ssr
 	}

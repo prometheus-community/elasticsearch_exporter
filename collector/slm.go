@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -147,26 +146,14 @@ func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
 	u := s.u.ResolveReference(&url.URL{Path: "/_slm/status"})
 	var slmStatusResp SLMStatusResponse
 
-	resp, err := getURL(ctx, s.hc, s.logger, u.String())
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(resp, &slmStatusResp)
-	if err != nil {
+	if err := getAndDecodeURL(ctx, s.hc, s.logger, u.String(), &slmStatusResp); err != nil {
 		return err
 	}
 
 	u = s.u.ResolveReference(&url.URL{Path: "/_slm/stats"})
 	var slmStatsResp SLMStatsResponse
 
-	resp, err = getURL(ctx, s.hc, s.logger, u.String())
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(resp, &slmStatsResp)
-	if err != nil {
+	if err := getAndDecodeURL(ctx, s.hc, s.logger, u.String(), &slmStatsResp); err != nil {
 		return err
 	}
 

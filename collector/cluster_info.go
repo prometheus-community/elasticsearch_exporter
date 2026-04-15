@@ -16,7 +16,6 @@ package collector
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -78,18 +77,19 @@ type VersionInfo struct {
 }
 
 func (c *ClusterInfoCollector) Update(_ context.Context, ch chan<- prometheus.Metric) error {
+	var info ClusterInfoResponse
+
 	resp, err := c.hc.Get(c.u.String())
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	var info ClusterInfoResponse
-	err = json.Unmarshal(b, &info)
-	if err != nil {
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			c.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
+
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return err
 	}
 
