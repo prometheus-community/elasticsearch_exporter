@@ -78,6 +78,12 @@ func TestIndicesSettings(t *testing.T) {
              elasticsearch_indices_settings_replicas{index="instagram"} 1
              elasticsearch_indices_settings_replicas{index="twitter"} 1
              elasticsearch_indices_settings_replicas{index="viber"} 1
+             # HELP elasticsearch_indices_settings_shards index setting number_of_shards
+             # TYPE elasticsearch_indices_settings_shards gauge
+             elasticsearch_indices_settings_shards{index="facebook"} 10
+             elasticsearch_indices_settings_shards{index="instagram"} 5
+             elasticsearch_indices_settings_shards{index="twitter"} 5
+             elasticsearch_indices_settings_shards{index="viber"} 5
              # HELP elasticsearch_indices_settings_stats_read_only_indices Current number of read only indices within cluster
              # TYPE elasticsearch_indices_settings_stats_read_only_indices gauge
              elasticsearch_indices_settings_stats_read_only_indices 2
