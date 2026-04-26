@@ -16,7 +16,6 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -1883,12 +1882,7 @@ func (c *Nodes) fetchAndDecodeNodeStats() (nodeStatsResponse, error) {
 		return nsr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nsr, err
-	}
-
-	if err := json.Unmarshal(bts, &nsr); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&nsr); err != nil {
 		return nsr, err
 	}
 	return nsr, nil

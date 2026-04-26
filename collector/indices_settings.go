@@ -16,7 +16,6 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -128,12 +127,8 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 	}
 
 	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			cs.logger.Warn(
-				"failed to close http.Client",
-				"err", err,
-			)
+		if cerr := res.Body.Close(); cerr != nil {
+			cs.logger.Warn("failed to close response body", "err", cerr)
 		}
 	}()
 
@@ -141,12 +136,7 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(bts, data); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(data); err != nil {
 		return err
 	}
 	return nil

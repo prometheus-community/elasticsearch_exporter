@@ -16,7 +16,6 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -235,12 +234,7 @@ func (c *ClusterHealth) fetchAndDecodeClusterHealth() (clusterHealthResponse, er
 		return chr, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := io.ReadAll(res.Body)
-	if err != nil {
-		return chr, err
-	}
-
-	if err := json.Unmarshal(bts, &chr); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&chr); err != nil {
 		return chr, err
 	}
 

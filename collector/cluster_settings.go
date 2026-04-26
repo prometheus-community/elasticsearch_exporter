@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -160,14 +159,14 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			c.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
+
 	var data clusterSettingsResponse
-	err = json.Unmarshal(b, &data)
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return err
 	}
 
