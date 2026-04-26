@@ -95,6 +95,21 @@ func NewIndicesSettings(logger *slog.Logger, client *http.Client, url *url.URL) 
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices_settings", "shards"),
+					"index setting number_of_shards",
+					defaultIndicesTotalFieldsLabels, nil,
+				),
+				Value: func(indexSettings Settings) float64 {
+					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfShards, 64)
+					if err != nil {
+						return float64(defaultTotalFieldsValue)
+					}
+					return val
+				},
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices_settings", "creation_timestamp_seconds"),
 					"index setting creation_date",
 					defaultIndicesTotalFieldsLabels, nil,
