@@ -283,7 +283,7 @@ var (
 		indicesLabels, nil,
 	)
 	indicesIndexingIsThrottled = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "indices", "indexing_is_throttled"),
+		prometheus.BuildFQName(namespace, "index_stats", "indexing_is_throttled"),
 		"Whether indexing is currently throttled for an index (1=throttled, 0=not throttled)",
 		indicesLabels, nil,
 	)
