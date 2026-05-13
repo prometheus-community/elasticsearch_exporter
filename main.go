@@ -170,8 +170,9 @@ func main() {
 		var httpTransport http.RoundTripper
 
 		httpTransport = &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig:   tlsConfig,
+			Proxy:             http.ProxyFromEnvironment,
+			ForceAttemptHTTP2: true,
 		}
 
 		esAPIKey := os.Getenv("ES_API_KEY")
@@ -336,6 +337,7 @@ func main() {
 		baseTransport := &http.Transport{
 			TLSClientConfig:   tlsCfg,
 			Proxy:             http.ProxyFromEnvironment,
+			ForceAttemptHTTP2: true,
 			DisableKeepAlives: true,
 		}
 		var transport http.RoundTripper = baseTransport
