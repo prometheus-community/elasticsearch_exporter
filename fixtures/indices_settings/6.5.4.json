@@ -56,7 +56,7 @@
     "settings": {
       "index": {
         "creation_date": "1618593199101",
-        "number_of_shards": "5",
+        "number_of_shards": "10",
         "number_of_replicas": "1",
         "uuid": "trZhb_YOTV-RWKitTYw81A",
         "version": {

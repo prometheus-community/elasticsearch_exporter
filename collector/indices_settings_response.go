@@ -31,6 +31,7 @@ type IndexInfo struct {
 	Blocks           Blocks  `json:"blocks"`
 	Mapping          Mapping `json:"mapping"`
 	NumberOfReplicas string  `json:"number_of_replicas"`
+	NumberOfShards   string  `json:"number_of_shards"`
 	CreationDate     string  `json:"creation_date"`
 }
 
