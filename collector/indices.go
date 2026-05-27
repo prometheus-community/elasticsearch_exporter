@@ -430,7 +430,7 @@ var (
 		nil,
 	)
 
-	indicesShardsLabels = []string{"index", "shard", "node", "primary", "cluster"}
+	indicesShardsLabels = []string{"index", "shard", "node", "node_name", "primary", "cluster"}
 
 	indicesShardDocs = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "indices", "shards_docs"),
@@ -645,6 +645,26 @@ func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsRespo
 	return isr, nil
 }
 
+func (i *Indices) fetchAndDecodeNodes(ctx context.Context) (nodesResponse, error) {
+	var nr nodesResponse
+
+	u := i.url.ResolveReference(&url.URL{Path: "/_nodes"})
+	q := u.Query()
+	q.Set("filter_path", "nodes.*.name")
+	u.RawQuery = q.Encode()
+
+	resp, err := getURL(ctx, i.client, i.logger, u.String())
+	if err != nil {
+		return nr, err
+	}
+
+	if err := json.Unmarshal(resp, &nr); err != nil {
+		return nr, err
+	}
+
+	return nr, nil
+}
+
 // getClusterName returns the cluster name. If no clusterinfo retriever is
 // attached (e.g. /probe mode) it performs a lightweight call to the root
 // endpoint once and caches the result.
@@ -681,6 +701,17 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 			"err", err,
 		)
 		return
+	}
+
+	var nodesResp nodesResponse
+	if i.shards {
+		nodesResp, err = i.fetchAndDecodeNodes(ctx)
+		if err != nil {
+			i.logger.Warn(
+				"failed to fetch and decode nodes",
+				"err", err,
+			)
+		}
 	}
 
 	// Alias stats
@@ -1332,6 +1363,10 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 		if i.shards {
 			for shardNumber, shards := range indexStats.Shards {
 				for _, shard := range shards {
+					nodeName := shard.Routing.Node
+					if node, ok := nodesResp.Nodes[shard.Routing.Node]; ok {
+						nodeName = node.Name
+					}
 					ch <- prometheus.MustNewConstMetric(
 						indicesShardDocs,
 						prometheus.GaugeValue,
@@ -1339,6 +1374,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 						indexName,
 						shardNumber,
 						shard.Routing.Node,
+						nodeName,
 						strconv.FormatBool(shard.Routing.Primary),
 						i.getClusterName(),
 					)
@@ -1349,6 +1385,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 						indexName,
 						shardNumber,
 						shard.Routing.Node,
+						nodeName,
 						strconv.FormatBool(shard.Routing.Primary),
 						i.getClusterName(),
 					)
@@ -1359,6 +1396,7 @@ func (i *Indices) Collect(ch chan<- prometheus.Metric) {
 						indexName,
 						shardNumber,
 						shard.Routing.Node,
+						nodeName,
 						strconv.FormatBool(shard.Routing.Primary),
 						i.getClusterName(),
 					)
