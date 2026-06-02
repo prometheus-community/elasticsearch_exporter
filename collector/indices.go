@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -595,9 +596,37 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- indicesShardStoreSizeBytes
 }
 
-func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsResponse, error) {
-	var isr indexStatsResponse
+// fetchAliases retrieves index -> alias-name-list mappings from the _alias
+// endpoint. The response is small, so it is buffered in full.
+func (i *Indices) fetchAliases(ctx context.Context) (map[string][]string, error) {
+	var asr aliasesResponse
 
+	u := i.url.ResolveReference(&url.URL{Path: "_alias"})
+	if err := getAndDecodeURL(ctx, i.client, i.logger, u.String(), &asr); err != nil {
+		return nil, err
+	}
+
+	aliases := map[string][]string{}
+	for indexName, a := range asr {
+		var aliasList []string
+		for aliasName := range a.Aliases {
+			aliasList = append(aliasList, aliasName)
+		}
+
+		if len(aliasList) > 0 {
+			sort.Strings(aliasList)
+			aliases[indexName] = aliasList
+		}
+	}
+
+	return aliases, nil
+}
+
+// streamAndEmitIndexStats GETs /_all/_stats and emits the per-index metrics
+// while decoding the response one index at a time. This keeps peak memory
+// proportional to a single index entry instead of materializing the entire
+// (potentially multi-hundred-MB) index-stats map.
+func (i *Indices) streamAndEmitIndexStats(ctx context.Context, ch chan<- prometheus.Metric, clusterName string) error {
 	u := i.url.ResolveReference(&url.URL{Path: "/_all/_stats"})
 	q := u.Query()
 	q.Set("ignore_unavailable", "true")
@@ -606,34 +635,56 @@ func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsRespo
 	}
 	u.RawQuery = q.Encode()
 
-	if err := getAndDecodeURL(ctx, i.client, i.logger, u.String(), &isr); err != nil {
-		return isr, err
+	return fetchURL(ctx, i.client, i.logger, u.String(), func(r io.Reader) error {
+		return streamIndexStats(r, func(name string, indexStats IndexStatsIndexResponse) {
+			i.emitIndexMetrics(ch, name, indexStats, clusterName)
+		})
+	})
+}
+
+// streamIndexStats decodes an /_all/_stats JSON response one index at a time,
+// invoking emit for each, so the full index-stats map is never held in memory.
+// _shards and _all are consumed and discarded; this collector does not use them.
+func streamIndexStats(r io.Reader, emit func(name string, indexStats IndexStatsIndexResponse)) error {
+	dec := json.NewDecoder(r)
+
+	if _, err := dec.Token(); err != nil { // opening '{' of the response
+		return err
 	}
-
-	if i.aliases {
-		isr.Aliases = map[string][]string{}
-		var asr aliasesResponse
-
-		u := i.url.ResolveReference(&url.URL{Path: "_alias"})
-		if err := getAndDecodeURL(ctx, i.client, i.logger, u.String(), &asr); err != nil {
-			i.logger.Error("error getting alias information", "err", err)
-			return isr, err
+	for dec.More() {
+		keyTok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if key, _ := keyTok.(string); key != "indices" {
+			var skip json.RawMessage
+			if err := dec.Decode(&skip); err != nil {
+				return err
+			}
+			continue
 		}
 
-		for indexName, aliases := range asr {
-			var aliasList []string
-			for aliasName := range aliases.Aliases {
-				aliasList = append(aliasList, aliasName)
+		if _, err := dec.Token(); err != nil { // opening '{' of indices
+			return err
+		}
+		for dec.More() {
+			nameTok, err := dec.Token()
+			if err != nil {
+				return err
 			}
+			name, _ := nameTok.(string)
 
-			if len(aliasList) > 0 {
-				sort.Strings(aliasList)
-				isr.Aliases[indexName] = aliasList
+			var indexStats IndexStatsIndexResponse
+			if err := dec.Decode(&indexStats); err != nil {
+				return err
 			}
+			emit(name, indexStats)
+		}
+		if _, err := dec.Token(); err != nil { // closing '}' of indices
+			return err
 		}
 	}
-
-	return isr, nil
+	return nil
 }
 
 // getClusterName returns the cluster name. If no clusterinfo retriever is
@@ -663,697 +714,704 @@ func (i *Indices) getClusterName() string {
 
 // Collect gets Indices metric values
 func (i *Indices) Collect(ch chan<- prometheus.Metric) {
-	// indices
 	ctx := context.TODO()
-	indexStatsResp, err := i.fetchAndDecodeIndexStats(ctx)
-	if err != nil {
-		i.logger.Warn(
-			"failed to fetch and decode index stats",
-			"err", err,
-		)
-		return
-	}
+	clusterName := i.getClusterName()
 
 	// Alias stats
 	if i.aliases {
-		for indexName, aliases := range indexStatsResp.Aliases {
-			for _, alias := range aliases {
+		aliases, err := i.fetchAliases(ctx)
+		if err != nil {
+			i.logger.Error("error getting alias information", "err", err)
+			return
+		}
+
+		for indexName, aliasList := range aliases {
+			for _, alias := range aliasList {
 				ch <- prometheus.MustNewConstMetric(
 					indicesAliases,
 					prometheus.GaugeValue,
 					1,
 					indexName,
 					alias,
-					i.getClusterName(),
+					clusterName,
 				)
 			}
 		}
 	}
 
 	// Index stats
-	for indexName, indexStats := range indexStatsResp.Indices {
+	if err := i.streamAndEmitIndexStats(ctx, ch, clusterName); err != nil {
+		i.logger.Warn(
+			"failed to fetch and decode index stats",
+			"err", err,
+		)
+		return
+	}
+}
+
+// emitIndexMetrics writes all per-index metrics for a single index to ch.
+func (i *Indices) emitIndexMetrics(ch chan<- prometheus.Metric, indexName string, indexStats IndexStatsIndexResponse, clusterName string) {
+	ch <- prometheus.MustNewConstMetric(
+		indicesDocsPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Docs.Count),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesDeletedDocsPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Docs.Deleted),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesDocsTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Docs.Count),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesDeletedDocsTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Docs.Deleted),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesStoreSizeBytesPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Store.SizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesStoreSizeBytesTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Store.SizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentCountPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.Count),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentCountTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.Count),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentMemoryBytesPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.MemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentMemoryBytesTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.MemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentTermsMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.TermsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentTermsMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.TermsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentFieldsMemoryBytesPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.StoredFieldsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentFieldsMemoryBytesTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.StoredFieldsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentTermVectorsMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.TermVectorsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentTermVectorsMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.TermVectorsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentNormsMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.NormsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentNormsMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.NormsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentPointsMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.PointsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentPointsMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.PointsMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentDocValuesMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.DocValuesMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentDocValuesMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.DocValuesMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentIndexWriterMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.IndexWriterMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentIndexWriterMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.IndexWriterMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentVersionMapMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.VersionMapMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentVersionMapMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.VersionMapMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentFBSMemoryPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Segments.FixedBitSetMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSegmentFBSMemoryTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Segments.FixedBitSetMemoryInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesCompletionPrimary,
+		prometheus.GaugeValue,
+		float64(indexStats.Primaries.Completion.SizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesCompletionTotal,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Completion.SizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchQueryTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.QueryTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesActiveQueries,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Search.QueryCurrent),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchQueryTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.QueryTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchFetchTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.FetchTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchFetchTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.FetchTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchScrollTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.ScrollTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchScrollCurrent,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Search.ScrollCurrent),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchScrollTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.ScrollTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchSuggestTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.SuggestTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchSuggestTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Search.SuggestTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Indexing.IndexTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexCurrent,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Indexing.IndexCurrent),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingIndexTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Indexing.IndexTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingDeleteSecondsTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Indexing.DeleteTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingDeleteTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Indexing.DeleteTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingNoopUpdateTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Indexing.NoopUpdateTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingThrottleSecondsTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Indexing.ThrottleTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	if indexStats.Total.Indexing.IndexFailed != nil {
 		ch <- prometheus.MustNewConstMetric(
-			indicesDocsPrimary,
+			indicesIndexingIndexFailed,
+			prometheus.CounterValue,
+			float64(*indexStats.Total.Indexing.IndexFailed),
+			indexName,
+			clusterName,
+		)
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingDeleteCurrent,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Indexing.DeleteCurrent),
+		indexName,
+		clusterName,
+	)
+
+	if indexStats.Total.Indexing.WriteLoad != nil {
+		ch <- prometheus.MustNewConstMetric(
+			indicesIndexingWriteLoad,
 			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Docs.Count),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesDeletedDocsPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Docs.Deleted),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesDocsTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Docs.Count),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesDeletedDocsTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Docs.Deleted),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesStoreSizeBytesPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Store.SizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesStoreSizeBytesTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Store.SizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentCountPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.Count),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentCountTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.Count),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentMemoryBytesPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.MemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentMemoryBytesTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.MemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentTermsMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.TermsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentTermsMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.TermsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentFieldsMemoryBytesPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.StoredFieldsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentFieldsMemoryBytesTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.StoredFieldsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentTermVectorsMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.TermVectorsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentTermVectorsMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.TermVectorsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentNormsMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.NormsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentNormsMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.NormsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentPointsMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.PointsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentPointsMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.PointsMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentDocValuesMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.DocValuesMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentDocValuesMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.DocValuesMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentIndexWriterMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.IndexWriterMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentIndexWriterMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.IndexWriterMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentVersionMapMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.VersionMapMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentVersionMapMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.VersionMapMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentFBSMemoryPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Segments.FixedBitSetMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSegmentFBSMemoryTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Segments.FixedBitSetMemoryInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesCompletionPrimary,
-			prometheus.GaugeValue,
-			float64(indexStats.Primaries.Completion.SizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesCompletionTotal,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Completion.SizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchQueryTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.QueryTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesActiveQueries,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Search.QueryCurrent),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchQueryTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.QueryTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchFetchTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.FetchTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchFetchTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.FetchTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchScrollTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.ScrollTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchScrollCurrent,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Search.ScrollCurrent),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchScrollTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.ScrollTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchSuggestTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.SuggestTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesSearchSuggestTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Search.SuggestTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.IndexTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexCurrent,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Indexing.IndexCurrent),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingIndexTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.IndexTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingDeleteSecondsTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.DeleteTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingDeleteTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.DeleteTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingNoopUpdateTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.NoopUpdateTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingThrottleSecondsTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Indexing.ThrottleTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		if indexStats.Total.Indexing.IndexFailed != nil {
-			ch <- prometheus.MustNewConstMetric(
-				indicesIndexingIndexFailed,
-				prometheus.CounterValue,
-				float64(*indexStats.Total.Indexing.IndexFailed),
-				indexName,
-				i.getClusterName(),
-			)
-		}
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingDeleteCurrent,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.Indexing.DeleteCurrent),
-			indexName,
-			i.getClusterName(),
-		)
-
-		if indexStats.Total.Indexing.WriteLoad != nil {
-			ch <- prometheus.MustNewConstMetric(
-				indicesIndexingWriteLoad,
-				prometheus.GaugeValue,
-				*indexStats.Total.Indexing.WriteLoad,
-				indexName,
-				i.getClusterName(),
-			)
-		}
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesIndexingIsThrottled,
-			prometheus.GaugeValue,
-			bool2Float(indexStats.Total.Indexing.IsThrottled),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesGetTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Get.TimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesGetTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Get.Total),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesMergeTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Merges.TotalTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesMergeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Merges.Total),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesMergeThrottleTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Merges.TotalThrottledTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesMergeStoppedTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Merges.TotalStoppedTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesMergeAutoThrottleBytesTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Merges.TotalAutoThrottleInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRefreshTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Refresh.TotalTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRefreshExternalTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Refresh.ExternalTotalTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRefreshExternalTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Refresh.ExternalTotal),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRefreshTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Refresh.Total),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesFlushTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Flush.TotalTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesFlushTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Flush.Total),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesWarmerTimeTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Warmer.TotalTimeInMillis)/1000,
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesWarmerTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Warmer.Total),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesQueryCacheMemoryTotal,
-			prometheus.CounterValue,
-			float64(indexStats.Total.QueryCache.MemorySizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesQueryCacheSize,
-			prometheus.GaugeValue,
-			float64(indexStats.Total.QueryCache.CacheSize),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesQueryCacheHits,
-			prometheus.CounterValue,
-			float64(indexStats.Total.QueryCache.HitCount),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesQueryCacheMisses,
-			prometheus.CounterValue,
-			float64(indexStats.Total.QueryCache.MissCount),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesQueryCacheCaches,
-			prometheus.CounterValue,
-			float64(indexStats.Total.QueryCache.CacheCount),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesQueryCacheEvictions,
-			prometheus.CounterValue,
-			float64(indexStats.Total.QueryCache.Evictions),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRequestCacheMemory,
-			prometheus.CounterValue,
-			float64(indexStats.Total.RequestCache.MemorySizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRequestCacheHits,
-			prometheus.CounterValue,
-			float64(indexStats.Total.RequestCache.HitCount),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRequestCacheMisses,
-			prometheus.CounterValue,
-			float64(indexStats.Total.RequestCache.MissCount),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesRequestCacheEvictions,
-			prometheus.CounterValue,
-			float64(indexStats.Total.RequestCache.Evictions),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesFielddataMemory,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Fielddata.MemorySizeInBytes),
-			indexName,
-			i.getClusterName(),
-		)
-
-		ch <- prometheus.MustNewConstMetric(
-			indicesFielddataEvictions,
-			prometheus.CounterValue,
-			float64(indexStats.Total.Fielddata.Evictions),
-			indexName,
-			i.getClusterName(),
-		)
-
-		if i.shards {
-			for shardNumber, shards := range indexStats.Shards {
-				for _, shard := range shards {
-					ch <- prometheus.MustNewConstMetric(
-						indicesShardDocs,
-						prometheus.GaugeValue,
-						float64(shard.Docs.Count),
-						indexName,
-						shardNumber,
-						shard.Routing.Node,
-						strconv.FormatBool(shard.Routing.Primary),
-						i.getClusterName(),
-					)
-					ch <- prometheus.MustNewConstMetric(
-						indicesShardDocsDeleted,
-						prometheus.GaugeValue,
-						float64(shard.Docs.Deleted),
-						indexName,
-						shardNumber,
-						shard.Routing.Node,
-						strconv.FormatBool(shard.Routing.Primary),
-						i.getClusterName(),
-					)
-					ch <- prometheus.MustNewConstMetric(
-						indicesShardStoreSizeBytes,
-						prometheus.GaugeValue,
-						float64(shard.Store.SizeInBytes),
-						indexName,
-						shardNumber,
-						shard.Routing.Node,
-						strconv.FormatBool(shard.Routing.Primary),
-						i.getClusterName(),
-					)
-				}
+			*indexStats.Total.Indexing.WriteLoad,
+			indexName,
+			clusterName,
+		)
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesIndexingIsThrottled,
+		prometheus.GaugeValue,
+		bool2Float(indexStats.Total.Indexing.IsThrottled),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesGetTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Get.TimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesGetTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Get.Total),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesMergeTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Merges.TotalTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesMergeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Merges.Total),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesMergeThrottleTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Merges.TotalThrottledTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesMergeStoppedTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Merges.TotalStoppedTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesMergeAutoThrottleBytesTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Merges.TotalAutoThrottleInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRefreshTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Refresh.TotalTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRefreshExternalTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Refresh.ExternalTotalTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRefreshExternalTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Refresh.ExternalTotal),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRefreshTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Refresh.Total),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesFlushTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Flush.TotalTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesFlushTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Flush.Total),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesWarmerTimeTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Warmer.TotalTimeInMillis)/1000,
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesWarmerTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Warmer.Total),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesQueryCacheMemoryTotal,
+		prometheus.CounterValue,
+		float64(indexStats.Total.QueryCache.MemorySizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesQueryCacheSize,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.QueryCache.CacheSize),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesQueryCacheHits,
+		prometheus.CounterValue,
+		float64(indexStats.Total.QueryCache.HitCount),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesQueryCacheMisses,
+		prometheus.CounterValue,
+		float64(indexStats.Total.QueryCache.MissCount),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesQueryCacheCaches,
+		prometheus.CounterValue,
+		float64(indexStats.Total.QueryCache.CacheCount),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesQueryCacheEvictions,
+		prometheus.CounterValue,
+		float64(indexStats.Total.QueryCache.Evictions),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRequestCacheMemory,
+		prometheus.CounterValue,
+		float64(indexStats.Total.RequestCache.MemorySizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRequestCacheHits,
+		prometheus.CounterValue,
+		float64(indexStats.Total.RequestCache.HitCount),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRequestCacheMisses,
+		prometheus.CounterValue,
+		float64(indexStats.Total.RequestCache.MissCount),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesRequestCacheEvictions,
+		prometheus.CounterValue,
+		float64(indexStats.Total.RequestCache.Evictions),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesFielddataMemory,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Fielddata.MemorySizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesFielddataEvictions,
+		prometheus.CounterValue,
+		float64(indexStats.Total.Fielddata.Evictions),
+		indexName,
+		clusterName,
+	)
+
+	if i.shards {
+		for shardNumber, shards := range indexStats.Shards {
+			for _, shard := range shards {
+				ch <- prometheus.MustNewConstMetric(
+					indicesShardDocs,
+					prometheus.GaugeValue,
+					float64(shard.Docs.Count),
+					indexName,
+					shardNumber,
+					shard.Routing.Node,
+					strconv.FormatBool(shard.Routing.Primary),
+					clusterName,
+				)
+				ch <- prometheus.MustNewConstMetric(
+					indicesShardDocsDeleted,
+					prometheus.GaugeValue,
+					float64(shard.Docs.Deleted),
+					indexName,
+					shardNumber,
+					shard.Routing.Node,
+					strconv.FormatBool(shard.Routing.Primary),
+					clusterName,
+				)
+				ch <- prometheus.MustNewConstMetric(
+					indicesShardStoreSizeBytes,
+					prometheus.GaugeValue,
+					float64(shard.Store.SizeInBytes),
+					indexName,
+					shardNumber,
+					shard.Routing.Node,
+					strconv.FormatBool(shard.Routing.Primary),
+					clusterName,
+				)
 			}
 		}
 	}
