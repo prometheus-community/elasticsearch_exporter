@@ -95,12 +95,8 @@ func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
 	}
 
 	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			t.logger.Warn(
-				"failed to close http.Client",
-				"err", err,
-			)
+		if cerr := res.Body.Close(); cerr != nil {
+			t.logger.Warn("failed to close response body", "err", cerr)
 		}
 	}()
 
@@ -113,8 +109,10 @@ func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
 		return tr, err
 	}
 
-	err = json.Unmarshal(bts, &tr)
-	return tr, err
+	if err := json.Unmarshal(bts, &tr); err != nil {
+		return tr, err
+	}
+	return tr, nil
 }
 
 // tasksResponse is a representation of the Task management API.

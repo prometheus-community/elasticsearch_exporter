@@ -606,26 +606,17 @@ func (i *Indices) fetchAndDecodeIndexStats(ctx context.Context) (indexStatsRespo
 	}
 	u.RawQuery = q.Encode()
 
-	resp, err := getURL(ctx, i.client, i.logger, u.String())
-	if err != nil {
-		return isr, err
-	}
-
-	if err := json.Unmarshal(resp, &isr); err != nil {
+	if err := getAndDecodeURL(ctx, i.client, i.logger, u.String(), &isr); err != nil {
 		return isr, err
 	}
 
 	if i.aliases {
 		isr.Aliases = map[string][]string{}
-		u := i.url.ResolveReference(&url.URL{Path: "_alias"})
-		resp, err := getURL(ctx, i.client, i.logger, u.String())
-		if err != nil {
-			i.logger.Error("error getting alias information", "err", err)
-			return isr, err
-		}
-
 		var asr aliasesResponse
-		if err := json.Unmarshal(resp, &asr); err != nil {
+
+		u := i.url.ResolveReference(&url.URL{Path: "_alias"})
+		if err := getAndDecodeURL(ctx, i.client, i.logger, u.String(), &asr); err != nil {
+			i.logger.Error("error getting alias information", "err", err)
 			return isr, err
 		}
 

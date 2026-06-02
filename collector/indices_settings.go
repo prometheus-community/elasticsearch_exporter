@@ -143,12 +143,8 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 	}
 
 	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			cs.logger.Warn(
-				"failed to close http.Client",
-				"err", err,
-			)
+		if cerr := res.Body.Close(); cerr != nil {
+			cs.logger.Warn("failed to close response body", "err", cerr)
 		}
 	}()
 

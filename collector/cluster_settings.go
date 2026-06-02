@@ -160,14 +160,19 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			c.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
+
+	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
 	var data clusterSettingsResponse
-	err = json.Unmarshal(b, &data)
-	if err != nil {
+	if err := json.Unmarshal(bts, &data); err != nil {
 		return err
 	}
 
