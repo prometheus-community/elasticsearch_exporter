@@ -62,7 +62,7 @@ func NewTaskCollector(logger *slog.Logger, u *url.URL, hc *http.Client) (Collect
 	}, nil
 }
 
-func (t *TaskCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (t *TaskCollector) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	tasks, err := t.fetchTasks(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch and decode task stats: %w", err)

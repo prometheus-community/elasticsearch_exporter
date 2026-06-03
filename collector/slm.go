@@ -143,7 +143,7 @@ type SLMStatusResponse struct {
 	OperationMode string `json:"operation_mode"`
 }
 
-func (s *SLM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (s *SLM) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	u := s.u.ResolveReference(&url.URL{Path: "/_slm/status"})
 	var slmStatusResp SLMStatusResponse
 

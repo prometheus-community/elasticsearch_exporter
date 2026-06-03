@@ -83,7 +83,7 @@ type DataStreamStatsDataStream struct {
 	MaximumTimestamp int64  `json:"maximum_timestamp"`
 }
 
-func (ds *DataStream) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (ds *DataStream) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	var dsr DataStreamStatsResponse
 
 	u := ds.u.ResolveReference(&url.URL{Path: "/_data_stream/*/_stats"})
