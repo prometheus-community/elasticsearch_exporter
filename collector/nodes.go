@@ -37,6 +37,7 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 		"data_content":          false,
 		"ml":                    false,
 		"remote_cluster_client": false,
+		"search":                false,
 		"transform":             false,
 		"ingest":                false,
 		"client":                true,
@@ -76,7 +77,7 @@ var nodesRolesMetric = prometheus.NewDesc(
 )
 
 var (
-	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node"}
+	defaultNodeLabels               = []string{"cluster", "host", "name", "es_master_node", "es_data_node", "es_ingest_node", "es_client_node", "es_search_node"}
 	defaultRoleLabels               = []string{"cluster", "host", "name", "node"}
 	defaultThreadPoolLabels         = append(defaultNodeLabels, "type")
 	defaultBreakerLabels            = append(defaultNodeLabels, "breaker")
@@ -95,6 +96,7 @@ var (
 			fmt.Sprintf("%t", roles["data"]),
 			fmt.Sprintf("%t", roles["ingest"]),
 			fmt.Sprintf("%t", roles["client"]),
+			fmt.Sprintf("%t", roles["search"]),
 		}
 	}
 	defaultThreadPoolLabelValues = func(cluster string, node NodeStatsNodeResponse, pool string) []string {
@@ -163,6 +165,13 @@ type filesystemIODeviceMetric struct {
 	Labels func(cluster string, node NodeStatsNodeResponse, device string) []string
 }
 
+type fileCacheMetric struct {
+	Type   prometheus.ValueType
+	Desc   *prometheus.Desc
+	Value  func(fileCacheStats NodeStatsFileCacheResponse) float64
+	Labels func(cluster string, node NodeStatsNodeResponse) []string
+}
+
 // Nodes information struct
 type Nodes struct {
 	logger *slog.Logger
@@ -178,6 +187,7 @@ type Nodes struct {
 	threadPoolMetrics         []*threadPoolMetric
 	filesystemDataMetrics     []*filesystemDataMetric
 	filesystemIODeviceMetrics []*filesystemIODeviceMetric
+	fileCacheMetrics          []*fileCacheMetric
 }
 
 // NewNodes defines Nodes Prometheus metrics
@@ -1822,6 +1832,104 @@ func NewNodes(logger *slog.Logger, client *http.Client, url *url.URL, all bool, 
 				Labels: defaultFilesystemIODeviceLabelValues,
 			},
 		},
+		fileCacheMetrics: []*fileCacheMetric{
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "active_in_bytes"),
+					"file_cache active memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.ActiveInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "total_in_bytes"),
+					"file_cache total memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.TotalInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "used_in_bytes"),
+					"file_cache used memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.UsedInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "evictions_in_bytes"),
+					"file_cache evicted memory in bytes",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.EvictionsInBytes)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "active_percent"),
+					"file_cache active memory as percent",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.ActivePercent)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "used_percent"),
+					"file_cache used memory as percent",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.UsedPercent)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "hit_count"),
+					"file_cache hit count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.HitCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "filecache", "miss_count"),
+					"file_cache miss count",
+					defaultNodeLabels, nil,
+				),
+				Value: func(fileCacheStats NodeStatsFileCacheResponse) float64 {
+					return float64(fileCacheStats.MissCount)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+		},
 	}
 }
 
@@ -1848,6 +1956,9 @@ func (c *Nodes) Describe(ch chan<- *prometheus.Desc) {
 		ch <- metric.Desc
 	}
 	for _, metric := range c.filesystemIODeviceMetrics {
+		ch <- metric.Desc
+	}
+	for _, metric := range c.fileCacheMetrics {
 		ch <- metric.Desc
 	}
 }
@@ -2010,6 +2121,16 @@ func (c *Nodes) Collect(ch chan<- prometheus.Metric) {
 					metric.Labels(nodeStatsResp.ClusterName, node, fsIODeviceStats.DeviceName)...,
 				)
 			}
+		}
+
+		// File cache Stats
+		for _, metric := range c.fileCacheMetrics {
+			ch <- prometheus.MustNewConstMetric(
+				metric.Desc,
+				metric.Type,
+				metric.Value(node.FileCache),
+				metric.Labels(nodeStatsResp.ClusterName, node)...,
+			)
 		}
 	}
 }
