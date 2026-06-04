@@ -235,6 +235,9 @@ func TestNodesStats(t *testing.T) {
             # HELP elasticsearch_indices_search_scroll_total Total number of scrolls
             # TYPE elasticsearch_indices_search_scroll_total counter
             elasticsearch_indices_search_scroll_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_indices_search_scroll_current Number of scroll operations currently running
+            # TYPE elasticsearch_indices_search_scroll_current gauge
+            elasticsearch_indices_search_scroll_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
             # HELP elasticsearch_indices_search_suggest_time_seconds Total suggest time in seconds
             # TYPE elasticsearch_indices_search_suggest_time_seconds counter
             elasticsearch_indices_search_suggest_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
@@ -694,6 +697,9 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_search_scroll_total Total number of scrolls
              # TYPE elasticsearch_indices_search_scroll_total counter
              elasticsearch_indices_search_scroll_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
+             # HELP elasticsearch_indices_search_scroll_current Number of scroll operations currently running
+             # TYPE elasticsearch_indices_search_scroll_current gauge
+             elasticsearch_indices_search_scroll_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
              # HELP elasticsearch_indices_search_suggest_time_seconds Total suggest time in seconds
              # TYPE elasticsearch_indices_search_suggest_time_seconds counter
              elasticsearch_indices_search_suggest_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
@@ -1217,6 +1223,9 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_search_scroll_total Total number of scrolls
              # TYPE elasticsearch_indices_search_scroll_total counter
              elasticsearch_indices_search_scroll_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_indices_search_scroll_current Number of scroll operations currently running
+             # TYPE elasticsearch_indices_search_scroll_current gauge
+             elasticsearch_indices_search_scroll_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              # HELP elasticsearch_indices_search_suggest_time_seconds Total suggest time in seconds
              # TYPE elasticsearch_indices_search_suggest_time_seconds counter
              elasticsearch_indices_search_suggest_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
