@@ -115,12 +115,12 @@ func TestIndicesSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewIndicesSettings(promslog.NewNopLogger(), http.DefaultClient, u)
+			c, err := NewIndicesSettings(promslog.NewNopLogger(), u, http.DefaultClient)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
