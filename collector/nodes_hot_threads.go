@@ -21,9 +21,9 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 
+	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
