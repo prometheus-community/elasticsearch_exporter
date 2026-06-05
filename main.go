@@ -386,12 +386,18 @@ func main() {
 		// version metric
 		reg.MustRegister(versioncollector.NewCollector(name))
 
+		// Per-probe cluster info provider. NewInfoProvider is lazy (fetches on
+		// first GetInfo, then caches), so constructing one per request starts no
+		// background goroutine and is safe to discard when the handler returns.
+		infoProvider := cluster.NewInfoProvider(logger, probeClient, targetURL, *esClusterInfoInterval)
+
 		// Core exporter collector
 		exp, err := collector.NewElasticsearchCollector(
 			logger,
 			[]string{},
 			collector.WithElasticsearchURL(targetURL),
 			collector.WithHTTPClient(probeClient),
+			collector.WithClusterInfoProvider(infoProvider),
 		)
 		if err != nil {
 			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
