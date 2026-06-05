@@ -26,6 +26,8 @@ import (
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 )
 
 const (
@@ -64,7 +66,7 @@ var (
 // Collector is the interface a collector has to implement.
 type Collector interface {
 	// Get new metrics and expose them via prometheus registry.
-	Update(context.Context, chan<- prometheus.Metric) error
+	Update(context.Context, UpdateContext, chan<- prometheus.Metric) error
 }
 
 func registerCollector(name string, isDefaultEnabled bool, createFunc factoryFunc) {
@@ -92,6 +94,7 @@ type ElasticsearchCollector struct {
 	logger     *slog.Logger
 	esURL      *url.URL
 	httpClient *http.Client
+	cluserInfo *cluster.InfoProvider
 }
 
 type Option func(*ElasticsearchCollector) error
@@ -104,6 +107,10 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 		if err := o(e); err != nil {
 			return nil, err
 		}
+	}
+
+	if e.cluserInfo == nil {
+		return nil, fmt.Errorf("cluster info provider is not set")
 	}
 
 	f := make(map[string]bool)
@@ -155,6 +162,13 @@ func WithHTTPClient(hc *http.Client) Option {
 	}
 }
 
+func WithClusterInfoProvider(cl *cluster.InfoProvider) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.cluserInfo = cl
+		return nil
+	}
+}
+
 // Describe implements the prometheus.Collector interface.
 func (e ElasticsearchCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
@@ -163,21 +177,22 @@ func (e ElasticsearchCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (e ElasticsearchCollector) Collect(ch chan<- prometheus.Metric) {
+	uc := NewDefaultUpdateContext(e.cluserInfo)
 	wg := sync.WaitGroup{}
 	ctx := context.TODO()
 	wg.Add(len(e.Collectors))
 	for name, c := range e.Collectors {
 		go func(name string, c Collector) {
-			execute(ctx, name, c, ch, e.logger)
+			execute(ctx, name, c, ch, e.logger, uc)
 			wg.Done()
 		}(name, c)
 	}
 	wg.Wait()
 }
 
-func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus.Metric, logger *slog.Logger) {
+func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus.Metric, logger *slog.Logger, uc UpdateContext) {
 	begin := time.Now()
-	err := c.Update(ctx, ch)
+	err := c.Update(ctx, uc, ch)
 	duration := time.Since(begin)
 	var success float64
 

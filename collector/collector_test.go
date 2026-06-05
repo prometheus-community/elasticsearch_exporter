@@ -17,6 +17,8 @@ import (
 	"context"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 )
 
 // wrapCollector is a util to let you test your Collector implementation.
@@ -32,5 +34,11 @@ func (w wrapCollector) Describe(_ chan<- *prometheus.Desc) {
 }
 
 func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
-	w.c.Update(context.Background(), ch)
+	w.c.Update(context.Background(), &mockUpdateContext{}, ch)
+}
+
+type mockUpdateContext struct{}
+
+func (m *mockUpdateContext) GetClusterInfo(_ context.Context) (cluster.Info, error) {
+	return cluster.Info{}, nil
 }

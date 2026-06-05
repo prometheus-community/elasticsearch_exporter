@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/config"
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
@@ -173,8 +174,9 @@ func main() {
 		var httpTransport http.RoundTripper
 
 		httpTransport = &http.Transport{
-			TLSClientConfig: tlsConfig,
-			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig:   tlsConfig,
+			Proxy:             http.ProxyFromEnvironment,
+			ForceAttemptHTTP2: true,
 		}
 
 		esAPIKey := os.Getenv("ES_API_KEY")
@@ -200,12 +202,16 @@ func main() {
 			}
 		}
 
+		// This should replace the below cluster info retriever in the future.
+		infoRetriever := cluster.NewInfoProvider(logger, httpClient, esURL, *esClusterInfoInterval)
+
 		// create the exporter
 		exporter, err := collector.NewElasticsearchCollector(
 			logger,
 			[]string{},
 			collector.WithElasticsearchURL(esURL),
 			collector.WithHTTPClient(httpClient),
+			collector.WithClusterInfoProvider(infoRetriever),
 		)
 		if err != nil {
 			logger.Error("failed to create Elasticsearch collector", "err", err)
@@ -339,6 +345,7 @@ func main() {
 		baseTransport := &http.Transport{
 			TLSClientConfig:   tlsCfg,
 			Proxy:             http.ProxyFromEnvironment,
+			ForceAttemptHTTP2: true,
 			DisableKeepAlives: true,
 		}
 		var transport http.RoundTripper = baseTransport

@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -74,31 +73,21 @@ type IlmStatusResponse struct {
 	OperationMode string `json:"operation_mode"`
 }
 
-func (i *ILM) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (i *ILM) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	var ir IlmResponse
 
 	indexURL := i.u.ResolveReference(&url.URL{Path: "/_all/_ilm/explain"})
 
-	indexResp, err := getURL(ctx, i.hc, i.logger, indexURL.String())
-	if err != nil {
-		return fmt.Errorf("failed to load ILM url: %w", err)
-	}
-
-	if err := json.Unmarshal(indexResp, &ir); err != nil {
-		return fmt.Errorf("failed to decode JSON body: %w", err)
+	if err := getAndDecodeURL(ctx, i.hc, i.logger, indexURL.String(), &ir); err != nil {
+		return fmt.Errorf("failed to load ILM index explain: %w", err)
 	}
 
 	var isr IlmStatusResponse
 
 	indexStatusURL := i.u.ResolveReference(&url.URL{Path: "/_ilm/status"})
 
-	indexStatusResp, err := getURL(ctx, i.hc, i.logger, indexStatusURL.String())
-	if err != nil {
-		return fmt.Errorf("failed to load ILM url: %w", err)
-	}
-
-	if err := json.Unmarshal(indexStatusResp, &isr); err != nil {
-		return fmt.Errorf("failed to decode JSON body: %w", err)
+	if err := getAndDecodeURL(ctx, i.hc, i.logger, indexStatusURL.String(), &isr); err != nil {
+		return fmt.Errorf("failed to load ILM status: %w", err)
 	}
 
 	for name, ilm := range ir.Indices {

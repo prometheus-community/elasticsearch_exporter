@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -300,17 +299,11 @@ func statusValue(value string, color string) float64 {
 	return 0
 }
 
-func (c *HealthReport) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *HealthReport) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	u := c.url.ResolveReference(&url.URL{Path: "/_health_report"})
 	var healthReportResponse HealthReportResponse
 
-	resp, err := getURL(ctx, c.client, c.logger, u.String())
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(resp, &healthReportResponse)
-	if err != nil {
+	if err := getAndDecodeURL(ctx, c.client, c.logger, u.String(), &healthReportResponse); err != nil {
 		return err
 	}
 

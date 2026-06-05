@@ -145,7 +145,7 @@ type clusterSettingsWatermark struct {
 	Low        interface{} `json:"low"`
 }
 
-func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	u := c.u.ResolveReference(&url.URL{Path: "_cluster/settings"})
 	q := u.Query()
 	q.Set("include_defaults", "true")
@@ -160,14 +160,19 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, ch chan<- prometh
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			c.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
+
+	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
 	var data clusterSettingsResponse
-	err = json.Unmarshal(b, &data)
-	if err != nil {
+	if err := json.Unmarshal(bts, &data); err != nil {
 		return err
 	}
 

@@ -721,6 +721,18 @@ func NewNodes(logger *slog.Logger, client *http.Client, url *url.URL, all bool, 
 			{
 				Type: prometheus.GaugeValue,
 				Desc: prometheus.NewDesc(
+					prometheus.BuildFQName(namespace, "indices", "search_scroll_current"),
+					"Number of scroll operations currently running",
+					defaultNodeLabels, nil,
+				),
+				Value: func(node NodeStatsNodeResponse) float64 {
+					return float64(node.Indices.Search.ScrollCurrent)
+				},
+				Labels: defaultNodeLabelValues,
+			},
+			{
+				Type: prometheus.GaugeValue,
+				Desc: prometheus.NewDesc(
 					prometheus.BuildFQName(namespace, "indices", "docs"),
 					"Count of documents on this node",
 					defaultNodeLabels, nil,
