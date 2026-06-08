@@ -53,6 +53,16 @@ func TestValidateProbeParams(t *testing.T) {
 		t.Fatalf("expected module not found error, got %v", err)
 	}
 
+	// unsupported module type
+	cfg.AuthModules["bad"] = config.AuthModule{Type: "unsupported"}
+	vals = url.Values{}
+	vals.Set("target", "http://localhost:9200")
+	vals.Set("auth_module", "bad")
+	_, _, err = validateProbeParams(cfg, vals)
+	if err != errUnsupportedModule {
+		t.Fatalf("expected unsupported module error, got %v", err)
+	}
+
 	// good path (userpass)
 	cfg.AuthModules["foo"] = config.AuthModule{Type: "userpass", UserPass: &config.UserPassConfig{Username: "u", Password: "p"}}
 	vals = url.Values{}
