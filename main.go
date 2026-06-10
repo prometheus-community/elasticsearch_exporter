@@ -84,6 +84,9 @@ func main() {
 		esExportIndexAliases = kingpin.Flag("es.aliases",
 			"Export informational alias metrics.").
 			Default("true").Bool()
+		esExportAliasNodeLabels = kingpin.Flag("es.aliases.node-labels",
+			"Include the node label on alias metrics (adds cardinality and an extra stats call when --es.shards is disabled).").
+			Default("false").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
 			Default("false").Bool()
@@ -226,7 +229,7 @@ func main() {
 		if *esExportIndices || *esExportShards {
 			sC := collector.NewShards(logger, httpClient, esURL)
 			prometheus.MustRegister(sC)
-			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
+			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases, *esExportAliasNodeLabels)
 			prometheus.MustRegister(iC)
 			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 				logger.Error("failed to register indices collector in cluster info")
@@ -409,7 +412,7 @@ func main() {
 		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
 		if *esExportIndices || *esExportShards {
 			shardsC := collector.NewShards(logger, probeClient, targetURL)
-			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
+			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases, *esExportAliasNodeLabels)
 			reg.MustRegister(shardsC)
 			reg.MustRegister(indicesC)
 		}

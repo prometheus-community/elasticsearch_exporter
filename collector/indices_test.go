@@ -23,7 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/promslog"
 )
 
@@ -43,10 +45,11 @@ func TestIndices(t *testing.T) {
 	//  curl http://localhost:9200/_all/_stats
 
 	tests := []struct {
-		name   string
-		file   string
-		shards bool
-		want   string
+		name            string
+		file            string
+		shards          bool
+		aliasNodeLabels bool
+		want            string
 	}{
 		{
 			name: "1.7.6",
@@ -2238,7 +2241,7 @@ func TestIndices(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true)
+			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true, tt.aliasNodeLabels)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2249,5 +2252,103 @@ func TestIndices(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestIndicesAliasNodeLabels(t *testing.T) {
+	fStats, err := os.Open(path.Join("../fixtures/indices/", "7.17.3.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fStats.Close()
+
+	fStatsShard, err := os.Open(path.Join("../fixtures/indices/shards/", "7.17.3.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fStatsShard.Close()
+
+	fAlias, err := os.Open(path.Join("../fixtures/indices/alias/", "7.17.3.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fAlias.Close()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/_all/_stats":
+			if r.URL.Query().Get("level") == "shards" {
+				io.Copy(w, fStatsShard)
+			} else {
+				io.Copy(w, fStats)
+			}
+		case "/_alias":
+			io.Copy(w, fAlias)
+		default:
+			http.Error(w, "Not Found", http.StatusNotFound)
+		}
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true, true)
+	reg := prometheus.NewRegistry()
+	if err := reg.Register(c); err != nil {
+		t.Fatalf("failed to register collector: %v", err)
+	}
+
+	metrics, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("failed to gather metrics: %v", err)
+	}
+
+	var aliasFamily *dto.MetricFamily
+	for _, mf := range metrics {
+		if mf.GetName() == "elasticsearch_indices_aliases" {
+			aliasFamily = mf
+			break
+		}
+	}
+	if aliasFamily == nil {
+		t.Fatalf("alias metric not found")
+	}
+
+	expected := map[string]string{
+		"foo_2|foo_alias_2_1": "49nZYKtiQdGg7Nl_sVsI1A",
+		"foo_3|foo_alias_3_1": "49nZYKtiQdGg7Nl_sVsI1A",
+		"foo_3|foo_alias_3_2": "49nZYKtiQdGg7Nl_sVsI1A",
+	}
+
+	found := map[string]string{}
+	for _, metric := range aliasFamily.GetMetric() {
+		labelMap := map[string]string{}
+		for _, lp := range metric.GetLabel() {
+			labelMap[lp.GetName()] = lp.GetValue()
+		}
+		key := labelMap["index"] + "|" + labelMap["alias"]
+		found[key] = labelMap["node"]
+
+		if labelMap["cluster"] != "unknown_cluster" {
+			t.Fatalf("unexpected cluster label %q", labelMap["cluster"])
+		}
+		if labelMap["node"] == "" {
+			t.Fatalf("expected node label for alias %s", key)
+		}
+	}
+
+	if len(found) != len(expected) {
+		t.Fatalf("unexpected alias metric count: got %d, want %d", len(found), len(expected))
+	}
+
+	for key, wantNode := range expected {
+		if gotNode, ok := found[key]; !ok {
+			t.Fatalf("missing alias metric for %s", key)
+		} else if gotNode != wantNode {
+			t.Fatalf("alias %s node mismatch: got %s want %s", key, gotNode, wantNode)
+		}
 	}
 }
