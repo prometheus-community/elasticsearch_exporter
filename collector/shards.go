@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -140,14 +141,21 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
 	go func() {
+		timer := time.NewTimer(2 * time.Minute)
 		logger.Debug("starting cluster info receive loop")
-		for ci := range shards.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				shards.lastClusterInfo = ci
+		for {
+			select {
+			case ci := <-shards.clusterInfoCh:
+				if ci != nil {
+					logger.Debug("received cluster info update", "cluster", ci.ClusterName)
+					shards.lastClusterInfo = ci
+				}
+			case <-timer.C:
+				close(shards.clusterInfoCh)
+				logger.Debug("exiting cluster info receive loop")
+				return
 			}
 		}
-		logger.Debug("exiting cluster info receive loop")
 	}()
 
 	shardPtr = shards
