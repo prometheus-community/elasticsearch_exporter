@@ -21,7 +21,7 @@ import (
 )
 
 func TestValidateProbeParams(t *testing.T) {
-	cfg := &config.Config{AuthModules: map[string]config.AuthModule{}}
+	cfg := &config.AuthConfig{AuthModules: map[string]config.AuthModule{}}
 	// missing target
 	_, _, err := validateProbeParams(cfg, url.Values{})
 	if err != errMissingTarget {
@@ -122,5 +122,60 @@ func TestValidateProbeParams(t *testing.T) {
 	}
 	if am == nil || am.Type != "tls" {
 		t.Fatalf("expected tls module, got %+v", am)
+	}
+}
+
+func TestApplyProbeAuthModule(t *testing.T) {
+	cfg := buildConfig(
+		"http://localhost:9200",
+		0,
+		false,
+		"_local",
+		false,
+		false,
+		true,
+		false,
+		0,
+		"",
+		"",
+		"",
+		false,
+		"",
+		"",
+		map[string]bool{},
+		"tasks:*",
+	)
+	module := &config.AuthModule{
+		Type: "userpass",
+		UserPass: &config.UserPassConfig{
+			Username: "u",
+			Password: "p",
+		},
+		Options: map[string]string{"pretty": "true"},
+		TLS:     &config.TLSConfig{CAFile: "/ca.pem", InsecureSkipVerify: true},
+	}
+	if err := applyProbeAuthModule(&cfg, module); err != nil {
+		t.Fatalf("apply auth module: %v", err)
+	}
+	if cfg.Username != "u" || cfg.Password != "p" {
+		t.Fatalf("unexpected credentials: %s/%s", cfg.Username, cfg.Password)
+	}
+	if cfg.TLS.CAFile != "/ca.pem" || !cfg.TLS.InsecureSkipVerify {
+		t.Fatalf("unexpected TLS config: %+v", cfg.TLS)
+	}
+	u, err := url.Parse(cfg.ElasticsearchURL)
+	if err != nil {
+		t.Fatalf("parse target URL: %v", err)
+	}
+	if got := u.Query().Get("pretty"); got != "true" {
+		t.Fatalf("unexpected query option: %s", got)
+	}
+
+	cfg = buildConfig("http://localhost:9200", config.DefaultTimeout, false, "_local", false, false, true, false, config.DefaultClusterInfoInterval, "", "", "", false, "", "", map[string]bool{}, config.DefaultTasksActions)
+	if err := applyProbeAuthModule(&cfg, &config.AuthModule{Type: "aws", AWS: &config.AWSConfig{RoleARN: "role"}}); err != nil {
+		t.Fatalf("apply aws module: %v", err)
+	}
+	if !cfg.AWSEnabled {
+		t.Fatalf("expected AWS signing to be enabled")
 	}
 }

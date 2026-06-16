@@ -22,11 +22,14 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
+	prometheuscollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promslog"
@@ -35,24 +38,11 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 
-	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 	"github.com/prometheus-community/elasticsearch_exporter/collector"
 	"github.com/prometheus-community/elasticsearch_exporter/config"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/roundtripper"
 )
 
 const name = "elasticsearch_exporter"
-
-type transportWithAPIKey struct {
-	underlyingTransport http.RoundTripper
-	apiKey              string
-}
-
-func (t *transportWithAPIKey) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("Authorization", fmt.Sprintf("ApiKey %s", t.apiKey))
-	return t.underlyingTransport.RoundTrip(req)
-}
 
 func main() {
 	var (
@@ -62,34 +52,34 @@ func main() {
 		toolkitFlags = webflag.AddFlags(kingpin.CommandLine, ":9114")
 		esURI        = kingpin.Flag("es.uri",
 			"HTTP API address of an Elasticsearch node.").
-			Default("").String()
+			Default(config.DefaultElasticsearchURL).String()
 		esTimeout = kingpin.Flag("es.timeout",
 			"Timeout for trying to get stats from Elasticsearch.").
-			Default("5s").Duration()
+			Default(config.DefaultTimeout.String()).Duration()
 		esAllNodes = kingpin.Flag("es.all",
 			"Export stats for all nodes in the cluster. If used, this flag will override the flag es.node.").
-			Default("false").Bool()
+			Default(strconv.FormatBool(config.DefaultAllNodes)).Bool()
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
-			Default("_local").String()
+			Default(config.DefaultNode).String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
-			Default("false").Bool()
+			Default(strconv.FormatBool(config.DefaultExportIndices)).Bool()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
-			Default("false").Bool()
+			Default(strconv.FormatBool(config.DefaultCollectorConfig()[config.CollectorIndicesSettings])).Bool()
 		esExportIndicesMappings = kingpin.Flag("es.indices_mappings",
 			"Export stats for mappings of all indices of the cluster.").
-			Default("false").Bool()
+			Default(strconv.FormatBool(config.DefaultExportIndicesMappings)).Bool()
 		esExportIndexAliases = kingpin.Flag("es.aliases",
 			"Export informational alias metrics.").
-			Default("true").Bool()
+			Default(strconv.FormatBool(config.DefaultExportIndexAliases)).Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
-			Default("false").Bool()
+			Default(strconv.FormatBool(config.DefaultExportShards)).Bool()
 		esClusterInfoInterval = kingpin.Flag("es.clusterinfo.interval",
 			"Cluster info update interval for the cluster label").
-			Default("5m").Duration()
+			Default(config.DefaultClusterInfoInterval.String()).Duration()
 		esCA = kingpin.Flag("es.ca",
 			"Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.").
 			Default("").String()
@@ -111,7 +101,9 @@ func main() {
 		awsRoleArn = kingpin.Flag("aws.role-arn",
 			"Role ARN of an IAM role to assume.").
 			Default("").String()
-		configFile = kingpin.Flag("config.file", "Path to YAML configuration file.").Default("").String()
+		configFile     = kingpin.Flag("config.file", "Path to YAML configuration file.").Default("").String()
+		collectorFlags = newCollectorFlags()
+		tasksActions   = kingpin.Flag("tasks.actions", "Filter on task actions. Used in same way as Task API actions param.").Default(config.DefaultTasksActions).String()
 	)
 
 	promslogConfig := &promslog.Config{}
@@ -120,16 +112,16 @@ func main() {
 	kingpin.CommandLine.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	// Load optional YAML config
-	var cfg *config.Config
+	// Load optional YAML auth module config.
+	authCfg := &config.AuthConfig{AuthModules: map[string]config.AuthModule{}}
 	if *configFile != "" {
-		var cfgErr error
-		cfg, cfgErr = config.LoadConfig(*configFile)
+		loadedCfg, cfgErr := config.LoadAuthConfig(*configFile)
 		if cfgErr != nil {
 			// At this stage logger not yet created; fallback to stderr
 			fmt.Fprintf(os.Stderr, "failed to load config file: %v\n", cfgErr)
 			os.Exit(1)
 		}
+		authCfg = loadedCfg
 	}
 
 	var w io.Writer
@@ -144,127 +136,80 @@ func main() {
 	promslogConfig.Writer = w
 	logger := promslog.New(promslogConfig)
 
-	// version metric
-	prometheus.MustRegister(versioncollector.NewCollector(name))
-
 	// Create a context that is cancelled on SIGKILL or SIGINT.
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
-	if *esURI != "" {
-		esURL, err := url.Parse(*esURI)
+	collectorStates := collectorFlags.states()
+	if *esExportIndicesSettings {
+		collectorStates[config.CollectorIndicesSettings] = true
+	}
+	baseCfg := buildConfig(
+		*esURI,
+		*esTimeout,
+		*esAllNodes,
+		*esNode,
+		*esExportIndices,
+		*esExportIndicesMappings,
+		*esExportIndexAliases,
+		*esExportShards,
+		*esClusterInfoInterval,
+		*esCA,
+		*esClientCert,
+		*esClientPrivateKey,
+		*esInsecureSkipVerify,
+		*awsRegion,
+		*awsRoleArn,
+		collectorStates,
+		*tasksActions,
+	)
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(
+		prometheuscollectors.NewGoCollector(),
+		prometheuscollectors.NewProcessCollector(prometheuscollectors.ProcessCollectorOpts{}),
+		versioncollector.NewCollector(name),
+	)
+	var runtime *collector.Runtime
+	if baseCfg.ElasticsearchURL != "" {
+		singleTargetCfg := baseCfg
+		if username, password := os.Getenv("ES_USERNAME"), os.Getenv("ES_PASSWORD"); username != "" && password != "" {
+			singleTargetCfg.Username = username
+			singleTargetCfg.Password = password
+		}
+		singleTargetCfg.APIKey = os.Getenv("ES_API_KEY")
+		if err := singleTargetCfg.Validate(); err != nil {
+			logger.Error("invalid single-target configuration", "err", err)
+			os.Exit(1)
+		}
+		var err error
+		runtime, err = collector.NewRuntime(ctx, logger, singleTargetCfg)
 		if err != nil {
-			logger.Error("failed to parse es.uri", "err", err)
+			logger.Error("failed to create runtime", "err", err)
 			os.Exit(1)
 		}
-
-		esUsername := os.Getenv("ES_USERNAME")
-		esPassword := os.Getenv("ES_PASSWORD")
-
-		if esUsername != "" && esPassword != "" {
-			esURL.User = url.UserPassword(esUsername, esPassword)
-		}
-
-		// returns nil if not provided and falls back to simple TCP.
-		tlsConfig := createTLSConfig(*esCA, *esClientCert, *esClientPrivateKey, *esInsecureSkipVerify)
-
-		var httpTransport http.RoundTripper
-
-		httpTransport = &http.Transport{
-			TLSClientConfig:   tlsConfig,
-			Proxy:             http.ProxyFromEnvironment,
-			ForceAttemptHTTP2: true,
-		}
-
-		esAPIKey := os.Getenv("ES_API_KEY")
-
-		if esAPIKey != "" {
-			httpTransport = &transportWithAPIKey{
-				underlyingTransport: httpTransport,
-				apiKey:              esAPIKey,
+		defer func() {
+			if err := runtime.Close(); err != nil {
+				logger.Error("failed to close runtime", "err", err)
 			}
+		}()
+		if err := runtime.Start(ctx); err != nil {
+			logger.Error("failed to start runtime", "err", err)
+			os.Exit(1)
 		}
-
-		httpClient := &http.Client{
-			Timeout:   *esTimeout,
-			Transport: httpTransport,
-		}
-
-		if *awsRegion != "" {
-			var err error
-			httpClient.Transport, err = roundtripper.NewAWSSigningTransport(httpTransport, *awsRegion, *awsRoleArn, logger)
-			if err != nil {
-				logger.Error("failed to create AWS transport", "err", err)
-				os.Exit(1)
-			}
-		}
-
-		// This should replace the below cluster info retriever in the future.
-		infoRetriever := cluster.NewInfoProvider(logger, httpClient, esURL, *esClusterInfoInterval)
-
-		// create the exporter
-		exporter, err := collector.NewElasticsearchCollector(
-			logger,
-			[]string{},
-			collector.WithElasticsearchURL(esURL),
-			collector.WithHTTPClient(httpClient),
-			collector.WithClusterInfoProvider(infoRetriever),
-		)
+		collectors, err := runtime.Collectors()
 		if err != nil {
-			logger.Error("failed to create Elasticsearch collector", "err", err)
+			logger.Error("failed to build collectors", "err", err)
 			os.Exit(1)
 		}
-		prometheus.MustRegister(exporter)
-
-		// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
-		// cluster info retriever
-		clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
-
-		prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
-
-		if *esExportIndices || *esExportShards {
-			sC := collector.NewShards(logger, httpClient, esURL)
-			prometheus.MustRegister(sC)
-			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
-			prometheus.MustRegister(iC)
-			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-				logger.Error("failed to register indices collector in cluster info")
-				os.Exit(1)
-			}
-			if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
-				logger.Error("failed to register shards collector in cluster info")
-				os.Exit(1)
-			}
+		for _, c := range collectors {
+			registry.MustRegister(c)
 		}
-
-		if *esExportIndicesSettings {
-			prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
-		}
-
-		if *esExportIndicesMappings {
-			prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
-		}
-
-		// start the cluster info retriever
-		switch runErr := clusterInfoRetriever.Run(ctx); runErr {
-		case nil:
-			logger.Info("started cluster info retriever", "interval", (*esClusterInfoInterval).String())
-		case clusterinfo.ErrInitialCallTimeout:
-			logger.Info("initial cluster info call timed out")
-		default:
-			logger.Error("failed to run cluster info retriever", "err", runErr)
-			os.Exit(1)
-		}
-
-		// register cluster info retriever as prometheus collector
-		prometheus.MustRegister(clusterInfoRetriever)
 	}
 
 	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
 		// /metrics endpoint is reserved for single-target mode only.
 		// For per-scrape overrides use the dedicated /probe endpoint.
-		promhttp.Handler().ServeHTTP(w, r)
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
 	})
 
 	if *metricsPath != "/" && *metricsPath != "" {
@@ -295,129 +240,43 @@ func main() {
 	// probe endpoint
 	http.HandleFunc("/probe", func(w http.ResponseWriter, r *http.Request) {
 		origQuery := r.URL.Query()
-		targetStr, am, valErr := validateProbeParams(cfg, origQuery)
+		targetStr, am, valErr := validateProbeParams(authCfg, origQuery)
 		if valErr != nil {
 			http.Error(w, valErr.Error(), http.StatusBadRequest)
 			return
 		}
-		targetURL, _ := url.Parse(targetStr)
-		if am != nil {
-			// Apply userpass credentials only if the module type is explicitly set to userpass.
-			if strings.EqualFold(am.Type, "userpass") && am.UserPass != nil {
-				targetURL.User = url.UserPassword(am.UserPass.Username, am.UserPass.Password)
-			}
-			if len(am.Options) > 0 {
-				q := targetURL.Query()
-				for k, v := range am.Options {
-					q.Set(k, v)
-				}
-				targetURL.RawQuery = q.Encode()
-			}
+		probeCfg := baseCfg
+		probeCfg.ElasticsearchURL = targetStr
+		if err := applyProbeAuthModule(&probeCfg, am); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-
-		// Build a dedicated HTTP client for this probe request (reuse TLS opts, timeout, etc.).
-		pemCA := *esCA
-		pemCert := *esClientCert
-		pemKey := *esClientPrivateKey
-		insecure := *esInsecureSkipVerify
-
-		// Apply TLS configuration from auth module if provided (for transport security)
-		// This matches single-target behavior where TLS settings are always applied
-		if am != nil && am.TLS != nil {
-			// Override with module-specific TLS settings
-			if am.TLS.CAFile != "" {
-				pemCA = am.TLS.CAFile
-			}
-			if am.TLS.CertFile != "" {
-				pemCert = am.TLS.CertFile
-			}
-			if am.TLS.KeyFile != "" {
-				pemKey = am.TLS.KeyFile
-			}
-			if am.TLS.InsecureSkipVerify {
-				insecure = true
-			}
+		if err := probeCfg.Validate(); err != nil {
+			logger.Error("invalid probe configuration", "err", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
-		baseTransport := &http.Transport{
-			TLSClientConfig:   tlsCfg,
-			Proxy:             http.ProxyFromEnvironment,
-			ForceAttemptHTTP2: true,
-			DisableKeepAlives: true,
-		}
-		var transport http.RoundTripper = baseTransport
-
-		// inject authentication based on auth_module type
-		if am != nil {
-			switch strings.ToLower(am.Type) {
-			case "apikey":
-				if am.APIKey != "" {
-					transport = &transportWithAPIKey{
-						underlyingTransport: transport,
-						apiKey:              am.APIKey,
-					}
-				}
-			case "aws":
-				var region string
-				if am.AWS.Region != "" {
-					region = am.AWS.Region
-				}
-				var err error
-				transport, err = roundtripper.NewAWSSigningTransport(transport, region, am.AWS.RoleARN, logger)
-				if err != nil {
-					http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
-					return
-				}
-			case "tls":
-				// No additional auth wrapper needed - client certificates in TLS config handle authentication
-			case "userpass":
-				// Already handled above by setting targetURL.User
-			}
-		}
-		probeClient := &http.Client{
-			Timeout:   *esTimeout,
-			Transport: transport,
-		}
-		// Close idle connections when handler completes to prevent resource leaks.
-		defer baseTransport.CloseIdleConnections()
-
-		reg := prometheus.NewRegistry()
-
-		// version metric
-		reg.MustRegister(versioncollector.NewCollector(name))
-
-		// Per-probe cluster info provider. NewInfoProvider is lazy (fetches on
-		// first GetInfo, then caches), so constructing one per request starts no
-		// background goroutine and is safe to discard when the handler returns.
-		infoProvider := cluster.NewInfoProvider(logger, probeClient, targetURL, *esClusterInfoInterval)
-
-		// Core exporter collector
-		exp, err := collector.NewElasticsearchCollector(
-			logger,
-			[]string{},
-			collector.WithElasticsearchURL(targetURL),
-			collector.WithHTTPClient(probeClient),
-			collector.WithClusterInfoProvider(infoProvider),
-		)
+		probeRuntime, err := collector.NewRuntime(r.Context(), logger.With("target", targetStr), probeCfg)
 		if err != nil {
+			logger.Error("failed to create probe runtime", "err", err)
 			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
 			return
 		}
-		reg.MustRegister(exp)
-		// Basic additional collectors – reuse global CLI flags
-		reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
-		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
-		if *esExportIndices || *esExportShards {
-			shardsC := collector.NewShards(logger, probeClient, targetURL)
-			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
-			reg.MustRegister(shardsC)
-			reg.MustRegister(indicesC)
+		defer func() {
+			if err := probeRuntime.Close(); err != nil {
+				logger.Error("failed to close probe runtime", "err", err)
+			}
+		}()
+		reg := prometheus.NewRegistry()
+		reg.MustRegister(versioncollector.NewCollector(name))
+		collectors, err := probeRuntime.Collectors()
+		if err != nil {
+			logger.Error("failed to build probe collectors", "err", err)
+			http.Error(w, "failed to build collectors", http.StatusInternalServerError)
+			return
 		}
-		if *esExportIndicesSettings {
-			reg.MustRegister(collector.NewIndicesSettings(logger, probeClient, targetURL))
-		}
-		if *esExportIndicesMappings {
-			reg.MustRegister(collector.NewIndicesMappings(logger, probeClient, targetURL))
+		for _, c := range collectors {
+			reg.MustRegister(c)
 		}
 
 		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, r)
@@ -437,4 +296,111 @@ func main() {
 	srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer srvCancel()
 	_ = server.Shutdown(srvCtx)
+}
+
+type collectorFlagSet map[string]*bool
+
+func newCollectorFlags() collectorFlagSet {
+	defaults := config.DefaultCollectorConfig()
+	names := make([]string, 0, len(defaults))
+	for name := range defaults {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	flags := make(collectorFlagSet, len(defaults))
+	for _, name := range names {
+		helpDefaultState := "disabled"
+		if defaults[name] {
+			helpDefaultState = "enabled"
+		}
+		flags[name] = kingpin.Flag(
+			"collector."+name,
+			fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState),
+		).Default(fmt.Sprintf("%v", defaults[name])).Bool()
+	}
+	return flags
+}
+
+func (flags collectorFlagSet) states() map[string]bool {
+	states := make(map[string]bool, len(flags))
+	for name, value := range flags {
+		states[name] = *value
+	}
+	return states
+}
+
+func buildConfig(esURI string, timeout time.Duration, allNodes bool, node string, exportIndices bool, exportIndicesMappings bool, exportIndexAliases bool, exportShards bool, clusterInfoInterval time.Duration, caFile string, certFile string, keyFile string, insecureSkipVerify bool, awsRegion string, awsRoleArn string, collectors map[string]bool, tasksActions string) config.Config {
+	cfg := config.NewConfigWithDefaults()
+	cfg.ElasticsearchURL = esURI
+	cfg.Timeout = timeout
+	cfg.AllNodes = allNodes
+	cfg.Node = node
+	cfg.ExportIndices = exportIndices
+	cfg.ExportIndicesMappings = exportIndicesMappings
+	cfg.ExportIndexAliases = exportIndexAliases
+	cfg.ExportShards = exportShards
+	cfg.ClusterInfoInterval = clusterInfoInterval
+	cfg.TLS = config.TLSConfig{
+		CAFile:             caFile,
+		CertFile:           certFile,
+		KeyFile:            keyFile,
+		InsecureSkipVerify: insecureSkipVerify,
+	}
+	cfg.AWS = config.AWSConfig{
+		Region:  awsRegion,
+		RoleARN: awsRoleArn,
+	}
+	cfg.AWSEnabled = awsRegion != ""
+	cfg.Collectors = collectors
+	cfg.TasksActions = tasksActions
+	return cfg
+}
+
+func applyProbeAuthModule(cfg *config.Config, module *config.AuthModule) error {
+	if module == nil {
+		return nil
+	}
+	targetURL, err := url.Parse(cfg.ElasticsearchURL)
+	if err != nil {
+		return err
+	}
+	for k, v := range module.Options {
+		q := targetURL.Query()
+		q.Set(k, v)
+		targetURL.RawQuery = q.Encode()
+	}
+	cfg.ElasticsearchURL = targetURL.String()
+	if module.TLS != nil {
+		if module.TLS.CAFile != "" {
+			cfg.TLS.CAFile = module.TLS.CAFile
+		}
+		if module.TLS.CertFile != "" {
+			cfg.TLS.CertFile = module.TLS.CertFile
+		}
+		if module.TLS.KeyFile != "" {
+			cfg.TLS.KeyFile = module.TLS.KeyFile
+		}
+		if module.TLS.InsecureSkipVerify {
+			cfg.TLS.InsecureSkipVerify = true
+		}
+	}
+	switch strings.ToLower(module.Type) {
+	case "userpass":
+		if module.UserPass != nil {
+			cfg.Username = module.UserPass.Username
+			cfg.Password = module.UserPass.Password
+		}
+	case "apikey":
+		cfg.APIKey = module.APIKey
+	case "aws":
+		if module.AWS != nil {
+			cfg.AWS = *module.AWS
+		}
+		cfg.AWSEnabled = true
+	case "tls":
+	default:
+		return fmt.Errorf("unsupported auth_module type %s", module.Type)
+	}
+	return nil
 }

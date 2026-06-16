@@ -22,13 +22,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
-)
 
-// filterByTask global required because collector interface doesn't expose any way to take
-// constructor args.
-var actionFilter string
+	"github.com/prometheus-community/elasticsearch_exporter/config"
+)
 
 var taskActionDesc = prometheus.NewDesc(
 	prometheus.BuildFQName(namespace, "task_stats", "action"),
@@ -36,29 +33,37 @@ var taskActionDesc = prometheus.NewDesc(
 	[]string{"action"}, nil)
 
 func init() {
-	kingpin.Flag("tasks.actions",
-		"Filter on task actions. Used in same way as Task API actions param").
-		Default("indices:*").StringVar(&actionFilter)
-	registerCollector("tasks", defaultDisabled, NewTaskCollector)
+	registerCollectorWithOptions("tasks", defaultDisabled, func(logger *slog.Logger, u *url.URL, hc *http.Client, options CollectorOptions) (Collector, error) {
+		return NewTaskCollectorWithActions(logger, u, hc, options.TasksActions)
+	})
 }
 
 // Task Information Struct
 type TaskCollector struct {
-	logger *slog.Logger
-	hc     *http.Client
-	u      *url.URL
+	logger  *slog.Logger
+	hc      *http.Client
+	u       *url.URL
+	actions string
 }
 
 // NewTaskCollector defines Task Prometheus metrics
 func NewTaskCollector(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+	return NewTaskCollectorWithActions(logger, u, hc, config.DefaultTasksActions)
+}
+
+func NewTaskCollectorWithActions(logger *slog.Logger, u *url.URL, hc *http.Client, actions string) (Collector, error) {
+	if actions == "" {
+		actions = config.DefaultTasksActions
+	}
 	logger.Info("task collector created",
-		"actionFilter", actionFilter,
+		"actionFilter", actions,
 	)
 
 	return &TaskCollector{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger:  logger,
+		hc:      hc,
+		u:       u,
+		actions: actions,
 	}, nil
 }
 
@@ -84,7 +89,7 @@ func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
 	u := t.u.ResolveReference(&url.URL{Path: "_tasks"})
 	q := u.Query()
 	q.Set("group_by", "none")
-	q.Set("actions", actionFilter)
+	q.Set("actions", t.actions)
 	u.RawQuery = q.Encode()
 
 	var tr tasksResponse

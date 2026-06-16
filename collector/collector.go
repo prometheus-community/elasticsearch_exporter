@@ -21,13 +21,14 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"sync"
 	"time"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/prometheus-community/elasticsearch_exporter/cluster"
+	"github.com/prometheus-community/elasticsearch_exporter/config"
 )
 
 const (
@@ -38,14 +39,20 @@ const (
 	defaultDisabled = false
 )
 
-type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
+type CollectorOptions struct {
+	TasksActions string
+}
+
+type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client, options CollectorOptions) (Collector, error)
+
+type collectorFactory struct {
+	name           string
+	defaultEnabled bool
+	create         factoryFunc
+}
 
 var (
-	factories              = make(map[string]factoryFunc)
-	initiatedCollectorsMtx = sync.Mutex{}
-	initiatedCollectors    = make(map[string]Collector)
-	collectorState         = make(map[string]*bool)
-	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	factories = make(map[string]collectorFactory)
 )
 
 var (
@@ -69,32 +76,45 @@ type Collector interface {
 	Update(context.Context, UpdateContext, chan<- prometheus.Metric) error
 }
 
-func registerCollector(name string, isDefaultEnabled bool, createFunc factoryFunc) {
-	var helpDefaultState string
-	if isDefaultEnabled {
-		helpDefaultState = "enabled"
-	} else {
-		helpDefaultState = "disabled"
+func registerCollector(name string, isDefaultEnabled bool, createFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)) {
+	registerCollectorWithOptions(name, isDefaultEnabled, func(logger *slog.Logger, u *url.URL, hc *http.Client, _ CollectorOptions) (Collector, error) {
+		return createFunc(logger, u, hc)
+	})
+}
+
+func registerCollectorWithOptions(name string, isDefaultEnabled bool, createFunc factoryFunc) {
+	factories[name] = collectorFactory{
+		name:           name,
+		defaultEnabled: isDefaultEnabled,
+		create:         createFunc,
 	}
+}
 
-	// Create flag for this collector
-	flagName := fmt.Sprintf("collector.%s", name)
-	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", name, helpDefaultState)
-	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
+func DefaultCollectorStates() map[string]bool {
+	states := make(map[string]bool, len(factories))
+	for name, factory := range factories {
+		states[name] = factory.defaultEnabled
+	}
+	return states
+}
 
-	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Action(collectorFlagAction(name)).Bool()
-	collectorState[name] = flag
-
-	// Register the create function for this collector
-	factories[name] = createFunc
+func CollectorNames() []string {
+	names := make([]string, 0, len(factories))
+	for name := range factories {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 type ElasticsearchCollector struct {
-	Collectors map[string]Collector
-	logger     *slog.Logger
-	esURL      *url.URL
-	httpClient *http.Client
-	cluserInfo *cluster.InfoProvider
+	Collectors      map[string]Collector
+	logger          *slog.Logger
+	esURL           *url.URL
+	httpClient      *http.Client
+	cluserInfo      *cluster.InfoProvider
+	collectorStates map[string]bool
+	options         CollectorOptions
 }
 
 type Option func(*ElasticsearchCollector) error
@@ -112,35 +132,39 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 	if e.cluserInfo == nil {
 		return nil, fmt.Errorf("cluster info provider is not set")
 	}
+	if e.collectorStates == nil {
+		e.collectorStates = DefaultCollectorStates()
+	}
+	if e.options.TasksActions == "" {
+		e.options.TasksActions = config.DefaultTasksActions
+	}
 
 	f := make(map[string]bool)
 	for _, filter := range filters {
-		enabled, exist := collectorState[filter]
+		enabled, exist := e.collectorStates[filter]
 		if !exist {
 			return nil, fmt.Errorf("missing collector: %s", filter)
 		}
-		if !*enabled {
+		if !enabled {
 			return nil, fmt.Errorf("disabled collector: %s", filter)
 		}
 		f[filter] = true
 	}
 	collectors := make(map[string]Collector)
-	initiatedCollectorsMtx.Lock()
-	defer initiatedCollectorsMtx.Unlock()
-	for key, enabled := range collectorState {
-		if !*enabled || (len(f) > 0 && !f[key]) {
+	for _, key := range CollectorNames() {
+		enabled := e.collectorStates[key]
+		if !enabled || (len(f) > 0 && !f[key]) {
 			continue
 		}
-		if collector, ok := initiatedCollectors[key]; ok {
-			collectors[key] = collector
-		} else {
-			collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
-			if err != nil {
-				return nil, err
-			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
+		factory, ok := factories[key]
+		if !ok {
+			return nil, fmt.Errorf("missing collector factory: %s", key)
 		}
+		collector, err := factory.create(logger.With("collector", key), e.esURL, e.httpClient, e.options)
+		if err != nil {
+			return nil, err
+		}
+		collectors[key] = collector
 	}
 
 	e.Collectors = collectors
@@ -165,6 +189,20 @@ func WithHTTPClient(hc *http.Client) Option {
 func WithClusterInfoProvider(cl *cluster.InfoProvider) Option {
 	return func(e *ElasticsearchCollector) error {
 		e.cluserInfo = cl
+		return nil
+	}
+}
+
+func WithCollectorStates(states map[string]bool) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.collectorStates = states
+		return nil
+	}
+}
+
+func WithCollectorOptions(options CollectorOptions) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.options = options
 		return nil
 	}
 }
@@ -209,18 +247,6 @@ func execute(ctx context.Context, name string, c Collector, ch chan<- prometheus
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// collectorFlagAction generates a new action function for the given collector
-// to track whether it has been explicitly enabled or disabled from the command line.
-// A new action function is needed for each collector flag because the ParseContext
-// does not contain information about which flag called the action.
-// See: https://github.com/alecthomas/kingpin/issues/294
-func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
-	return func(ctx *kingpin.ParseContext) error {
-		forcedCollectors[collector] = true
-		return nil
-	}
 }
 
 // ErrNoData indicates the collector found no data to collect, but had no other error.

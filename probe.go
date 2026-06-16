@@ -30,7 +30,7 @@ var (
 
 // validateProbeParams performs upfront validation of the query parameters.
 // It returns the target string (as given), the resolved AuthModule (optional), or an error.
-func validateProbeParams(cfg *config.Config, q url.Values) (string, *config.AuthModule, error) {
+func validateProbeParams(cfg *config.AuthConfig, q url.Values) (string, *config.AuthModule, error) {
 	target := q.Get("target")
 	if target == "" {
 		return "", nil, errMissingTarget

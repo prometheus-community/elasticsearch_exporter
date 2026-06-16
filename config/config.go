@@ -15,25 +15,56 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"strings"
-
-	"go.yaml.in/yaml/v3"
+	"net/url"
+	"time"
 )
 
-// Config represents the YAML configuration file structure.
 type Config struct {
-	AuthModules map[string]AuthModule `yaml:"auth_modules"`
+	ElasticsearchURL      string
+	Timeout               time.Duration
+	AllNodes              bool
+	Node                  string
+	ExportIndices         bool
+	ExportIndicesMappings bool
+	ExportIndexAliases    bool
+	ExportShards          bool
+	ClusterInfoInterval   time.Duration
+	TLS                   TLSConfig
+	AWS                   AWSConfig
+	AWSEnabled            bool
+	Username              string
+	Password              string
+	APIKey                string
+	Collectors            map[string]bool
+	TasksActions          string
+
+	validated bool
 }
 
-type AuthModule struct {
-	Type     string            `yaml:"type"`
-	UserPass *UserPassConfig   `yaml:"userpass,omitempty"`
-	APIKey   string            `yaml:"apikey,omitempty"`
-	AWS      *AWSConfig        `yaml:"aws,omitempty"`
-	TLS      *TLSConfig        `yaml:"tls,omitempty"`
-	Options  map[string]string `yaml:"options,omitempty"`
-}
+const (
+	DefaultElasticsearchURL      = ""
+	DefaultTimeout               = 5 * time.Second
+	DefaultAllNodes              = false
+	DefaultNode                  = "_local"
+	DefaultExportIndices         = false
+	DefaultExportIndicesMappings = false
+	DefaultExportIndexAliases    = true
+	DefaultExportShards          = false
+	DefaultClusterInfoInterval   = 5 * time.Minute
+	DefaultTasksActions          = "indices:*"
+)
+
+const (
+	CollectorClusterInfo     = "cluster-info"
+	CollectorClusterSettings = "clustersettings"
+	CollectorDataStream      = "data-stream"
+	CollectorHealthReport    = "health-report"
+	CollectorILM             = "ilm"
+	CollectorIndicesSettings = "indices_settings"
+	CollectorSnapshots       = "snapshots"
+	CollectorSLM             = "slm"
+	CollectorTasks           = "tasks"
+)
 
 // AWSConfig contains settings for SigV4 authentication.
 type AWSConfig struct {
@@ -54,84 +85,78 @@ type UserPassConfig struct {
 	Password string `yaml:"password"`
 }
 
-// validate ensures every auth module has the required fields according to its type.
-func (c *Config) validate() error {
-	for name, am := range c.AuthModules {
-		// Validate fields based on auth type
-		switch strings.ToLower(am.Type) {
-		case "userpass":
-			if am.UserPass == nil || am.UserPass.Username == "" || am.UserPass.Password == "" {
-				return fmt.Errorf("auth_module %s type userpass requires username and password", name)
-			}
-		case "apikey":
-			if am.APIKey == "" {
-				return fmt.Errorf("auth_module %s type apikey requires apikey", name)
-			}
-		case "aws":
-			// No strict validation: region can come from environment/defaults; role_arn is optional.
-		case "tls":
-			// TLS auth type means client certificate authentication only (no other auth)
-			if am.TLS == nil {
-				return fmt.Errorf("auth_module %s type tls requires tls configuration section", name)
-			}
-			if am.TLS.CertFile == "" || am.TLS.KeyFile == "" {
-				return fmt.Errorf("auth_module %s type tls requires cert_file and key_file for client certificate authentication", name)
-			}
-			// Validate that other auth fields are not set when using TLS auth type
-			if am.UserPass != nil {
-				return fmt.Errorf("auth_module %s type tls cannot have userpass configuration", name)
-			}
-			if am.APIKey != "" {
-				return fmt.Errorf("auth_module %s type tls cannot have apikey", name)
-			}
-			if am.AWS != nil {
-				return fmt.Errorf("auth_module %s type tls cannot have aws configuration", name)
-			}
-		default:
-			return fmt.Errorf("auth_module %s has unsupported type %s", name, am.Type)
+func NewConfigWithDefaults() Config {
+	return Config{
+		ElasticsearchURL:      DefaultElasticsearchURL,
+		Timeout:               DefaultTimeout,
+		AllNodes:              DefaultAllNodes,
+		Node:                  DefaultNode,
+		ExportIndices:         DefaultExportIndices,
+		ExportIndicesMappings: DefaultExportIndicesMappings,
+		ExportIndexAliases:    DefaultExportIndexAliases,
+		ExportShards:          DefaultExportShards,
+		ClusterInfoInterval:   DefaultClusterInfoInterval,
+		Collectors:            DefaultCollectorConfig(),
+		TasksActions:          DefaultTasksActions,
+	}
+}
+
+func DefaultCollectorConfig() map[string]bool {
+	return map[string]bool{
+		CollectorClusterInfo:     true,
+		CollectorClusterSettings: false,
+		CollectorDataStream:      false,
+		CollectorHealthReport:    false,
+		CollectorILM:             false,
+		CollectorIndicesSettings: false,
+		CollectorSnapshots:       false,
+		CollectorSLM:             false,
+		CollectorTasks:           false,
+	}
+}
+
+func (c *Config) Validate() error {
+	c.validated = false
+	if c.Timeout <= 0 {
+		return fmt.Errorf("timeout must be greater than zero")
+	}
+	if c.ClusterInfoInterval < 0 {
+		return fmt.Errorf("cluster info interval must not be negative")
+	}
+	if c.Node == "" {
+		return fmt.Errorf("node must not be empty")
+	}
+	if c.TasksActions == "" {
+		return fmt.Errorf("tasks actions must not be empty")
+	}
+	if c.ElasticsearchURL != "" {
+		u, err := url.Parse(c.ElasticsearchURL)
+		if err != nil {
+			return fmt.Errorf("elasticsearch URL is invalid: %w", err)
 		}
-
-		// Validate TLS configuration (optional for all auth types, provides transport security)
-		if am.TLS != nil {
-			// For cert-based auth (type: tls), cert and key are required
-			// For other auth types, TLS config is optional and used for transport security
-			if strings.ToLower(am.Type) != "tls" {
-				// For non-TLS auth types, if cert/key are provided, both must be present
-				if (am.TLS.CertFile != "") != (am.TLS.KeyFile != "") {
-					return fmt.Errorf("auth_module %s: if providing client certificate, both cert_file and key_file must be specified", name)
-				}
-			}
-
-			// Validate file accessibility
-			for fileType, path := range map[string]string{
-				"ca_file":   am.TLS.CAFile,
-				"cert_file": am.TLS.CertFile,
-				"key_file":  am.TLS.KeyFile,
-			} {
-				if path == "" {
-					continue
-				}
-				if _, err := os.Stat(path); err != nil {
-					return fmt.Errorf("auth_module %s: %s '%s' not accessible: %w", name, fileType, path, err)
-				}
-			}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return fmt.Errorf("elasticsearch URL scheme must be http or https")
+		}
+		if u.Host == "" {
+			return fmt.Errorf("elasticsearch URL host must not be empty")
 		}
 	}
+	if (c.TLS.CertFile != "") != (c.TLS.KeyFile != "") {
+		return fmt.Errorf("if providing client certificate, both cert_file and key_file must be specified")
+	}
+	defaults := DefaultCollectorConfig()
+	for name := range c.Collectors {
+		if name == "" {
+			return fmt.Errorf("collector name must not be empty")
+		}
+		if _, ok := defaults[name]; !ok {
+			return fmt.Errorf("unknown collector %q", name)
+		}
+	}
+	c.validated = true
 	return nil
 }
 
-// LoadConfig reads, parses, and validates the YAML config file.
-func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, err
-	}
-	if err := cfg.validate(); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
+func (c Config) Validated() bool {
+	return c.validated
 }
