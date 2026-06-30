@@ -22,6 +22,7 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -465,6 +466,7 @@ type Indices struct {
 	shards          bool
 	aliases         bool
 	clusterInfoCh   chan *clusterinfo.Response
+	clusterInfoOnce sync.Once
 	lastClusterInfo *clusterinfo.Response
 }
 
@@ -482,23 +484,28 @@ func NewIndices(logger *slog.Logger, client *http.Client, url *url.URL, shards b
 		},
 	}
 
-	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
-	go func() {
-		logger.Debug("starting cluster info receive loop")
-		for ci := range indices.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				indices.lastClusterInfo = ci
-			}
-		}
-		logger.Debug("exiting cluster info receive loop")
-	}()
 	return indices
+}
+
+func (i *Indices) startClusterInfoReceiver() {
+	i.clusterInfoOnce.Do(func() {
+		go func() {
+			i.logger.Debug("starting cluster info receive loop")
+			for ci := range i.clusterInfoCh {
+				if ci != nil {
+					i.logger.Debug("received cluster info update", "cluster", ci.ClusterName)
+					i.lastClusterInfo = ci
+				}
+			}
+			i.logger.Debug("exiting cluster info receive loop")
+		}()
+	})
 }
 
 // ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
 // (not exported) clusterinfo.consumer interface
 func (i *Indices) ClusterLabelUpdates() *chan *clusterinfo.Response {
+	i.startClusterInfoReceiver()
 	return &i.clusterInfoCh
 }
 
