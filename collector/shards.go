@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -41,7 +40,6 @@ type Shards struct {
 	client          *http.Client
 	url             *url.URL
 	clusterInfoCh   chan *clusterinfo.Response
-	clusterInfoOnce sync.Once
 	lastClusterInfo *clusterinfo.Response
 
 	nodeShardMetrics  []*nodeShardMetric
@@ -51,23 +49,7 @@ type Shards struct {
 // ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
 // (not exported) clusterinfo.consumer interface
 func (s *Shards) ClusterLabelUpdates() *chan *clusterinfo.Response {
-	s.startClusterInfoReceiver()
 	return &s.clusterInfoCh
-}
-
-func (s *Shards) startClusterInfoReceiver() {
-	s.clusterInfoOnce.Do(func() {
-		go func() {
-			s.logger.Debug("starting cluster info receive loop")
-			for ci := range s.clusterInfoCh {
-				if ci != nil {
-					s.logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-					s.lastClusterInfo = ci
-				}
-			}
-			s.logger.Debug("exiting cluster info receive loop")
-		}()
-	})
 }
 
 // String implements the stringer interface. It is part of the clusterinfo.consumer interface
@@ -155,6 +137,18 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 			Help: "Number of errors while parsing JSON.",
 		}),
 	}
+
+	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
+	go func() {
+		logger.Debug("starting cluster info receive loop")
+		for ci := range shards.clusterInfoCh {
+			if ci != nil {
+				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
+				shards.lastClusterInfo = ci
+			}
+		}
+		logger.Debug("exiting cluster info receive loop")
+	}()
 
 	shardPtr = shards
 	return shards
