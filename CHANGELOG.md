@@ -11,6 +11,7 @@
 * [FEATURE] Add node label on elasticsearch_nodes_roles metric #1111
 * [ENHANCEMENT] Stream /_all/_stats decode to cut peak memory ~10x #1159
 * [ENHANCEMENT] Attempt HTTP/2 for HTTP client #1168
+* [ENHANCEMENT] Publish container images to GHCR #1173
 * [BUGFIX] Avoid fqName collision on indexing_is_throttled #1184
 * [BUGFIX] Wire cluster info provider into /probe handler #1183
 * [BUGFIX] Fix cluster settings watermark parsing for uppercase unit suffixes #1146
