@@ -15,6 +15,7 @@
 * [BUGFIX] Wire cluster info provider into /probe handler #1183
 * [BUGFIX] Fix cluster settings watermark parsing for uppercase unit suffixes #1146
 * [BUGFIX] Close idle connections to prevent resource leaks in multi-target feature #1136
+
 ## 1.10.0 / 2025-12-02
 
 ### BREAKING CHANGES
