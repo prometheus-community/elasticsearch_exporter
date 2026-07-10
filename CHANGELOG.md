@@ -1,6 +1,22 @@
 ## master / unreleased
 
 
+## 1.11.0 / 2026-07-02
+
+### Changelog
+
+* [FEATURE] Add elasticsearch_indices_search_scroll_current metric #1178
+* [FEATURE] Add number_of_shards to indices settings metrics #1163
+* [FEATURE] Add Index-Level Indexing Metrics #1125
+* [FEATURE] Add node label on elasticsearch_nodes_roles metric #1111
+* [ENHANCEMENT] Stream /_all/_stats decode to cut peak memory ~10x #1159
+* [ENHANCEMENT] Attempt HTTP/2 for HTTP client #1168
+* [ENHANCEMENT] Publish container images to GHCR #1173
+* [BUGFIX] Avoid fqName collision on indexing_is_throttled #1184
+* [BUGFIX] Wire cluster info provider into /probe handler #1183
+* [BUGFIX] Fix cluster settings watermark parsing for uppercase unit suffixes #1146
+* [BUGFIX] Close idle connections to prevent resource leaks in multi-target feature #1136
+
 ## 1.10.0 / 2025-12-02
 
 ### BREAKING CHANGES

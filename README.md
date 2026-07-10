@@ -21,6 +21,13 @@ docker pull quay.io/prometheuscommunity/elasticsearch-exporter:latest
 docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch-exporter:latest
 ```
 
+Images are also published to GHCR:
+
+```bash
+docker pull ghcr.io/prometheus-community/elasticsearch-exporter:latest
+docker run --rm -p 9114:9114 ghcr.io/prometheus-community/elasticsearch-exporter:latest
+```
+
 Example `docker-compose.yml`:
 
 ```yaml
