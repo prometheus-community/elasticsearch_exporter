@@ -58,6 +58,8 @@
 | elasticsearch_indices_index_current                                  | gauge      | 1           | The number of documents currently being indexed to an index                                         |
 | elasticsearch_indices_indexing_index_time_seconds_total              | counter    | 1           | Cumulative index time in seconds                                                                    |
 | elasticsearch_indices_indexing_index_total                           | counter    | 1           | Total index calls                                                                                   |
+| elasticsearch_indices_indexing_is_throttled                          | gauge      | 1           | Indexing throttling                                                                                 |
+| elasticsearch_indices_indexing_throttle_time_seconds_total           | counter    | 1           | Cumulative indexing throttling time                                                                 |
 | elasticsearch_indices_mappings_stats_fields                          | gauge      | 1           | Count of fields currently mapped by index                                                           |
 | elasticsearch_indices_mappings_stats_json_parse_failures_total       | counter    | 0           | Number of errors while parsing JSON                                                                 |
 | elasticsearch_indices_mappings_stats_scrapes_total                   | counter    | 0           | Current total Elasticsearch Indices Mappings scrapes                                                |
@@ -65,6 +67,7 @@
 | elasticsearch_indices_merges_docs_total                              | counter    | 1           | Cumulative docs merged                                                                              |
 | elasticsearch_indices_merges_total                                   | counter    | 1           | Total merges                                                                                        |
 | elasticsearch_indices_merges_total_size_bytes_total                  | counter    | 1           | Total merge size in bytes                                                                           |
+| elasticsearch_indices_merges_total_throttled_time_seconds_total      | counter    | 1           | Total throttled time of merges in seconds                                                           |
 | elasticsearch_indices_merges_total_time_seconds_total                | counter    | 1           | Total time spent merging in seconds                                                                 |
 | elasticsearch_indices_query_cache_cache_total                        | counter    | 1           | Count of query cache                                                                                |
 | elasticsearch_indices_query_cache_cache_size                         | gauge      | 1           | Size of query cache                                                                                 |
