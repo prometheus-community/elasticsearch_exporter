@@ -92,7 +92,7 @@ func (ds *DataStream) Update(ctx context.Context, uc UpdateContext, ch chan<- pr
 	}
 
 	for _, dataStream := range dsr.DataStreamStats {
-		fmt.Printf("Metric: %+v", dataStream)
+		ds.logger.Debug(fmt.Sprintf("Data Stream Metric: %+v", dataStream))
 
 		ch <- prometheus.MustNewConstMetric(
 			dataStreamBackingIndicesTotal,
