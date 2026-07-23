@@ -41,9 +41,11 @@ const (
 type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
 
 var (
-	factories        = make(map[string]factoryFunc)
-	collectorState   = make(map[string]*bool)
-	forcedCollectors = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	factories              = make(map[string]factoryFunc)
+	initiatedCollectorsMtx = sync.Mutex{}
+	initiatedCollectors    = make(map[string]Collector)
+	collectorState         = make(map[string]*bool)
+	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
 var (
@@ -123,15 +125,22 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 		f[filter] = true
 	}
 	collectors := make(map[string]Collector)
+	initiatedCollectorsMtx.Lock()
+	defer initiatedCollectorsMtx.Unlock()
 	for key, enabled := range collectorState {
 		if !*enabled || (len(f) > 0 && !f[key]) {
 			continue
 		}
-		collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
-		if err != nil {
-			return nil, err
+		if collector, ok := initiatedCollectors[key]; ok {
+			collectors[key] = collector
+		} else {
+			collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
+			if err != nil {
+				return nil, err
+			}
+			collectors[key] = collector
+			initiatedCollectors[key] = collector
 		}
-		collectors[key] = collector
 	}
 
 	e.Collectors = collectors
