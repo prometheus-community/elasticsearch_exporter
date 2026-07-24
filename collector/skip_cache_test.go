@@ -19,9 +19,12 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
+
+	"github.com/prometheus-community/elasticsearch_exporter/cluster"
 )
 
 // clusterInfoResponse returns a minimal Elasticsearch root response for the given cluster.
@@ -93,18 +96,22 @@ func TestNewElasticsearchCollectorMultiTarget(t *testing.T) {
 	logger := promslog.NewNopLogger()
 
 	// Simulate probe request for target 1.
+	info1 := cluster.NewInfoProvider(logger, http.DefaultClient, u1, time.Minute)
 	exp1, err := NewElasticsearchCollector(logger, []string{},
 		WithElasticsearchURL(u1),
 		WithHTTPClient(http.DefaultClient),
+		WithClusterInfoProvider(info1),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Simulate probe request for target 2.
+	info2 := cluster.NewInfoProvider(logger, http.DefaultClient, u2, time.Minute)
 	exp2, err := NewElasticsearchCollector(logger, []string{},
 		WithElasticsearchURL(u2),
 		WithHTTPClient(http.DefaultClient),
+		WithClusterInfoProvider(info2),
 	)
 	if err != nil {
 		t.Fatal(err)
