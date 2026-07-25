@@ -15,7 +15,6 @@ package collector
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -92,7 +91,7 @@ func (ds *DataStream) Update(ctx context.Context, uc UpdateContext, ch chan<- pr
 	}
 
 	for _, dataStream := range dsr.DataStreamStats {
-		fmt.Printf("Metric: %+v", dataStream)
+		ds.logger.Debug("data stream stats", "data_stream", dataStream.DataStream, "backing_indices", dataStream.BackingIndices, "store_size_bytes", dataStream.StoreSizeBytes)
 
 		ch <- prometheus.MustNewConstMetric(
 			dataStreamBackingIndicesTotal,
