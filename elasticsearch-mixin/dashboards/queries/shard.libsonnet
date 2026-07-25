@@ -34,12 +34,12 @@ local variables = import '../variables.libsonnet';
       |||
     ),
 
-  reloactingShards:
+  relocatingShards:
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
         sum(
-          elasticsearch_cluster_health_reloacting_shards{cluster=~"$cluster"}
+          elasticsearch_cluster_health_relocating_shards{cluster=~"$cluster"}
         )
       |||
     ),

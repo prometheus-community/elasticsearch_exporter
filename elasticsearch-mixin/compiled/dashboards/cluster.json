@@ -196,7 +196,7 @@
                      "type": "prometheus",
                      "uid": "$datasource"
                   },
-                  "expr": "sum(\n  elasticsearch_cluster_health_reloacting_shards{cluster=~\"$cluster\"}\n)\n"
+                  "expr": "sum(\n  elasticsearch_cluster_health_relocating_shards{cluster=~\"$cluster\"}\n)\n"
                }
             ],
             "title": "Relocating",
