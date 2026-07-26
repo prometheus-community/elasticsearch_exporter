@@ -133,6 +133,27 @@
 | elasticsearch_thread_pool_queue_count                                | gauge      | 14          | Thread Pool operations queued                                                                       |
 | elasticsearch_thread_pool_rejected_count                             | counter    | 14          | Thread Pool operations rejected                                                                     |
 | elasticsearch_thread_pool_threads_count                              | gauge      | 14          | Thread Pool current threads count                                                                   |
+| elasticsearch_transform_stats_state                                  | gauge      |             | State of the transform, one of: started, indexing, stopped, stopping, failed, aborting, waiting     |
+| elasticsearch_transform_stats_health_status                          | gauge      |             | Health status of the transform, one of: green, yellow, red, unknown                                 |
+| elasticsearch_transform_stats_pages_processed_total                  | counter    |             | The number of search or bulk index operations processed                                             |
+| elasticsearch_transform_stats_documents_processed_total              | counter    |             | The number of documents processed                                                                   |
+| elasticsearch_transform_stats_documents_indexed_total                | counter    |             | The number of documents indexed into the destination index                                          |
+| elasticsearch_transform_stats_documents_deleted_total                | counter    |             | The number of documents deleted from the destination index                                          |
+| elasticsearch_transform_stats_trigger_count_total                    | counter    |             | The number of times the transform has been triggered by the scheduler                               |
+| elasticsearch_transform_stats_index_time_seconds_total               | counter    |             | The amount of time spent indexing in seconds                                                        |
+| elasticsearch_transform_stats_index_total                            | counter    |             | The number of index operations                                                                      |
+| elasticsearch_transform_stats_index_failures_total                   | counter    |             | The number of indexing failures                                                                     |
+| elasticsearch_transform_stats_search_time_seconds_total              | counter    |             | The amount of time spent searching in seconds                                                       |
+| elasticsearch_transform_stats_search_total                           | counter    |             | The number of search operations                                                                     |
+| elasticsearch_transform_stats_search_failures_total                  | counter    |             | The number of search failures                                                                       |
+| elasticsearch_transform_stats_processing_time_seconds_total          | counter    |             | The amount of time spent processing results in seconds                                              |
+| elasticsearch_transform_stats_processing_total                       | counter    |             | The number of processing operations                                                                 |
+| elasticsearch_transform_stats_delete_time_seconds_total              | counter    |             | The amount of time spent deleting documents in seconds                                              |
+| elasticsearch_transform_stats_exponential_avg_checkpoint_duration_seconds | gauge |             | The exponential moving average of the duration of the checkpoint, in seconds                        |
+| elasticsearch_transform_stats_exponential_avg_documents_indexed      | gauge      |             | The exponential moving average of the number of new documents that have been indexed                |
+| elasticsearch_transform_stats_exponential_avg_documents_processed    | gauge      |             | The exponential moving average of the number of documents that have been processed                  |
+| elasticsearch_transform_stats_checkpoint                             | gauge      |             | The sequence number of the last completed checkpoint                                                |
+| elasticsearch_transform_stats_operations_behind                      | gauge      |             | The number of operations in the source index that have not yet been processed                       |
 | elasticsearch_transport_rx_packets_total                             | counter    | 1           | Count of packets received                                                                           |
 | elasticsearch_transport_rx_size_bytes_total                          | counter    | 1           | Total number of bytes received                                                                      |
 | elasticsearch_transport_tx_packets_total                             | counter    | 1           | Count of packets sent                                                                               |
