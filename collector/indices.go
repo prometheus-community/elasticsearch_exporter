@@ -23,6 +23,7 @@ import (
 	"path"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -467,6 +468,20 @@ type Indices struct {
 	aliases         bool
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
+	closeOnce       sync.Once
+}
+
+// Close stops the background cluster info receive loop started in NewIndices by
+// closing its update channel. It is safe to call multiple times. Short-lived
+// instances (e.g. one created per /probe request) MUST call Close to avoid
+// leaking the receive-loop goroutine. Do not call Close on an instance
+// registered with a clusterinfo.Retriever (single-target mode), where the
+// retriever owns the channel and continues to send updates for the process
+// lifetime.
+func (i *Indices) Close() {
+	i.closeOnce.Do(func() {
+		close(i.clusterInfoCh)
+	})
 }
 
 // NewIndices defines Indices Prometheus metrics
