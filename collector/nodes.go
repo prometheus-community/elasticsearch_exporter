@@ -69,6 +69,14 @@ func getRoles(node NodeStatsNodeResponse) map[string]bool {
 	return roles
 }
 
+// isDataNode reports whether a node holds any data role, including the
+// specialized data tiers (data_content, data_hot, data_warm, data_cold,
+// data_frozen) introduced alongside the generic "data" role.
+func isDataNode(roles map[string]bool) bool {
+	return roles["data"] || roles["data_content"] || roles["data_hot"] ||
+		roles["data_warm"] || roles["data_cold"] || roles["data_frozen"]
+}
+
 var nodesRolesMetric = prometheus.NewDesc(
 	prometheus.BuildFQName(namespace, "nodes", "roles"),
 	"Node roles",
@@ -92,7 +100,7 @@ var (
 			node.Host,
 			node.Name,
 			fmt.Sprintf("%t", roles["master"]),
-			fmt.Sprintf("%t", roles["data"]),
+			fmt.Sprintf("%t", isDataNode(roles)),
 			fmt.Sprintf("%t", roles["ingest"]),
 			fmt.Sprintf("%t", roles["client"]),
 		}
