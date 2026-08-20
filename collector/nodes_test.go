@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -1612,4 +1613,15 @@ func TestNodesStats(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNodesAndIndicesRegisterTogether(t *testing.T) {
+	u, err := url.Parse("http://example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(NewNodes(promslog.NewNopLogger(), http.DefaultClient, u, true, "_local"))
+	reg.MustRegister(NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true))
 }
