@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.33
 	github.com/aws/aws-sdk-go-v2/service/sts v1.45.3
 	github.com/blang/semver/v4 v4.0.0
+	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/imdario/mergo v0.3.13
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.70.1
