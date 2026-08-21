@@ -26,6 +26,31 @@ import (
 	"github.com/prometheus/common/promslog"
 )
 
+func TestIsDataNode(t *testing.T) {
+	tests := []struct {
+		name  string
+		roles []string
+		want  bool
+	}{
+		{"generic data role", []string{"data"}, true},
+		{"data_content tier", []string{"data_content"}, true},
+		{"data_hot tier", []string{"data_hot"}, true},
+		{"data_warm tier", []string{"data_warm"}, true},
+		{"data_cold tier", []string{"data_cold"}, true},
+		{"data_frozen tier", []string{"data_frozen"}, true},
+		{"master only", []string{"master"}, false},
+		{"ingest only", []string{"ingest"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := NodeStatsNodeResponse{Roles: tt.roles}
+			if got := isDataNode(getRoles(node)); got != tt.want {
+				t.Errorf("isDataNode(getRoles(%v)) = %v, want %v", tt.roles, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNodesStats(t *testing.T) {
 	tests := []struct {
 		name string
