@@ -410,6 +410,12 @@ func main() {
 		if *esExportIndices || *esExportShards {
 			shardsC := collector.NewShards(logger, probeClient, targetURL)
 			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
+			// These collectors start a background cluster info receive loop that
+			// only exits when their channel is closed. In /probe mode nothing feeds
+			// or closes that channel, so close them when the handler returns to
+			// avoid leaking two goroutines per scrape.
+			defer shardsC.Close()
+			defer indicesC.Close()
 			reg.MustRegister(shardsC)
 			reg.MustRegister(indicesC)
 		}
