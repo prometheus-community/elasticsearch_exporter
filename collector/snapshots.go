@@ -25,13 +25,13 @@ import (
 )
 
 var (
-	defaultSnapshotLabels      = []string{"repository", "state", "version"}
-	defaultSnapshotLabelValues = func(repositoryName string, snapshotStats SnapshotStatDataResponse) []string {
-		return []string{repositoryName, snapshotStats.State, snapshotStats.Version}
+	defaultSnapshotLabels      = []string{"repository", "state", "version", "cluster"}
+	defaultSnapshotLabelValues = func(repositoryName string, snapshotStats SnapshotStatDataResponse, clusterName string) []string {
+		return []string{repositoryName, snapshotStats.State, snapshotStats.Version, clusterName}
 	}
-	defaultSnapshotRepositoryLabels      = []string{"repository"}
-	defaultSnapshotRepositoryLabelValues = func(repositoryName string) []string {
-		return []string{repositoryName}
+	defaultSnapshotRepositoryLabels      = []string{"repository", "cluster"}
+	defaultSnapshotRepositoryLabelValues = func(repositoryName string, clusterName string) []string {
+		return []string{repositoryName, clusterName}
 	}
 )
 
@@ -110,6 +110,11 @@ func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, 
 }
 
 func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
+	clusterInfo, err := uc.GetClusterInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get cluster info: %v", err)
+	}
+
 	// indices
 	snapshotsStatsResp := make(map[string]SnapshotStatsResponse)
 	u := c.u.ResolveReference(&url.URL{Path: "/_snapshot"})
@@ -136,7 +141,7 @@ func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prom
 			numSnapshots,
 			prometheus.GaugeValue,
 			float64(len(snapshotStats.Snapshots)),
-			defaultSnapshotRepositoryLabelValues(repositoryName)...,
+			defaultSnapshotRepositoryLabelValues(repositoryName, clusterInfo.ClusterName)...,
 		)
 
 		oldest := float64(0)
@@ -147,7 +152,7 @@ func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prom
 			oldestSnapshotTimestamp,
 			prometheus.GaugeValue,
 			oldest,
-			defaultSnapshotRepositoryLabelValues(repositoryName)...,
+			defaultSnapshotRepositoryLabelValues(repositoryName, clusterInfo.ClusterName)...,
 		)
 
 		latest := float64(0)
@@ -162,7 +167,7 @@ func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prom
 			latestSnapshotTimestamp,
 			prometheus.GaugeValue,
 			latest,
-			defaultSnapshotRepositoryLabelValues(repositoryName)...,
+			defaultSnapshotRepositoryLabelValues(repositoryName, clusterInfo.ClusterName)...,
 		)
 
 		if len(snapshotStats.Snapshots) == 0 {
@@ -174,43 +179,43 @@ func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prom
 			numIndices,
 			prometheus.GaugeValue,
 			float64(len(lastSnapshot.Indices)),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			snapshotStartTimestamp,
 			prometheus.GaugeValue,
 			float64(lastSnapshot.StartTimeInMillis/1000),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			snapshotEndTimestamp,
 			prometheus.GaugeValue,
 			float64(lastSnapshot.EndTimeInMillis/1000),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			snapshotNumFailures,
 			prometheus.GaugeValue,
 			float64(len(lastSnapshot.Failures)),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			snapshotNumShards,
 			prometheus.GaugeValue,
 			float64(lastSnapshot.Shards.Total),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			snapshotFailedShards,
 			prometheus.GaugeValue,
 			float64(lastSnapshot.Shards.Failed),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			snapshotSuccessfulShards,
 			prometheus.GaugeValue,
 			float64(lastSnapshot.Shards.Successful),
-			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+			defaultSnapshotLabelValues(repositoryName, lastSnapshot, clusterInfo.ClusterName)...,
 		)
 	}
 
