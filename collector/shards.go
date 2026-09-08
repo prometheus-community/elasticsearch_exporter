@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -41,9 +42,23 @@ type Shards struct {
 	url             *url.URL
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
+	closeOnce       sync.Once
 
 	nodeShardMetrics  []*nodeShardMetric
 	jsonParseFailures prometheus.Counter
+}
+
+// Close stops the background cluster info receive loop started in NewShards by
+// closing its update channel. It is safe to call multiple times. Short-lived
+// instances (e.g. one created per /probe request) MUST call Close to avoid
+// leaking the receive-loop goroutine. Do not call Close on an instance
+// registered with a clusterinfo.Retriever (single-target mode), where the
+// retriever owns the channel and continues to send updates for the process
+// lifetime.
+func (s *Shards) Close() {
+	s.closeOnce.Do(func() {
+		close(s.clusterInfoCh)
+	})
 }
 
 // ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
