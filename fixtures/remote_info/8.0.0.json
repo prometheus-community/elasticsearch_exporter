@@ -1,0 +1,11 @@
+{
+  "prod_cluster": {
+    "seeds": ["prod-es-1:9300", "prod-es-2:9300", "prod-es-3:9300"],
+    "connected": true,
+    "num_nodes_connected": 15,
+    "num_proxy_sockets_connected": 25,
+    "max_connections_per_cluster": 30,
+    "initial_connect_timeout": "60s",
+    "skip_unavailable": false
+  }
+}
