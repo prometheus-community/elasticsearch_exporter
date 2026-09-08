@@ -40,5 +40,5 @@ func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
 type mockUpdateContext struct{}
 
 func (m *mockUpdateContext) GetClusterInfo(_ context.Context) (cluster.Info, error) {
-	return cluster.Info{}, nil
+	return cluster.Info{ClusterName: "test-cluster"}, nil
 }
