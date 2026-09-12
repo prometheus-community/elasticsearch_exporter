@@ -42,13 +42,20 @@ func TestShards(t *testing.T) {
 		{
 			name: "7.15.0",
 			file: "7.15.0.json",
-			want: `# HELP elasticsearch_node_shards_json_parse_failures Number of errors while parsing JSON.
-             # TYPE elasticsearch_node_shards_json_parse_failures counter
-             elasticsearch_node_shards_json_parse_failures 0
-             # HELP elasticsearch_node_shards_total Total shards per node
-             # TYPE elasticsearch_node_shards_total gauge
-             elasticsearch_node_shards_total{cluster="unknown_cluster",node="35dfca79831a"} 3
-						 `,
+			want: `# HELP elasticsearch_node_shards_state Shard state allocated per node by index (0=unassigned, 10=primary started, 11=primary initializing, 12=primary relocating, 20=replica initializing, 21=replica started, 22=replica relocating).
+			# TYPE elasticsearch_node_shards_state gauge
+			elasticsearch_node_shards_state{cluster="unknown_cluster",index=".geoip_databases",node="35dfca79831a",shard="0"} 10
+			elasticsearch_node_shards_state{cluster="unknown_cluster",index="otherindex",node="35dfca79831a",shard="0"} 10
+			elasticsearch_node_shards_state{cluster="unknown_cluster",index="testindex",node="35dfca79831a",shard="0"} 10
+			elasticsearch_node_shards_state{cluster="unknown_cluster",index="otherindex",node="-",shard="0"} 0
+			elasticsearch_node_shards_state{cluster="unknown_cluster",index="testindex",node="-",shard="0"} 0
+			# HELP elasticsearch_node_shards_json_parse_failures Number of errors while parsing JSON.
+			# TYPE elasticsearch_node_shards_json_parse_failures counter
+			elasticsearch_node_shards_json_parse_failures 0
+			# HELP elasticsearch_node_shards_total Total shards per node
+			# TYPE elasticsearch_node_shards_total gauge
+			elasticsearch_node_shards_total{cluster="unknown_cluster",node="35dfca79831a"} 3
+`,
 		},
 	}
 
@@ -77,6 +84,75 @@ func TestShards(t *testing.T) {
 
 			if err := testutil.CollectAndCompare(s, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestShards_encodeState(t *testing.T) {
+	node := "test-node"
+	tests := []struct {
+		name  string
+		shard ShardResponse
+		want  float64
+	}{
+		{
+			name:  "unassigned_nil_node",
+			shard: ShardResponse{Node: nil, State: "STARTED", Prirep: "p"},
+			want:  0,
+		},
+		{
+			name:  "unassigned_state",
+			shard: ShardResponse{Node: nil, State: "UNASSIGNED", Prirep: "p"},
+			want:  0,
+		},
+		{
+			name:  "primary_started",
+			shard: ShardResponse{Node: &node, State: "STARTED", Prirep: "p"},
+			want:  10,
+		},
+		{
+			name:  "primary_initializing",
+			shard: ShardResponse{Node: &node, State: "INITIALIZING", Prirep: "p"},
+			want:  11,
+		},
+		{
+			name:  "primary_relocating",
+			shard: ShardResponse{Node: &node, State: "RELOCATING", Prirep: "p"},
+			want:  12,
+		},
+		{
+			name:  "replica_started",
+			shard: ShardResponse{Node: &node, State: "STARTED", Prirep: "r"},
+			want:  20,
+		},
+		{
+			name:  "replica_initializing",
+			shard: ShardResponse{Node: &node, State: "INITIALIZING", Prirep: "r"},
+			want:  21,
+		},
+		{
+			name:  "replica_relocating",
+			shard: ShardResponse{Node: &node, State: "RELOCATING", Prirep: "r"},
+			want:  22,
+		},
+		{
+			name:  "unknown_prirep",
+			shard: ShardResponse{Node: &node, State: "STARTED", Prirep: "x"},
+			want:  0,
+		},
+		{
+			name:  "unknown_state",
+			shard: ShardResponse{Node: &node, State: "UNKNOWN", Prirep: "p"},
+			want:  0,
+		},
+	}
+
+	s := &Shards{logger: promslog.NewNopLogger()}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := s.encodeState(tt.shard); got != tt.want {
+				t.Errorf("encodeState() = %v, want %v", got, tt.want)
 			}
 		})
 	}
