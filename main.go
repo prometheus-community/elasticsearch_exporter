@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
@@ -54,6 +55,42 @@ func (t *transportWithAPIKey) RoundTrip(req *http.Request) (*http.Response, erro
 	return t.underlyingTransport.RoundTrip(req)
 }
 
+func registerStandardCollectors(ctx context.Context, logger *slog.Logger, httpClient *http.Client, esURL *url.URL, allNodes bool, node string, exportIndices bool, exportShards bool, exportIndexAliases bool, exportIndicesSettings bool, exportIndicesMappings bool, clusterInfoInterval time.Duration) {
+	clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, clusterInfoInterval)
+	prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
+	prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, allNodes, node))
+	if exportIndices || exportShards {
+		shardsCollector := collector.NewShards(logger, httpClient, esURL)
+		indicesCollector := collector.NewIndices(logger, httpClient, esURL, exportShards, exportIndexAliases)
+		prometheus.MustRegister(shardsCollector)
+		prometheus.MustRegister(indicesCollector)
+		if err := clusterInfoRetriever.RegisterConsumer(indicesCollector); err != nil {
+			logger.Error("failed to register indices collector in cluster info")
+			os.Exit(1)
+		}
+		if err := clusterInfoRetriever.RegisterConsumer(shardsCollector); err != nil {
+			logger.Error("failed to register shards collector in cluster info")
+			os.Exit(1)
+		}
+	}
+	if exportIndicesSettings {
+		prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
+	}
+	if exportIndicesMappings {
+		prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
+	}
+	switch err := clusterInfoRetriever.Run(ctx); err {
+	case nil:
+		logger.Info("started cluster info retriever", "interval", clusterInfoInterval.String())
+	case clusterinfo.ErrInitialCallTimeout:
+		logger.Info("initial cluster info call timed out")
+	default:
+		logger.Error("failed to run cluster info retriever", "err", err)
+		os.Exit(1)
+	}
+	prometheus.MustRegister(clusterInfoRetriever)
+}
+
 func main() {
 	var (
 		metricsPath = kingpin.Flag("web.telemetry-path",
@@ -74,6 +111,9 @@ func main() {
 			Default("_local").String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
+			Default("false").Bool()
+		esServerless = kingpin.Flag("es.serverless",
+			"Use Elastic Cloud Serverless-compatible collectors and APIs.").
 			Default("false").Bool()
 		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
 			"Export stats for settings of all indices of the cluster.").
@@ -203,12 +243,21 @@ func main() {
 		infoRetriever := cluster.NewInfoProvider(logger, httpClient, esURL, *esClusterInfoInterval)
 
 		// create the exporter
-		exporter, err := collector.NewElasticsearchCollector(
-			logger,
-			[]string{},
+		collectorOptions := []collector.Option{
 			collector.WithElasticsearchURL(esURL),
 			collector.WithHTTPClient(httpClient),
 			collector.WithClusterInfoProvider(infoRetriever),
+		}
+		if *esServerless {
+			collectorOptions = append(collectorOptions,
+				collector.WithAllowedCollectors("data-stream"),
+				collector.WithEnabledCollectors("data-stream"),
+			)
+		}
+		exporter, err := collector.NewElasticsearchCollector(
+			logger,
+			[]string{},
+			collectorOptions...,
 		)
 		if err != nil {
 			logger.Error("failed to create Elasticsearch collector", "err", err)
@@ -216,49 +265,13 @@ func main() {
 		}
 		prometheus.MustRegister(exporter)
 
-		// TODO(@sysadmind): Remove this when we have a better way to get the cluster name to down stream collectors.
-		// cluster info retriever
-		clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
-
-		prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
-		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
-
-		if *esExportIndices || *esExportShards {
-			sC := collector.NewShards(logger, httpClient, esURL)
-			prometheus.MustRegister(sC)
-			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
-			prometheus.MustRegister(iC)
-			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
-				logger.Error("failed to register indices collector in cluster info")
-				os.Exit(1)
+		if *esServerless {
+			if *esExportIndices {
+				prometheus.MustRegister(collector.NewServerlessIndices(logger, httpClient, esURL))
 			}
-			if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
-				logger.Error("failed to register shards collector in cluster info")
-				os.Exit(1)
-			}
+		} else {
+			registerStandardCollectors(ctx, logger, httpClient, esURL, *esAllNodes, *esNode, *esExportIndices, *esExportShards, *esExportIndexAliases, *esExportIndicesSettings, *esExportIndicesMappings, *esClusterInfoInterval)
 		}
-
-		if *esExportIndicesSettings {
-			prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
-		}
-
-		if *esExportIndicesMappings {
-			prometheus.MustRegister(collector.NewIndicesMappings(logger, httpClient, esURL))
-		}
-
-		// start the cluster info retriever
-		switch runErr := clusterInfoRetriever.Run(ctx); runErr {
-		case nil:
-			logger.Info("started cluster info retriever", "interval", (*esClusterInfoInterval).String())
-		case clusterinfo.ErrInitialCallTimeout:
-			logger.Info("initial cluster info call timed out")
-		default:
-			logger.Error("failed to run cluster info retriever", "err", runErr)
-			os.Exit(1)
-		}
-
-		// register cluster info retriever as prometheus collector
-		prometheus.MustRegister(clusterInfoRetriever)
 	}
 
 	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
@@ -391,33 +404,48 @@ func main() {
 		// background goroutine and is safe to discard when the handler returns.
 		infoProvider := cluster.NewInfoProvider(logger, probeClient, targetURL, *esClusterInfoInterval)
 
+		collectorOptions := []collector.Option{
+			collector.WithElasticsearchURL(targetURL),
+			collector.WithHTTPClient(probeClient),
+			collector.WithClusterInfoProvider(infoProvider),
+		}
+		if *esServerless {
+			collectorOptions = append(collectorOptions,
+				collector.WithAllowedCollectors("data-stream"),
+				collector.WithEnabledCollectors("data-stream"),
+			)
+		}
 		// Core exporter collector
 		exp, err := collector.NewElasticsearchCollector(
 			logger,
 			[]string{},
-			collector.WithElasticsearchURL(targetURL),
-			collector.WithHTTPClient(probeClient),
-			collector.WithClusterInfoProvider(infoProvider),
+			collectorOptions...,
 		)
 		if err != nil {
 			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
 			return
 		}
 		reg.MustRegister(exp)
-		// Basic additional collectors – reuse global CLI flags
-		reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
-		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
-		if *esExportIndices || *esExportShards {
-			shardsC := collector.NewShards(logger, probeClient, targetURL)
-			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
-			reg.MustRegister(shardsC)
-			reg.MustRegister(indicesC)
-		}
-		if *esExportIndicesSettings {
-			reg.MustRegister(collector.NewIndicesSettings(logger, probeClient, targetURL))
-		}
-		if *esExportIndicesMappings {
-			reg.MustRegister(collector.NewIndicesMappings(logger, probeClient, targetURL))
+		if *esServerless {
+			if *esExportIndices {
+				reg.MustRegister(collector.NewServerlessIndices(logger, probeClient, targetURL))
+			}
+		} else {
+			// Basic additional collectors – reuse global CLI flags
+			reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
+			reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
+			if *esExportIndices || *esExportShards {
+				shardsC := collector.NewShards(logger, probeClient, targetURL)
+				indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
+				reg.MustRegister(shardsC)
+				reg.MustRegister(indicesC)
+			}
+			if *esExportIndicesSettings {
+				reg.MustRegister(collector.NewIndicesSettings(logger, probeClient, targetURL))
+			}
+			if *esExportIndicesMappings {
+				reg.MustRegister(collector.NewIndicesMappings(logger, probeClient, targetURL))
+			}
 		}
 
 		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, r)
