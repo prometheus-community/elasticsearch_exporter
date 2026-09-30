@@ -14,9 +14,9 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -26,122 +26,104 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	defaultTotalFieldsValue = 1000
+	defaultDateCreation     = 0
+
+	indicesSettingsTotalFields = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices_settings", "total_fields"),
+		"index mapping setting for total_fields",
+		[]string{"index"}, nil,
+	)
+	indicesSettingsReplicas = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices_settings", "replicas"),
+		"index setting number_of_replicas",
+		[]string{"index"}, nil,
+	)
+	indicesSettingsShardsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices_settings", "shards"),
+		"index setting number_of_shards",
+		[]string{"index"}, nil,
+	)
+	indicesSettingsCreationTimestamp = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices_settings", "creation_timestamp_seconds"),
+		"index setting creation_date",
+		[]string{"index"}, nil,
+	)
+	indicesSettingsReadOnly = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
+		"Current number of read only indices within cluster",
+		nil, nil,
+	)
+)
+
+func init() {
+	registerCollector("indices_settings", defaultDisabled, NewIndicesSettings)
+}
+
 // IndicesSettings information struct
 type IndicesSettings struct {
 	logger *slog.Logger
-	client *http.Client
-	url    *url.URL
-
-	readOnlyIndices prometheus.Gauge
-
-	metrics []*indicesSettingsMetric
+	hc     *http.Client
+	u      *url.URL
 }
 
-var (
-	defaultIndicesTotalFieldsLabels = []string{"index"}
-	defaultTotalFieldsValue         = 1000 // es default configuration for total fields
-	defaultDateCreation             = 0    // es index default creation date
-)
+// IndicesSettingsResponse is a representation of Elasticsearch Settings for each Index
+type IndicesSettingsResponse map[string]Index
 
-type indicesSettingsMetric struct {
-	Type  prometheus.ValueType
-	Desc  *prometheus.Desc
-	Value func(indexSettings Settings) float64
+// Index defines the struct of the tree for the settings of each index
+type Index struct {
+	Settings Settings `json:"settings"`
+}
+
+// Settings defines current index settings
+type Settings struct {
+	IndexInfo IndexInfo `json:"index"`
+}
+
+// IndexInfo defines the blocks of the current index
+type IndexInfo struct {
+	Blocks           Blocks  `json:"blocks"`
+	Mapping          Mapping `json:"mapping"`
+	NumberOfReplicas string  `json:"number_of_replicas"`
+	NumberOfShards   string  `json:"number_of_shards"`
+	CreationDate     string  `json:"creation_date"`
+}
+
+// Blocks defines whether current index has read_only_allow_delete enabled
+type Blocks struct {
+	ReadOnly string `json:"read_only_allow_delete"`
+}
+
+// Mapping defines mapping settings
+type Mapping struct {
+	TotalFields TotalFields `json:"total_fields"`
+}
+
+// TotalFields defines the limit on the number of mapped fields
+type TotalFields struct {
+	Limit string `json:"limit"`
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
-func NewIndicesSettings(logger *slog.Logger, client *http.Client, url *url.URL) *IndicesSettings {
+func NewIndicesSettings(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
 	return &IndicesSettings{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		readOnlyIndices: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: prometheus.BuildFQName(namespace, "indices_settings_stats", "read_only_indices"),
-			Help: "Current number of read only indices within cluster",
-		}),
-
-		metrics: []*indicesSettingsMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_settings", "total_fields"),
-					"index mapping setting for total_fields",
-					defaultIndicesTotalFieldsLabels, nil,
-				),
-				Value: func(indexSettings Settings) float64 {
-					val, err := strconv.ParseFloat(indexSettings.IndexInfo.Mapping.TotalFields.Limit, 64)
-					if err != nil {
-						return float64(defaultTotalFieldsValue)
-					}
-					return val
-				},
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_settings", "replicas"),
-					"index setting number_of_replicas",
-					defaultIndicesTotalFieldsLabels, nil,
-				),
-				Value: func(indexSettings Settings) float64 {
-					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfReplicas, 64)
-					if err != nil {
-						return float64(defaultTotalFieldsValue)
-					}
-					return val
-				},
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_settings", "shards"),
-					"index setting number_of_shards",
-					defaultIndicesTotalFieldsLabels, nil,
-				),
-				Value: func(indexSettings Settings) float64 {
-					val, err := strconv.ParseFloat(indexSettings.IndexInfo.NumberOfShards, 64)
-					if err != nil {
-						return float64(defaultTotalFieldsValue)
-					}
-					return val
-				},
-			},
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "indices_settings", "creation_timestamp_seconds"),
-					"index setting creation_date",
-					defaultIndicesTotalFieldsLabels, nil,
-				),
-				Value: func(indexSettings Settings) float64 {
-					val, err := strconv.ParseFloat(indexSettings.IndexInfo.CreationDate, 64)
-					if err != nil {
-						return float64(defaultDateCreation)
-					}
-					return val / 1000.0
-				},
-			},
-		},
-	}
+		hc:     hc,
+		u:      u,
+	}, nil
 }
 
-// Describe add Snapshots metrics descriptions
-func (cs *IndicesSettings) Describe(ch chan<- *prometheus.Desc) {
-	ch <- cs.readOnlyIndices.Desc()
+// Update gets all indices settings metric values
+func (cs *IndicesSettings) Update(_ context.Context, _ UpdateContext, ch chan<- prometheus.Metric) error {
+	var asr IndicesSettingsResponse
+	u := *cs.u
+	u.Path = path.Join(u.Path, "/_all/_settings")
 
-	for _, metric := range cs.metrics {
-		ch <- metric.Desc
-	}
-}
-
-func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
-	res, err := cs.client.Get(u.String())
+	res, err := cs.hc.Get(u.String())
 	if err != nil {
-		return fmt.Errorf("failed to get from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+		return fmt.Errorf("failed to get from %s://%s:%s%s: %w", u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
-
 	defer func() {
 		if cerr := res.Body.Close(); cerr != nil {
 			cs.logger.Warn("failed to close response body", "err", cerr)
@@ -152,56 +134,41 @@ func (cs *IndicesSettings) getAndParseURL(u *url.URL, data interface{}) error {
 		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	bts, err := io.ReadAll(res.Body)
-	if err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&asr); err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(bts, data); err != nil {
-		return err
+	var readOnly int
+	for indexName, idx := range asr {
+		if idx.Settings.IndexInfo.Blocks.ReadOnly == "true" {
+			readOnly++
+		}
+
+		totalFields := float64(defaultTotalFieldsValue)
+		if val, err := strconv.ParseFloat(idx.Settings.IndexInfo.Mapping.TotalFields.Limit, 64); err == nil {
+			totalFields = val
+		}
+		ch <- prometheus.MustNewConstMetric(indicesSettingsTotalFields, prometheus.GaugeValue, totalFields, indexName)
+
+		replicas := float64(defaultTotalFieldsValue)
+		if val, err := strconv.ParseFloat(idx.Settings.IndexInfo.NumberOfReplicas, 64); err == nil {
+			replicas = val
+		}
+		ch <- prometheus.MustNewConstMetric(indicesSettingsReplicas, prometheus.GaugeValue, replicas, indexName)
+
+		shards := float64(defaultTotalFieldsValue)
+		if val, err := strconv.ParseFloat(idx.Settings.IndexInfo.NumberOfShards, 64); err == nil {
+			shards = val
+		}
+		ch <- prometheus.MustNewConstMetric(indicesSettingsShardsDesc, prometheus.GaugeValue, shards, indexName)
+
+		creationDate := float64(defaultDateCreation)
+		if val, err := strconv.ParseFloat(idx.Settings.IndexInfo.CreationDate, 64); err == nil {
+			creationDate = val / 1000.0
+		}
+		ch <- prometheus.MustNewConstMetric(indicesSettingsCreationTimestamp, prometheus.GaugeValue, creationDate, indexName)
 	}
+
+	ch <- prometheus.MustNewConstMetric(indicesSettingsReadOnly, prometheus.GaugeValue, float64(readOnly))
 	return nil
-}
-
-func (cs *IndicesSettings) fetchAndDecodeIndicesSettings() (IndicesSettingsResponse, error) {
-	u := *cs.url
-	u.Path = path.Join(u.Path, "/_all/_settings")
-	var asr IndicesSettingsResponse
-	err := cs.getAndParseURL(&u, &asr)
-	if err != nil {
-		return asr, err
-	}
-
-	return asr, err
-}
-
-// Collect gets all indices settings metric values
-func (cs *IndicesSettings) Collect(ch chan<- prometheus.Metric) {
-	asr, err := cs.fetchAndDecodeIndicesSettings()
-	if err != nil {
-		cs.readOnlyIndices.Set(0)
-		cs.logger.Warn(
-			"failed to fetch and decode cluster settings stats",
-			"err", err,
-		)
-		return
-	}
-
-	var c int
-	for indexName, value := range asr {
-		if value.Settings.IndexInfo.Blocks.ReadOnly == "true" {
-			c++
-		}
-		for _, metric := range cs.metrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(value.Settings),
-				indexName,
-			)
-		}
-	}
-	cs.readOnlyIndices.Set(float64(c))
-
-	ch <- cs.readOnlyIndices
 }
