@@ -36,11 +36,11 @@ func TestDataStream(t *testing.T) {
 			name: "7.15.0",
 			file: "../fixtures/datastream/7.15.0.json",
 			want: `# HELP elasticsearch_data_stream_backing_indices_total Number of backing indices
-            # TYPE elasticsearch_data_stream_backing_indices_total counter
+            # TYPE elasticsearch_data_stream_backing_indices_total gauge
             elasticsearch_data_stream_backing_indices_total{data_stream="bar"} 2
             elasticsearch_data_stream_backing_indices_total{data_stream="foo"} 5
             # HELP elasticsearch_data_stream_store_size_bytes Store size of data stream
-            # TYPE elasticsearch_data_stream_store_size_bytes counter
+            # TYPE elasticsearch_data_stream_store_size_bytes gauge
             elasticsearch_data_stream_store_size_bytes{data_stream="bar"} 6.7382272e+08
             elasticsearch_data_stream_store_size_bytes{data_stream="foo"} 4.29205396e+08
 			`,

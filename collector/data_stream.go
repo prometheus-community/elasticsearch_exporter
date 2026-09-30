@@ -95,14 +95,14 @@ func (ds *DataStream) Update(ctx context.Context, uc UpdateContext, ch chan<- pr
 
 		ch <- prometheus.MustNewConstMetric(
 			dataStreamBackingIndicesTotal,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			float64(dataStream.BackingIndices),
 			dataStream.DataStream,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			dataStreamStoreSizeBytes,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			float64(dataStream.StoreSizeBytes),
 			dataStream.DataStream,
 		)
