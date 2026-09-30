@@ -7,6 +7,6 @@ ARG ARCH="amd64"
 ARG OS="linux"
 COPY .build/${OS}-${ARCH}/elasticsearch_exporter /bin/elasticsearch_exporter
 
-EXPOSE      7979
+EXPOSE      9114
 USER        nobody
 ENTRYPOINT  [ "/bin/elasticsearch_exporter" ]
