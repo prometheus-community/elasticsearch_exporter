@@ -45,45 +45,45 @@ func TestSLM(t *testing.T) {
 			file: "7.15.0.json",
 			want: `# HELP elasticsearch_slm_stats_operation_mode Operating status of SLM
             # TYPE elasticsearch_slm_stats_operation_mode gauge
-            elasticsearch_slm_stats_operation_mode{operation_mode="RUNNING"} 0
-            elasticsearch_slm_stats_operation_mode{operation_mode="STOPPED"} 0
-            elasticsearch_slm_stats_operation_mode{operation_mode="STOPPING"} 0
+            elasticsearch_slm_stats_operation_mode{cluster="test-cluster",operation_mode="RUNNING"} 0
+            elasticsearch_slm_stats_operation_mode{cluster="test-cluster",operation_mode="STOPPED"} 0
+            elasticsearch_slm_stats_operation_mode{cluster="test-cluster",operation_mode="STOPPING"} 0
             # HELP elasticsearch_slm_stats_retention_deletion_time_seconds Retention run deletion time
             # TYPE elasticsearch_slm_stats_retention_deletion_time_seconds gauge
-            elasticsearch_slm_stats_retention_deletion_time_seconds 72.491
+            elasticsearch_slm_stats_retention_deletion_time_seconds{cluster="test-cluster"} 72.491
             # HELP elasticsearch_slm_stats_retention_failed_total Total failed retention runs
             # TYPE elasticsearch_slm_stats_retention_failed_total counter
-            elasticsearch_slm_stats_retention_failed_total 0
+            elasticsearch_slm_stats_retention_failed_total{cluster="test-cluster"} 0
             # HELP elasticsearch_slm_stats_retention_runs_total Total retention runs
             # TYPE elasticsearch_slm_stats_retention_runs_total counter
-            elasticsearch_slm_stats_retention_runs_total 9
+            elasticsearch_slm_stats_retention_runs_total{cluster="test-cluster"} 9
             # HELP elasticsearch_slm_stats_retention_timed_out_total Total timed out retention runs
             # TYPE elasticsearch_slm_stats_retention_timed_out_total counter
-            elasticsearch_slm_stats_retention_timed_out_total 0
+            elasticsearch_slm_stats_retention_timed_out_total{cluster="test-cluster"} 0
             # HELP elasticsearch_slm_stats_snapshot_deletion_failures_total Total snapshot deletion failures
             # TYPE elasticsearch_slm_stats_snapshot_deletion_failures_total counter
-            elasticsearch_slm_stats_snapshot_deletion_failures_total{policy="everything"} 0
+            elasticsearch_slm_stats_snapshot_deletion_failures_total{cluster="test-cluster",policy="everything"} 0
             # HELP elasticsearch_slm_stats_snapshots_deleted_total Total snapshots deleted
             # TYPE elasticsearch_slm_stats_snapshots_deleted_total counter
-            elasticsearch_slm_stats_snapshots_deleted_total{policy="everything"} 20
+            elasticsearch_slm_stats_snapshots_deleted_total{cluster="test-cluster",policy="everything"} 20
             # HELP elasticsearch_slm_stats_snapshots_failed_total Total snapshots failed
             # TYPE elasticsearch_slm_stats_snapshots_failed_total counter
-            elasticsearch_slm_stats_snapshots_failed_total{policy="everything"} 2
+            elasticsearch_slm_stats_snapshots_failed_total{cluster="test-cluster",policy="everything"} 2
             # HELP elasticsearch_slm_stats_snapshots_taken_total Total snapshots taken
             # TYPE elasticsearch_slm_stats_snapshots_taken_total counter
-            elasticsearch_slm_stats_snapshots_taken_total{policy="everything"} 50
+            elasticsearch_slm_stats_snapshots_taken_total{cluster="test-cluster",policy="everything"} 50
             # HELP elasticsearch_slm_stats_total_snapshot_deletion_failures_total Total snapshot deletion failures
             # TYPE elasticsearch_slm_stats_total_snapshot_deletion_failures_total counter
-            elasticsearch_slm_stats_total_snapshot_deletion_failures_total 0
+            elasticsearch_slm_stats_total_snapshot_deletion_failures_total{cluster="test-cluster"} 0
             # HELP elasticsearch_slm_stats_total_snapshots_deleted_total Total snapshots deleted
             # TYPE elasticsearch_slm_stats_total_snapshots_deleted_total counter
-            elasticsearch_slm_stats_total_snapshots_deleted_total 20
+            elasticsearch_slm_stats_total_snapshots_deleted_total{cluster="test-cluster"} 20
             # HELP elasticsearch_slm_stats_total_snapshots_failed_total Total snapshots failed
             # TYPE elasticsearch_slm_stats_total_snapshots_failed_total counter
-            elasticsearch_slm_stats_total_snapshots_failed_total 2
+            elasticsearch_slm_stats_total_snapshots_failed_total{cluster="test-cluster"} 2
             # HELP elasticsearch_slm_stats_total_snapshots_taken_total Total snapshots taken
             # TYPE elasticsearch_slm_stats_total_snapshots_taken_total counter
-            elasticsearch_slm_stats_total_snapshots_taken_total 103
+            elasticsearch_slm_stats_total_snapshots_taken_total{cluster="test-cluster"} 103
 						`,
 		},
 	}
