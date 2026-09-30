@@ -82,7 +82,7 @@ func main() {
 			"Export stats for mappings of all indices of the cluster.").
 			Default("false").Bool()
 		esExportIndexAliases = kingpin.Flag("es.aliases",
-			"Export informational alias metrics.").
+			"Export informational alias metrics (requires --es.indices or --es.shards to be enabled).").
 			Default("true").Bool()
 		esExportShards = kingpin.Flag("es.shards",
 			"Export stats for shards in the cluster (implies --es.indices).").
