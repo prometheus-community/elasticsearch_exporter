@@ -75,7 +75,44 @@ type sslNodeHTTPResponse struct {
 	PublishAddress string `json:"publish_address"`
 }
 
+// Update reports certificates from the connected node by default, or from
+// every node in the cluster when --es.all is set (see QueryAllNodes).
+// Unlike /_nodes/stats, /_ssl/certificates is not fanned out across the
+// cluster by Elasticsearch itself: it only ever returns the certificates
+// visible to the node that receives the request, so cluster-wide coverage
+// requires querying each node's published address directly.
 func (s *SSLCertificates) Update(ctx context.Context, _ UpdateContext, ch chan<- prometheus.Metric) error {
+	if !QueryAllNodes {
+		return s.updateConnectedNode(ctx, ch)
+	}
+	return s.updateAllNodes(ctx, ch)
+}
+
+// updateConnectedNode queries /_ssl/certificates once, directly on the
+// connected node (es.uri). This is the default: it costs exactly one extra
+// HTTP request regardless of cluster size, and composes correctly whether
+// the exporter is scraping one node or the whole cluster is covered by
+// running one exporter per node (cluster-wide coverage then comes from
+// Prometheus scraping every node's exporter, not from this collector
+// fanning out itself).
+func (s *SSLCertificates) updateConnectedNode(ctx context.Context, ch chan<- prometheus.Metric) error {
+	certificatesURL := s.u.ResolveReference(&url.URL{Path: "/_ssl/certificates"})
+
+	var certificates []SSLCertificate
+	if err := getAndDecodeURL(ctx, s.hc, s.logger, certificatesURL.String(), &certificates); err != nil {
+		return fmt.Errorf("failed to get SSL certificates: %w", err)
+	}
+
+	return emitSSLCertificates(ch, "", "", certificates)
+}
+
+// updateAllNodes discovers every node via /_nodes/http and queries
+// /_ssl/certificates directly on each node's published HTTP address, which
+// must be reachable from the exporter. Only use this with a single exporter
+// instance responsible for the whole cluster: running it from one exporter
+// per node turns this into an O(n^2) number of /_ssl/certificates calls
+// across the cluster.
+func (s *SSLCertificates) updateAllNodes(ctx context.Context, ch chan<- prometheus.Metric) error {
 	var nodes sslNodesResponse
 
 	nodesURL := s.u.ResolveReference(&url.URL{Path: "/_nodes/http"})
@@ -101,32 +138,50 @@ func (s *SSLCertificates) Update(ctx context.Context, _ UpdateContext, ch chan<-
 			return fmt.Errorf("failed to get SSL certificates from node %q: %w", nodeID, err)
 		}
 
-		for _, certificate := range certificates {
-			expiry, err := certificateExpiryTimestamp(certificate.Expiry)
-			if err != nil {
-				return fmt.Errorf("failed to parse certificate expiry from node %q: %w", nodeID, err)
-			}
-
-			ch <- prometheus.MustNewConstMetric(
-				sslCertificateExpiry,
-				prometheus.GaugeValue,
-				expiry,
-				nodeID,
-				node.Name,
-				certificate.Path,
-				certificate.Format,
-				certificate.Alias,
-				certificate.SubjectDN,
-				certificate.SerialNumber,
-			)
+		if err := emitSSLCertificates(ch, nodeID, node.Name, certificates); err != nil {
+			return fmt.Errorf("failed to parse certificate expiry from node %q: %w", nodeID, err)
 		}
 	}
 
 	return nil
 }
 
+func emitSSLCertificates(ch chan<- prometheus.Metric, nodeID, nodeName string, certificates []SSLCertificate) error {
+	for _, certificate := range certificates {
+		expiry, err := certificateExpiryTimestamp(certificate.Expiry)
+		if err != nil {
+			return err
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			sslCertificateExpiry,
+			prometheus.GaugeValue,
+			expiry,
+			nodeID,
+			nodeName,
+			certificate.Path,
+			certificate.Format,
+			certificate.Alias,
+			certificate.SubjectDN,
+			certificate.SerialNumber,
+		)
+	}
+
+	return nil
+}
+
+// sslCertificatesURL builds the /_ssl/certificates URL for a node's
+// published HTTP address. Elasticsearch may report that address as either
+// "ip:port" or "hostname/ip:port" (when the configured publish host is a
+// resolvable name rather than a bare IP), so any "hostname/" prefix is
+// stripped before splitting host and port.
 func sslCertificatesURL(baseURL *url.URL, publishAddress string) (*url.URL, error) {
-	host, port, err := net.SplitHostPort(strings.TrimSpace(publishAddress))
+	publishAddress = strings.TrimSpace(publishAddress)
+	if idx := strings.LastIndex(publishAddress, "/"); idx != -1 {
+		publishAddress = publishAddress[idx+1:]
+	}
+
+	host, port, err := net.SplitHostPort(publishAddress)
 	if err != nil {
 		return nil, fmt.Errorf("invalid publish address %q: %w", publishAddress, err)
 	}

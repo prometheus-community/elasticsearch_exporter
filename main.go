@@ -120,6 +120,11 @@ func main() {
 	kingpin.CommandLine.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	// Propagate --es.all to collectors that are registered generically via
+	// collector.registerCollector and so can't receive it as a constructor
+	// argument the way collector.NewNodes does.
+	collector.QueryAllNodes = *esAllNodes
+
 	// Load optional YAML config
 	var cfg *config.Config
 	if *configFile != "" {
