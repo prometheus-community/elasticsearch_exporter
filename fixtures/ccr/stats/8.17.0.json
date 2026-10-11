@@ -1,0 +1,164 @@
+{
+  "auto_follow_stats": {
+    "number_of_failed_follow_indices": 3,
+    "number_of_failed_remote_cluster_state_requests": 4,
+    "number_of_successful_follow_indices": 7,
+    "recent_auto_follow_errors": [
+      {
+        "leader_index": "metrics:metrics_clash",
+        "timestamp": 1791706789013,
+        "auto_follow_exception": {
+          "type": "snapshot_restore_exception",
+          "reason": "[_ccr_leader:_latest_/_latest_] cannot restore index [metrics_clash_copy] because an open index with same name already exists in the cluster. Either close or delete the existing index or restore the index under a different name by providing a rename pattern and replacement name"
+        }
+      },
+      {
+        "leader_index": "metrics:metrics_other",
+        "timestamp": 1791706819013,
+        "auto_follow_exception": {
+          "type": "snapshot_restore_exception",
+          "reason": "[_ccr_leader:_latest_/_latest_] cannot restore index [metrics_other_copy] because an open index with same name already exists in the cluster. Either close or delete the existing index or restore the index under a different name by providing a rename pattern and replacement name"
+        }
+      }
+    ],
+    "auto_followed_clusters": [
+      {
+        "cluster_name": "leader",
+        "time_since_last_check_millis": 2012,
+        "last_seen_metadata_version": 80
+      }
+    ]
+  },
+  "follow_stats": {
+    "indices": [
+      {
+        "index": "orders-replica",
+        "total_global_checkpoint_lag": 48,
+        "shards": [
+          {
+            "remote_cluster": "leader",
+            "leader_index": "orders",
+            "follower_index": "orders-replica",
+            "shard_id": 0,
+            "leader_global_checkpoint": 1536,
+            "leader_max_seq_no": 1540,
+            "follower_global_checkpoint": 1490,
+            "follower_max_seq_no": 1502,
+            "last_requested_seq_no": 1503,
+            "outstanding_read_requests": 3,
+            "outstanding_write_requests": 2,
+            "write_buffer_operation_count": 12,
+            "write_buffer_size_in_bytes": 4096,
+            "follower_mapping_version": 5,
+            "follower_settings_version": 4,
+            "follower_aliases_version": 6,
+            "total_read_time_millis": 123456,
+            "total_read_remote_exec_time_millis": 23456,
+            "successful_read_requests": 87,
+            "failed_read_requests": 7,
+            "operations_read": 1495,
+            "bytes_read": 145678,
+            "total_write_time_millis": 3456,
+            "successful_write_requests": 64,
+            "failed_write_requests": 8,
+            "operations_written": 1489,
+            "read_exceptions": [
+              {
+                "from_seq_no": 1503,
+                "retries": 2,
+                "exception": {
+                  "type": "node_disconnected_exception",
+                  "reason": "[es-leader][172.18.0.2:9300][indices:data/read/xpack/ccr/shard_changes] disconnected"
+                }
+              }
+            ],
+            "time_since_last_read_millis": 1250
+          },
+          {
+            "remote_cluster": "leader",
+            "leader_index": "orders",
+            "follower_index": "orders-replica",
+            "shard_id": 1,
+            "leader_global_checkpoint": 1610,
+            "leader_max_seq_no": 1612,
+            "follower_global_checkpoint": 1608,
+            "follower_max_seq_no": 1611,
+            "last_requested_seq_no": 1609,
+            "outstanding_read_requests": 1,
+            "outstanding_write_requests": 4,
+            "write_buffer_operation_count": 2,
+            "write_buffer_size_in_bytes": 1024,
+            "follower_mapping_version": 3,
+            "follower_settings_version": 11,
+            "follower_aliases_version": 13,
+            "total_read_time_millis": 98765,
+            "total_read_remote_exec_time_millis": 8765,
+            "successful_read_requests": 91,
+            "failed_read_requests": 17,
+            "operations_read": 1605,
+            "bytes_read": 156789,
+            "total_write_time_millis": 4321,
+            "successful_write_requests": 72,
+            "failed_write_requests": 19,
+            "operations_written": 1601,
+            "read_exceptions": [],
+            "time_since_last_read_millis": 870
+          }
+        ]
+      },
+      {
+        "index": "doomed-replica",
+        "total_global_checkpoint_lag": 2,
+        "shards": [
+          {
+            "remote_cluster": "leader",
+            "leader_index": "doomed",
+            "follower_index": "doomed-replica",
+            "shard_id": 0,
+            "leader_global_checkpoint": 21,
+            "leader_max_seq_no": 23,
+            "follower_global_checkpoint": 19,
+            "follower_max_seq_no": 20,
+            "last_requested_seq_no": 22,
+            "outstanding_read_requests": 0,
+            "outstanding_write_requests": 0,
+            "write_buffer_operation_count": 0,
+            "write_buffer_size_in_bytes": 0,
+            "follower_mapping_version": 2,
+            "follower_settings_version": 1,
+            "follower_aliases_version": 1,
+            "total_read_time_millis": 10102,
+            "total_read_remote_exec_time_millis": 14,
+            "successful_read_requests": 9,
+            "failed_read_requests": 2,
+            "operations_read": 20,
+            "bytes_read": 952,
+            "total_write_time_millis": 5,
+            "successful_write_requests": 6,
+            "failed_write_requests": 0,
+            "operations_written": 19,
+            "read_exceptions": [
+              {
+                "from_seq_no": 10,
+                "retries": 1,
+                "exception": {
+                  "type": "index_not_found_exception",
+                  "reason": "no such index [doomed]",
+                  "index_uuid": "_na_",
+                  "index": "doomed"
+                }
+              }
+            ],
+            "time_since_last_read_millis": 83210,
+            "fatal_exception": {
+              "type": "index_not_found_exception",
+              "reason": "no such index [doomed]",
+              "index_uuid": "_na_",
+              "index": "doomed"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
