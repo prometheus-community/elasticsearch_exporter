@@ -93,6 +93,8 @@ type ElasticsearchCollector struct {
 	esURL      *url.URL
 	httpClient *http.Client
 	cluserInfo *cluster.InfoProvider
+	allowedCollectors map[string]bool
+	enabledCollectors map[string]bool
 }
 
 type Option func(*ElasticsearchCollector) error
@@ -124,7 +126,10 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 	}
 	collectors := make(map[string]Collector)
 	for key, enabled := range collectorState {
-		if !*enabled || (len(f) > 0 && !f[key]) {
+		if len(e.allowedCollectors) > 0 && !e.allowedCollectors[key] {
+			continue
+		}
+		if (!*enabled && !e.enabledCollectors[key]) || (len(f) > 0 && !f[key]) {
 			continue
 		}
 		collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
@@ -156,6 +161,28 @@ func WithHTTPClient(hc *http.Client) Option {
 func WithClusterInfoProvider(cl *cluster.InfoProvider) Option {
 	return func(e *ElasticsearchCollector) error {
 		e.cluserInfo = cl
+		return nil
+	}
+}
+
+// WithAllowedCollectors limits initialization to the named collectors.
+func WithAllowedCollectors(names ...string) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.allowedCollectors = make(map[string]bool, len(names))
+		for _, name := range names {
+			e.allowedCollectors[name] = true
+		}
+		return nil
+	}
+}
+
+// WithEnabledCollectors enables the named collectors regardless of their flag default.
+func WithEnabledCollectors(names ...string) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.enabledCollectors = make(map[string]bool, len(names))
+		for _, name := range names {
+			e.enabledCollectors[name] = true
+		}
 		return nil
 	}
 }
