@@ -14,8 +14,9 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -163,45 +164,46 @@ func (s *Shards) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
-	res, err := s.client.Get(u.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
+// streamShards decodes a /_cat/shards JSON array one element at a time,
+// invoking emit for each, so the full shard list is never materialized.
+func streamShards(r io.Reader, emit func(ShardResponse)) error {
+	dec := json.NewDecoder(r)
 
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			s.logger.Warn(
-				"failed to close http.Client",
-				"err", err,
-			)
+	if _, err := dec.Token(); err != nil { // opening '[' of the array
+		return err
+	}
+	for dec.More() {
+		var shard ShardResponse
+		if err := dec.Decode(&shard); err != nil {
+			return err
 		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		emit(shard)
 	}
-	var sfr []ShardResponse
-	if err := json.NewDecoder(res.Body).Decode(&sfr); err != nil {
-		s.jsonParseFailures.Inc()
-		return nil, err
-	}
-	return sfr, nil
+	return nil
 }
 
-func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
+// streamAndAggregateShards GETs /_cat/shards and counts STARTED shards per
+// node while decoding the response one shard at a time. This keeps peak
+// memory proportional to a single shard entry instead of materializing the
+// entire (potentially many-thousand-element) shard list.
+func (s *Shards) streamAndAggregateShards(ctx context.Context, nodeShards map[string]float64) error {
 	u := *s.url
 	u.Path = path.Join(u.Path, "/_cat/shards")
 	q := u.Query()
 	q.Set("format", "json")
 	u.RawQuery = q.Encode()
-	sfr, err := s.getAndParseURL(&u)
-	if err != nil {
-		return sfr, err
-	}
-	return sfr, err
+
+	return fetchURL(ctx, s.client, s.logger, u.String(), func(r io.Reader) error {
+		if err := streamShards(r, func(shard ShardResponse) {
+			if shard.State == "STARTED" {
+				nodeShards[shard.Node]++
+			}
+		}); err != nil {
+			s.jsonParseFailures.Inc()
+			return err
+		}
+		return nil
+	})
 }
 
 // Collect number of shards on each node
@@ -210,21 +212,13 @@ func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 		ch <- s.jsonParseFailures
 	}()
 
-	sr, err := s.fetchAndDecodeShards()
-	if err != nil {
+	nodeShards := make(map[string]float64)
+	if err := s.streamAndAggregateShards(context.TODO(), nodeShards); err != nil {
 		s.logger.Warn(
 			"failed to fetch and decode node shards stats",
 			"err", err,
 		)
 		return
-	}
-
-	nodeShards := make(map[string]float64)
-
-	for _, shard := range sr {
-		if shard.State == "STARTED" {
-			nodeShards[shard.Node]++
-		}
 	}
 
 	for node, shards := range nodeShards {
