@@ -130,6 +130,7 @@
 | elasticsearch_snapshot_stats_snapshot_failed_shards                  | gauge      | 1           | Last snapshot failed shards                                                                         |
 | elasticsearch_snapshot_stats_snapshot_successful_shards              | gauge      | 1           | Last snapshot successful shards                                                                     |
 | elasticsearch_snapshot_stats_snapshot_total_shards                   | gauge      | 1           | Last snapshot total shard                                                                           |
+| elasticsearch_ssl_certificate_expiry_timestamp_seconds               | gauge      | 7           | Expiry timestamp of an Elasticsearch SSL certificate in Unix time                                    |
 | elasticsearch_thread_pool_active_count                               | gauge      | 14          | Thread Pool threads active                                                                          |
 | elasticsearch_thread_pool_completed_count                            | counter    | 14          | Thread Pool operations completed                                                                    |
 | elasticsearch_thread_pool_largest_count                              | gauge      | 14          | Thread Pool largest threads count                                                                   |
