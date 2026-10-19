@@ -293,135 +293,23 @@ func main() {
 	})
 
 	// probe endpoint
-	http.HandleFunc("/probe", func(w http.ResponseWriter, r *http.Request) {
-		origQuery := r.URL.Query()
-		targetStr, am, valErr := validateProbeParams(cfg, origQuery)
-		if valErr != nil {
-			http.Error(w, valErr.Error(), http.StatusBadRequest)
-			return
-		}
-		targetURL, _ := url.Parse(targetStr)
-		if am != nil {
-			// Apply userpass credentials only if the module type is explicitly set to userpass.
-			if strings.EqualFold(am.Type, "userpass") && am.UserPass != nil {
-				targetURL.User = url.UserPassword(am.UserPass.Username, am.UserPass.Password)
-			}
-			if len(am.Options) > 0 {
-				q := targetURL.Query()
-				for k, v := range am.Options {
-					q.Set(k, v)
-				}
-				targetURL.RawQuery = q.Encode()
-			}
-		}
-
-		// Build a dedicated HTTP client for this probe request (reuse TLS opts, timeout, etc.).
-		pemCA := *esCA
-		pemCert := *esClientCert
-		pemKey := *esClientPrivateKey
-		insecure := *esInsecureSkipVerify
-
-		// Apply TLS configuration from auth module if provided (for transport security)
-		// This matches single-target behavior where TLS settings are always applied
-		if am != nil && am.TLS != nil {
-			// Override with module-specific TLS settings
-			if am.TLS.CAFile != "" {
-				pemCA = am.TLS.CAFile
-			}
-			if am.TLS.CertFile != "" {
-				pemCert = am.TLS.CertFile
-			}
-			if am.TLS.KeyFile != "" {
-				pemKey = am.TLS.KeyFile
-			}
-			if am.TLS.InsecureSkipVerify {
-				insecure = true
-			}
-		}
-		tlsCfg := createTLSConfig(pemCA, pemCert, pemKey, insecure)
-		baseTransport := &http.Transport{
-			TLSClientConfig:   tlsCfg,
-			Proxy:             http.ProxyFromEnvironment,
-			ForceAttemptHTTP2: true,
-			DisableKeepAlives: true,
-		}
-		var transport http.RoundTripper = baseTransport
-
-		// inject authentication based on auth_module type
-		if am != nil {
-			switch strings.ToLower(am.Type) {
-			case "apikey":
-				if am.APIKey != "" {
-					transport = &transportWithAPIKey{
-						underlyingTransport: transport,
-						apiKey:              am.APIKey,
-					}
-				}
-			case "aws":
-				var region string
-				if am.AWS.Region != "" {
-					region = am.AWS.Region
-				}
-				var err error
-				transport, err = roundtripper.NewAWSSigningTransport(transport, region, am.AWS.RoleARN, logger)
-				if err != nil {
-					http.Error(w, "failed to create AWS signing transport", http.StatusInternalServerError)
-					return
-				}
-			case "tls":
-				// No additional auth wrapper needed - client certificates in TLS config handle authentication
-			case "userpass":
-				// Already handled above by setting targetURL.User
-			}
-		}
-		probeClient := &http.Client{
-			Timeout:   *esTimeout,
-			Transport: transport,
-		}
-		// Close idle connections when handler completes to prevent resource leaks.
-		defer baseTransport.CloseIdleConnections()
-
-		reg := prometheus.NewRegistry()
-
-		// version metric
-		reg.MustRegister(versioncollector.NewCollector(name))
-
-		// Per-probe cluster info provider. NewInfoProvider is lazy (fetches on
-		// first GetInfo, then caches), so constructing one per request starts no
-		// background goroutine and is safe to discard when the handler returns.
-		infoProvider := cluster.NewInfoProvider(logger, probeClient, targetURL, *esClusterInfoInterval)
-
-		// Core exporter collector
-		exp, err := collector.NewElasticsearchCollector(
-			logger,
-			[]string{},
-			collector.WithElasticsearchURL(targetURL),
-			collector.WithHTTPClient(probeClient),
-			collector.WithClusterInfoProvider(infoProvider),
-		)
-		if err != nil {
-			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
-			return
-		}
-		reg.MustRegister(exp)
-		// Basic additional collectors – reuse global CLI flags
-		reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
-		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
-		if *esExportIndices || *esExportShards {
-			shardsC := collector.NewShards(logger, probeClient, targetURL)
-			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
-			reg.MustRegister(shardsC)
-			reg.MustRegister(indicesC)
-		}
-		if *esExportIndicesSettings {
-			reg.MustRegister(collector.NewIndicesSettings(logger, probeClient, targetURL))
-		}
-		if *esExportIndicesMappings {
-			reg.MustRegister(collector.NewIndicesMappings(logger, probeClient, targetURL))
-		}
-
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, r)
-	})
+	http.HandleFunc("/probe", newProbeHandler(probeHandlerOptions{
+		cfg:                     cfg,
+		logger:                  logger,
+		esCA:                    *esCA,
+		esClientCert:            *esClientCert,
+		esClientPrivateKey:      *esClientPrivateKey,
+		esInsecureSkipVerify:    *esInsecureSkipVerify,
+		esTimeout:               *esTimeout,
+		esClusterInfoInterval:   *esClusterInfoInterval,
+		esAllNodes:              *esAllNodes,
+		esNode:                  *esNode,
+		esExportIndices:         *esExportIndices,
+		esExportShards:          *esExportShards,
+		esExportIndicesSettings: *esExportIndicesSettings,
+		esExportIndicesMappings: *esExportIndicesMappings,
+		esExportIndexAliases:    *esExportIndexAliases,
+	}))
 
 	server := &http.Server{}
 	go func() {
