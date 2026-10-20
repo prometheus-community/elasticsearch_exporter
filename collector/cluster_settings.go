@@ -231,7 +231,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse flood stage watermark", "err", err)
 	} else {
-		if strings.HasSuffix(watermarkFlood, "b") {
+		if strings.HasSuffix(strings.ToLower(watermarkFlood), "b") {
 			floodStageBytes, err := getValueInBytes(watermarkFlood)
 			if err != nil {
 				c.logger.Error("failed to parse flood_stage bytes", "err", err)
@@ -260,7 +260,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse high watermark", "err", err)
 	} else {
-		if strings.HasSuffix(watermarkHigh, "b") {
+		if strings.HasSuffix(strings.ToLower(watermarkHigh), "b") {
 			highBytes, err := getValueInBytes(watermarkHigh)
 			if err != nil {
 				c.logger.Error("failed to parse high bytes", "err", err)
@@ -289,7 +289,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse low watermark", "err", err)
 	} else {
-		if strings.HasSuffix(watermarkLow, "b") {
+		if strings.HasSuffix(strings.ToLower(watermarkLow), "b") {
 			lowBytes, err := getValueInBytes(watermarkLow)
 			if err != nil {
 				c.logger.Error("failed to parse low bytes", "err", err)
