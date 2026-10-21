@@ -26,12 +26,34 @@ import (
 	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
 
+var (
+	shardsTotalLabels = []string{"node", "cluster"}
+	shardsStateLabels = []string{"node", "cluster", "index", "shard"}
+
+	shardsTotal = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "node_shards", "total"),
+		"Total shards per node",
+		shardsTotalLabels, nil,
+	)
+	jsonParseFailures = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "node_shards", "json_parse_failures"),
+		"Number of errors while parsing JSON.",
+		nil, nil,
+	)
+	shardsState = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "node_shards", "state"),
+		"Shard state allocated per node by index and shard (0=unassigned, 10=primary started, 11=primary initializing, 12=primary relocating, 20=replica started, 21=replica initializing, 22=replica relocating).",
+		shardsStateLabels, nil,
+	)
+)
+
 // ShardResponse has shard's node and index info
 type ShardResponse struct {
-	Index string `json:"index"`
-	Shard string `json:"shard"`
-	State string `json:"state"`
-	Node  string `json:"node"`
+	Index  string  `json:"index"`
+	Shard  string  `json:"shard"`
+	State  string  `json:"state"`
+	Node   *string `json:"node,omitempty"`
+	Prirep string  `json:"prirep"`
 }
 
 // Shards information struct
@@ -42,8 +64,7 @@ type Shards struct {
 	clusterInfoCh   chan *clusterinfo.Response
 	lastClusterInfo *clusterinfo.Response
 
-	nodeShardMetrics  []*nodeShardMetric
-	jsonParseFailures prometheus.Counter
+	jsonParseFailures float64
 }
 
 // ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
@@ -57,15 +78,8 @@ func (s *Shards) String() string {
 	return namespace + "shards"
 }
 
-type nodeShardMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(shards float64) float64
-	Labels labels
-}
-
-// fetchClusterNameOnce performs a single request to the root endpoint to obtain the cluster name.
-func fetchClusterNameOnce(s *Shards) string {
+// getClusterName performs a single request to the root endpoint to obtain the cluster name.
+func (s *Shards) getClusterName() string {
 	if s.lastClusterInfo != nil && s.lastClusterInfo.ClusterName != "unknown_cluster" {
 		return s.lastClusterInfo.ClusterName
 	}
@@ -89,25 +103,7 @@ func fetchClusterNameOnce(s *Shards) string {
 
 // NewShards defines Shards Prometheus metrics
 func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
-	var shardPtr *Shards
-	nodeLabels := labels{
-		keys: func(...string) []string {
-			return []string{"node", "cluster"}
-		},
-		values: func(lastClusterinfo *clusterinfo.Response, base ...string) []string {
-			if lastClusterinfo != nil {
-				return append(base, lastClusterinfo.ClusterName)
-			}
-			if shardPtr != nil {
-				return append(base, fetchClusterNameOnce(shardPtr))
-			}
-			return append(base, "unknown_cluster")
-		},
-	}
-
 	shards := &Shards{
-		// will assign later
-
 		logger: logger,
 		client: client,
 		url:    url,
@@ -116,26 +112,6 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 		lastClusterInfo: &clusterinfo.Response{
 			ClusterName: "unknown_cluster",
 		},
-
-		nodeShardMetrics: []*nodeShardMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "node_shards", "total"),
-					"Total shards per node",
-					nodeLabels.keys(), nil,
-				),
-				Value: func(shards float64) float64 {
-					return shards
-				},
-				Labels: nodeLabels,
-			},
-		},
-
-		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: prometheus.BuildFQName(namespace, "node_shards", "json_parse_failures"),
-			Help: "Number of errors while parsing JSON.",
-		}),
 	}
 
 	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
@@ -150,17 +126,14 @@ func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
 		logger.Debug("exiting cluster info receive loop")
 	}()
 
-	shardPtr = shards
 	return shards
 }
 
 // Describe Shards
 func (s *Shards) Describe(ch chan<- *prometheus.Desc) {
-	ch <- s.jsonParseFailures.Desc()
-
-	for _, metric := range s.nodeShardMetrics {
-		ch <- metric.Desc
-	}
+	ch <- jsonParseFailures
+	ch <- shardsTotal
+	ch <- shardsState
 }
 
 func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
@@ -185,7 +158,7 @@ func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
 	}
 	var sfr []ShardResponse
 	if err := json.NewDecoder(res.Body).Decode(&sfr); err != nil {
-		s.jsonParseFailures.Inc()
+		s.jsonParseFailures++
 		return nil, err
 	}
 	return sfr, nil
@@ -207,34 +180,83 @@ func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
 // Collect number of shards on each node
 func (s *Shards) Collect(ch chan<- prometheus.Metric) {
 	defer func() {
-		ch <- s.jsonParseFailures
+		ch <- prometheus.MustNewConstMetric(
+			jsonParseFailures,
+			prometheus.CounterValue,
+			s.jsonParseFailures,
+		)
 	}()
 
 	sr, err := s.fetchAndDecodeShards()
 	if err != nil {
 		s.logger.Warn(
-			"failed to fetch and decode node shards stats",
+			"failed to fetch and decode shards",
 			"err", err,
 		)
 		return
 	}
 
+	clusterName := s.getClusterName()
+
 	nodeShards := make(map[string]float64)
 
 	for _, shard := range sr {
-		if shard.State == "STARTED" {
-			nodeShards[shard.Node]++
+		node := "-"
+		if shard.Node != nil {
+			node = *shard.Node
 		}
+		if shard.State == "STARTED" {
+			nodeShards[node]++
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			shardsState,
+			prometheus.GaugeValue,
+			s.encodeState(shard),
+			node,
+			clusterName,
+			shard.Index,
+			shard.Shard,
+		)
 	}
 
 	for node, shards := range nodeShards {
-		for _, metric := range s.nodeShardMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(shards),
-				metric.Labels.values(s.lastClusterInfo, node)...,
-			)
-		}
+		ch <- prometheus.MustNewConstMetric(
+			shardsTotal,
+			prometheus.GaugeValue,
+			shards,
+			node,
+			clusterName,
+		)
 	}
+}
+
+func (s *Shards) encodeState(shard ShardResponse) float64 {
+	if shard.Node == nil || shard.State == "UNASSIGNED" {
+		return 0
+	}
+
+	var state float64
+	switch shard.Prirep {
+	case "p":
+		state = 10
+	case "r":
+		state = 20
+	default:
+		s.logger.Warn("unknown shard type", "type", shard.Prirep)
+		return 0
+	}
+
+	switch shard.State {
+	case "STARTED":
+		return state
+	case "INITIALIZING":
+		state += 1
+	case "RELOCATING":
+		state += 2
+	default:
+		s.logger.Warn("unknown shard state", "state", shard.State)
+		return 0
+	}
+	return state
 }
