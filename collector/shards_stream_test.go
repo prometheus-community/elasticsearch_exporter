@@ -16,13 +16,17 @@ package collector
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 // This file is the empirical companion to the streaming change in shards.go,
@@ -133,6 +137,47 @@ func TestStreamShardsEquivalence(t *testing.T) {
 			}
 			if !reflect.DeepEqual(startedPerNode(got), startedPerNode(want)) {
 				t.Fatalf("per-node STARTED aggregation differs between streaming and buffered decode")
+			}
+		})
+	}
+}
+
+func TestStreamShardsMalformed(t *testing.T) {
+	const shard = `{"index":"a","shard":"0","state":"STARTED","node":"n1"}`
+	errRead := errors.New("connection reset")
+	tests := []struct {
+		name    string
+		body    string
+		readErr error // returned by the reader once body is exhausted
+		wantErr bool
+	}{
+		{name: "empty array", body: `[]`},
+		{name: "complete array", body: `[` + shard + `,` + shard + `]`},
+		{name: "truncated after complete element", body: `[` + shard, wantErr: true},
+		{name: "truncated after trailing whitespace", body: `[` + shard + "\n  ", wantErr: true},
+		{name: "truncated after comma", body: `[` + shard + `,`, wantErr: true},
+		{name: "truncated mid element", body: `[{"index":"a","sha`, wantErr: true},
+		{name: "unclosed array", body: `[`, wantErr: true},
+		{name: "mismatched close", body: `[` + shard + `}`, wantErr: true},
+		{name: "read error after complete element", body: `[` + shard, readErr: errRead, wantErr: true},
+		{name: "empty body", body: ``, wantErr: true},
+		{name: "null", body: `null`, wantErr: true},
+		{name: "empty object", body: `{}`, wantErr: true},
+		{name: "object instead of array", body: `{"error":"boom"}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var r io.Reader = strings.NewReader(tt.body)
+			if tt.readErr != nil {
+				r = io.MultiReader(r, iotest.ErrReader(tt.readErr))
+			}
+			err := streamShards(r, func(ShardResponse) {})
+			if gotErr := err != nil; gotErr != tt.wantErr {
+				t.Fatalf("streamShards(%q) error = %v, wantErr %v", tt.body, err, tt.wantErr)
+			}
+			if tt.readErr != nil && !errors.Is(err, tt.readErr) {
+				t.Fatalf("streamShards(%q) error = %v, want the reader's error %v", tt.body, err, tt.readErr)
 			}
 		})
 	}

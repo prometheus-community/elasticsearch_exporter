@@ -81,3 +81,33 @@ func TestShards(t *testing.T) {
 		})
 	}
 }
+
+// A response cut off right after a complete shard object must count as a
+// parse failure and emit no partial per-node totals.
+func TestShardsTruncatedResponse(t *testing.T) {
+	fixture, err := os.ReadFile("../fixtures/shards/7.15.0.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	truncated := strings.TrimSuffix(strings.TrimSpace(string(fixture)), "]")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, truncated)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("Failed to parse URL: %s", err)
+	}
+
+	s := NewShards(promslog.NewNopLogger(), http.DefaultClient, u)
+
+	want := `# HELP elasticsearch_node_shards_json_parse_failures Number of errors while parsing JSON.
+             # TYPE elasticsearch_node_shards_json_parse_failures counter
+             elasticsearch_node_shards_json_parse_failures 1
+						 `
+	if err := testutil.CollectAndCompare(s, strings.NewReader(want)); err != nil {
+		t.Fatal(err)
+	}
+}

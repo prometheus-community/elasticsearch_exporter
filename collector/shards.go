@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -169,8 +170,12 @@ func (s *Shards) Describe(ch chan<- *prometheus.Desc) {
 func streamShards(r io.Reader, emit func(ShardResponse)) error {
 	dec := json.NewDecoder(r)
 
-	if _, err := dec.Token(); err != nil { // opening '[' of the array
+	tok, err := dec.Token()
+	if err != nil {
 		return err
+	}
+	if tok != json.Delim('[') {
+		return fmt.Errorf("expected '[' opening the shards array, got %v", tok)
 	}
 	for dec.More() {
 		var shard ShardResponse
@@ -179,7 +184,13 @@ func streamShards(r io.Reader, emit func(ShardResponse)) error {
 		}
 		emit(shard)
 	}
-	return nil
+	// More also reports false at EOF or on a read error, so a body cut off
+	// right after a complete shard is only caught by consuming the closing ']'.
+	_, err = dec.Token()
+	if err == io.EOF {
+		return io.ErrUnexpectedEOF
+	}
+	return err
 }
 
 // streamAndAggregateShards GETs /_cat/shards and counts STARTED shards per
