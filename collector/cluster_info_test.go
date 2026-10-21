@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -87,6 +89,72 @@ func TestClusterInfo(t *testing.T) {
 
 			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestClusterInfoHTTPStatus(t *testing.T) {
+	body, err := os.ReadFile("../fixtures/clusterinfo/7.13.1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name    string
+		status  int
+		body    string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "ok_guard",
+			status: http.StatusOK,
+			body:   string(body),
+			want: `# HELP elasticsearch_version Elasticsearch version information.
+# TYPE elasticsearch_version gauge
+elasticsearch_version{build_date="2021-05-28T17:40:59.346932922Z",build_hash="9a7758028e4ea59bcab41c12004603c5a7dd84a9",cluster="docker-cluster",cluster_uuid="aCMrCY1VQpqJ6U4Sw_xdiw",lucene_version="8.8.2",version="7.13.1"} 1
+`,
+		},
+		{
+			name:    "forbidden",
+			status:  http.StatusForbidden,
+			body:    `{"error":{"type":"exception","reason":"missing privilege"},"status":403}`,
+			wantErr: "HTTP Request failed with code 403",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				if _, err := io.WriteString(w, tt.body); err != nil {
+					t.Error(err)
+				}
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c, err := NewClusterInfo(promslog.NewNopLogger(), u, ts.Client())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ch := make(chan prometheus.Metric, len(clusterInfoDesc))
+			err = c.Update(context.Background(), &mockUpdateContext{}, ch)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("Update() error = %v, want nil", err)
+				}
+			} else if err == nil || err.Error() != tt.wantErr {
+				t.Errorf("Update() error = %v, want %q", err, tt.wantErr)
+			}
+
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
+				t.Error(err)
 			}
 		})
 	}

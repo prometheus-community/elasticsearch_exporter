@@ -166,6 +166,10 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 		}
 	}()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP Request failed with code %d", resp.StatusCode)
+	}
+
 	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
