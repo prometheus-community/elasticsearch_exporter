@@ -364,12 +364,12 @@ func getValueInBytes(value string) (float64, error) {
 
 func getValueAsRatio(value string) (float64, error) {
 	if strings.HasSuffix(value, "%") {
-		percentValue, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(value, "%")))
+		percentValue, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(value, "%")), 64)
 		if err != nil {
 			return 0, err
 		}
 
-		return float64(percentValue) / 100, nil
+		return percentValue / 100, nil
 	}
 
 	ratio, err := strconv.ParseFloat(value, 64)
