@@ -25,8 +25,12 @@ import (
 )
 
 var (
-	defaultSnapshotLabels      = []string{"repository", "state", "version"}
+	defaultSnapshotLabels      = []string{"repository", "version"}
 	defaultSnapshotLabelValues = func(repositoryName string, snapshotStats SnapshotStatDataResponse) []string {
+		return []string{repositoryName, snapshotStats.Version}
+	}
+	defaultSnapshotStateLabels      = []string{"repository", "state", "version"}
+	defaultSnapshotStateLabelValues = func(repositoryName string, snapshotStats SnapshotStatDataResponse) []string {
 		return []string{repositoryName, snapshotStats.State, snapshotStats.Version}
 	}
 	defaultSnapshotRepositoryLabels      = []string{"repository"}
@@ -43,33 +47,38 @@ var (
 	)
 	snapshotStartTimestamp = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_start_time_timestamp"),
-		"Last snapshot start timestamp",
+		"Start timestamp of the last snapshot",
 		defaultSnapshotLabels, nil,
 	)
 	snapshotEndTimestamp = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_end_time_timestamp"),
-		"Last snapshot end timestamp",
+		"End timestamp of the last snapshot",
 		defaultSnapshotLabels, nil,
 	)
 	snapshotNumFailures = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_number_of_failures"),
-		"Last snapshot number of failures",
+		"Number of failures reported for the last snapshot",
 		defaultSnapshotLabels, nil,
 	)
 	snapshotNumShards = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_total_shards"),
-		"Last snapshot total shards",
+		"Total number of shards in the last snapshot",
 		defaultSnapshotLabels, nil,
 	)
 	snapshotFailedShards = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_failed_shards"),
-		"Last snapshot failed shards",
+		"Number of failed shards in the last snapshot",
 		defaultSnapshotLabels, nil,
 	)
 	snapshotSuccessfulShards = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_successful_shards"),
-		"Last snapshot successful shards",
+		"Number of successful shards in the last snapshot",
 		defaultSnapshotLabels, nil,
+	)
+	snapshotState = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "snapshot_stats", "snapshot_state"),
+		"State of the last snapshot. Value is always 1.",
+		defaultSnapshotStateLabels, nil,
 	)
 
 	numSnapshots = prometheus.NewDesc(
@@ -211,6 +220,12 @@ func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prom
 			prometheus.GaugeValue,
 			float64(lastSnapshot.Shards.Successful),
 			defaultSnapshotLabelValues(repositoryName, lastSnapshot)...,
+		)
+		ch <- prometheus.MustNewConstMetric(
+			snapshotState,
+			prometheus.GaugeValue,
+			1,
+			defaultSnapshotStateLabelValues(repositoryName, lastSnapshot)...,
 		)
 	}
 
