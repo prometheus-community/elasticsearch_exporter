@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -89,6 +90,10 @@ func (c *ClusterInfoCollector) Update(_ context.Context, uc UpdateContext, ch ch
 			c.logger.Warn("failed to close response body", "err", cerr)
 		}
 	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP Request failed with code %d", resp.StatusCode)
+	}
 
 	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
