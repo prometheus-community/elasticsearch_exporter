@@ -5,6 +5,9 @@ on:
     paths:
       - "elasticsearch-mixin/**"
 
+permissions:
+  contents: read
+
 jobs:
   check-mixin:
     name: check
