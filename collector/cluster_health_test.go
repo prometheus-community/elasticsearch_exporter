@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -206,6 +208,10 @@ func TestClusterHealth(t *testing.T) {
 			defer f.Close()
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/_cluster/health" {
+					http.NotFound(w, r)
+					return
+				}
 				io.Copy(w, f)
 			}))
 			defer ts.Close()
@@ -215,11 +221,41 @@ func TestClusterHealth(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewClusterHealth(promslog.NewNopLogger(), http.DefaultClient, u)
+			c, err := NewClusterHealth(promslog.NewNopLogger(), u, http.DefaultClient)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestClusterHealthHTTPError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := NewClusterHealth(promslog.NewNopLogger(), u, http.DefaultClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch := make(chan prometheus.Metric, 20)
+	err = c.Update(context.Background(), &mockUpdateContext{}, ch)
+	close(ch)
+	if err == nil {
+		t.Fatal("expected an error for a non-200 response, got nil")
+	}
+	if n := len(ch); n != 0 {
+		t.Fatalf("expected no metrics on error, got %d", n)
 	}
 }

@@ -220,7 +220,6 @@ func main() {
 		// cluster info retriever
 		clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
-		prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 		if *esExportIndices || *esExportShards {
@@ -405,7 +404,6 @@ func main() {
 		}
 		reg.MustRegister(exp)
 		// Basic additional collectors – reuse global CLI flags
-		reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
 		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
 		if *esExportIndices || *esExportShards {
 			shardsC := collector.NewShards(logger, probeClient, targetURL)
