@@ -20,8 +20,10 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -1618,6 +1620,10 @@ func TestNodesStats(t *testing.T) {
 			defer f.Close()
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/_nodes/stats" {
+					http.NotFound(w, r)
+					return
+				}
 				io.Copy(w, f)
 			}))
 			defer ts.Close()
@@ -1627,14 +1633,68 @@ func TestNodesStats(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewNodes(promslog.NewNopLogger(), http.DefaultClient, u, true, "_local")
-			if err != nil {
-				t.Fatal(err)
-			}
+			c := newTestNodes(t, u, true, "_local")
 
 			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
 	}
+}
+
+func TestNodesStatsRequestPath(t *testing.T) {
+	tests := []struct {
+		name string
+		all  bool
+		node string
+		want string
+	}{
+		{"all nodes", true, "_local", "/_nodes/stats"},
+		{"local node", false, "_local", "/_nodes/_local/stats"},
+		{"named node", false, "foo", "/_nodes/foo/stats"},
+	}
+
+	fixture, err := os.ReadFile("../fixtures/nodestats/7.13.1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				mu    sync.Mutex
+				paths []string
+			)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				paths = append(paths, r.URL.Path)
+				mu.Unlock()
+				w.Write(fixture)
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c := newTestNodes(t, u, tt.all, tt.node)
+
+			if n := testutil.CollectAndCount(c); n == 0 {
+				t.Fatal("expected metrics, got none")
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			if len(paths) != 1 || paths[0] != tt.want {
+				t.Fatalf("requested paths %v, want [%s]", paths, tt.want)
+			}
+		})
+	}
+}
+
+// newTestNodes builds the nodes collector for tests.
+func newTestNodes(t *testing.T, u *url.URL, all bool, node string) prometheus.Collector {
+	t.Helper()
+	return NewNodes(promslog.NewNopLogger(), http.DefaultClient, u, all, node)
 }
