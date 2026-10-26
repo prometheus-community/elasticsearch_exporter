@@ -24,9 +24,17 @@ import (
 	"path"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
+
+var nodeShardsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, "node_shards", "total"),
+	"Total shards per node",
+	[]string{"node", "cluster"}, nil,
+)
+
+func init() {
+	registerCollector("shards", defaultDisabled, NewShards)
+}
 
 // ShardResponse has shard's node and index info
 type ShardResponse struct {
@@ -38,131 +46,25 @@ type ShardResponse struct {
 
 // Shards information struct
 type Shards struct {
-	logger          *slog.Logger
-	client          *http.Client
-	url             *url.URL
-	clusterInfoCh   chan *clusterinfo.Response
-	lastClusterInfo *clusterinfo.Response
+	logger *slog.Logger
+	client *http.Client
+	url    *url.URL
 
-	nodeShardMetrics  []*nodeShardMetric
 	jsonParseFailures prometheus.Counter
 }
 
-// ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
-// (not exported) clusterinfo.consumer interface
-func (s *Shards) ClusterLabelUpdates() *chan *clusterinfo.Response {
-	return &s.clusterInfoCh
-}
-
-// String implements the stringer interface. It is part of the clusterinfo.consumer interface
-func (s *Shards) String() string {
-	return namespace + "shards"
-}
-
-type nodeShardMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(shards float64) float64
-	Labels labels
-}
-
-// fetchClusterNameOnce performs a single request to the root endpoint to obtain the cluster name.
-func fetchClusterNameOnce(s *Shards) string {
-	if s.lastClusterInfo != nil && s.lastClusterInfo.ClusterName != "unknown_cluster" {
-		return s.lastClusterInfo.ClusterName
-	}
-	u := *s.url
-	u.Path = path.Join(u.Path, "/")
-	resp, err := s.client.Get(u.String())
-	if err == nil {
-		defer resp.Body.Close()
-		if resp.StatusCode == http.StatusOK {
-			var root struct {
-				ClusterName string `json:"cluster_name"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&root); err == nil && root.ClusterName != "" {
-				s.lastClusterInfo = &clusterinfo.Response{ClusterName: root.ClusterName}
-				return root.ClusterName
-			}
-		}
-	}
-	return "unknown_cluster"
-}
-
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
-	var shardPtr *Shards
-	nodeLabels := labels{
-		keys: func(...string) []string {
-			return []string{"node", "cluster"}
-		},
-		values: func(lastClusterinfo *clusterinfo.Response, base ...string) []string {
-			if lastClusterinfo != nil {
-				return append(base, lastClusterinfo.ClusterName)
-			}
-			if shardPtr != nil {
-				return append(base, fetchClusterNameOnce(shardPtr))
-			}
-			return append(base, "unknown_cluster")
-		},
-	}
-
-	shards := &Shards{
-		// will assign later
-
+func NewShards(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+	return &Shards{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		clusterInfoCh: make(chan *clusterinfo.Response),
-		lastClusterInfo: &clusterinfo.Response{
-			ClusterName: "unknown_cluster",
-		},
-
-		nodeShardMetrics: []*nodeShardMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "node_shards", "total"),
-					"Total shards per node",
-					nodeLabels.keys(), nil,
-				),
-				Value: func(shards float64) float64 {
-					return shards
-				},
-				Labels: nodeLabels,
-			},
-		},
+		client: hc,
+		url:    u,
 
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_shards", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
 		}),
-	}
-
-	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
-	go func() {
-		logger.Debug("starting cluster info receive loop")
-		for ci := range shards.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				shards.lastClusterInfo = ci
-			}
-		}
-		logger.Debug("exiting cluster info receive loop")
-	}()
-
-	shardPtr = shards
-	return shards
-}
-
-// Describe Shards
-func (s *Shards) Describe(ch chan<- *prometheus.Desc) {
-	ch <- s.jsonParseFailures.Desc()
-
-	for _, metric := range s.nodeShardMetrics {
-		ch <- metric.Desc
-	}
+	}, nil
 }
 
 // streamShards decodes a /_cat/shards JSON array one element at a time,
@@ -217,29 +119,30 @@ func (s *Shards) streamAndAggregateShards(ctx context.Context, nodeShards map[st
 	})
 }
 
-// Collect number of shards on each node
-func (s *Shards) Collect(ch chan<- prometheus.Metric) {
+// Update collects the number of shards on each node
+func (s *Shards) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	defer func() {
 		ch <- s.jsonParseFailures
 	}()
 
 	nodeShards := make(map[string]float64)
-	if err := s.streamAndAggregateShards(context.TODO(), nodeShards); err != nil {
-		s.logger.Warn(
-			"failed to fetch and decode node shards stats",
-			"err", err,
-		)
-		return
+	if err := s.streamAndAggregateShards(ctx, nodeShards); err != nil {
+		return fmt.Errorf("failed to fetch and decode node shards stats: %w", err)
+	}
+
+	clusterName := "unknown_cluster"
+	if info, err := uc.GetClusterInfo(ctx); err == nil && info.ClusterName != "" {
+		clusterName = info.ClusterName
 	}
 
 	for node, shards := range nodeShards {
-		for _, metric := range s.nodeShardMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(shards),
-				metric.Labels.values(s.lastClusterInfo, node)...,
-			)
-		}
+		ch <- prometheus.MustNewConstMetric(
+			nodeShardsTotal,
+			prometheus.GaugeValue,
+			shards,
+			node, clusterName,
+		)
 	}
+
+	return nil
 }
