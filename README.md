@@ -65,6 +65,7 @@ elasticsearch_exporter --help
 | es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to **when running in single-target mode**. Leave empty (the default) when you want to run the exporter only as a multi-target `/probe` endpoint. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | "" |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                                                                                                                                                                                                                                                                                           | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                                  | false |
+| es.serverless           |                        | Use Elastic Cloud Serverless-compatible APIs. Enables data-stream metrics, disables unsupported collectors, and uses `/_cat/indices` for index store-size metrics when `es.indices` is true.                                                                                                                                                                                              | false |
 | es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                         | false |
 | es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster.                                                                                                                                                                                                                                                                                                                      | false |
 | es.aliases              | 1.0.4rc1              | If true, include informational aliases metrics.                                                                                                                                                                                                                                                                                                                                       | true |
@@ -91,6 +92,16 @@ Commandline parameters start with a single `-` for versions less than `1.1.0rc1`
 For versions greater than `1.1.0rc1`, commandline parameters are specified with `--`.
 
 The API key used to connect can be set with the `ES_API_KEY` environment variable.
+
+#### Elastic Cloud Serverless
+
+Set `--es.serverless` for Elastic Cloud Serverless. This mode does not initialize
+node, cluster health, cluster settings, shard, snapshot, index settings, index
+mapping, alias, or other unsupported collectors, even if their flags are enabled.
+It enables data-stream metrics and, when `--es.indices` is set, obtains index
+store sizes from `/_cat/indices` instead of the unavailable `/_all/_stats` API.
+The available index metrics retain their established metric names. Metrics that
+require the standard index-stats API are not emitted in Serverless mode.
 
 #### Logging
 
