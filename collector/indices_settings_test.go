@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -106,6 +108,10 @@ func TestIndicesSettings(t *testing.T) {
 			defer f.Close()
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/_all/_settings" {
+					http.NotFound(w, r)
+					return
+				}
 				io.Copy(w, f)
 			}))
 			defer ts.Close()
@@ -124,5 +130,32 @@ func TestIndicesSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestIndicesSettingsHTTPError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := NewIndicesSettings(promslog.NewNopLogger(), u, http.DefaultClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch := make(chan prometheus.Metric, 10)
+	err = c.Update(context.Background(), &mockUpdateContext{}, ch)
+	close(ch)
+	if err == nil {
+		t.Fatal("expected an error for a non-200 response, got nil")
+	}
+	if n := len(ch); n != 0 {
+		t.Fatalf("expected no metrics on error, got %d", n)
 	}
 }

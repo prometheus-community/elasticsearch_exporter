@@ -15,8 +15,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -58,7 +56,7 @@ var (
 )
 
 func init() {
-	registerCollector("indices_settings", defaultDisabled, NewIndicesSettings)
+	registerCollector("indices-settings", defaultDisabled, NewIndicesSettings)
 }
 
 // IndicesSettings information struct
@@ -115,26 +113,12 @@ func NewIndicesSettings(logger *slog.Logger, u *url.URL, hc *http.Client) (Colle
 }
 
 // Update gets all indices settings metric values
-func (cs *IndicesSettings) Update(_ context.Context, _ UpdateContext, ch chan<- prometheus.Metric) error {
+func (cs *IndicesSettings) Update(ctx context.Context, _ UpdateContext, ch chan<- prometheus.Metric) error {
 	var asr IndicesSettingsResponse
 	u := *cs.u
 	u.Path = path.Join(u.Path, "/_all/_settings")
 
-	res, err := cs.hc.Get(u.String())
-	if err != nil {
-		return fmt.Errorf("failed to get from %s://%s:%s%s: %w", u.Scheme, u.Hostname(), u.Port(), u.Path, err)
-	}
-	defer func() {
-		if cerr := res.Body.Close(); cerr != nil {
-			cs.logger.Warn("failed to close response body", "err", cerr)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
-	}
-
-	if err := json.NewDecoder(res.Body).Decode(&asr); err != nil {
+	if err := getAndDecodeURL(ctx, cs.hc, cs.logger, u.String(), &asr); err != nil {
 		return err
 	}
 
