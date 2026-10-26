@@ -21,8 +21,10 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -2238,15 +2240,121 @@ func TestIndices(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, false, true)
+			c := newTestIndices(t, u, tt.shards, true)
+
+			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+// newTestIndices builds the indices collector with the given shard-level and
+// alias options. It is the only place the tests construct the collector.
+func newTestIndices(t *testing.T, u *url.URL, shards, aliases bool) prometheus.Collector {
+	t.Helper()
+	return NewIndices(promslog.NewNopLogger(), http.DefaultClient, u, shards, aliases)
+}
+
+func TestIndicesRequests(t *testing.T) {
+	tests := []struct {
+		name    string
+		shards  bool
+		aliases bool
+	}{
+		{name: "defaults"},
+		{name: "aliases", aliases: true},
+		{name: "shards", shards: true},
+		{name: "shards and aliases", shards: true, aliases: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				mu       sync.Mutex
+				requests []*url.URL
+			)
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				requests = append(requests, r.URL)
+				mu.Unlock()
+
+				var file string
+				switch r.URL.Path {
+				case "/_all/_stats":
+					file = "../fixtures/indices/7.17.3.json"
+					if r.URL.Query().Get("level") == "shards" {
+						file = "../fixtures/indices/shards/7.17.3.json"
+					}
+				case "/_alias":
+					file = "../fixtures/indices/alias/7.17.3.json"
+				default:
+					http.Error(w, "Not Found", http.StatusNotFound)
+					return
+				}
+				f, err := os.Open(file)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				defer f.Close()
+				io.Copy(w, f)
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			c.shards = tt.shards
+			c := newTestIndices(t, u, tt.shards, tt.aliases)
 
-			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
-				t.Fatal(err)
+			wantAliases := 0
+			if tt.aliases {
+				wantAliases = 3
+			}
+			if got := testutil.CollectAndCount(c, "elasticsearch_indices_aliases"); got != wantAliases {
+				t.Errorf("got %d elasticsearch_indices_aliases series, want %d", got, wantAliases)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			var statsRequests, aliasRequests int
+			for _, r := range requests {
+				q := r.Query()
+				switch r.Path {
+				case "/_all/_stats":
+					statsRequests++
+					if got := q.Get("ignore_unavailable"); got != "true" {
+						t.Errorf("%s: ignore_unavailable=%q, want \"true\"", r, got)
+					}
+					if tt.shards {
+						if got := q.Get("level"); got != "shards" {
+							t.Errorf("%s: level=%q, want \"shards\"", r, got)
+						}
+					} else if q.Has("level") {
+						t.Errorf("%s: unexpected level parameter", r)
+					}
+				case "/_alias":
+					aliasRequests++
+				case "/":
+					// Cluster name lookup; not part of what this test checks.
+				default:
+					t.Errorf("unexpected request %s", r)
+				}
+			}
+
+			if statsRequests != 1 {
+				t.Errorf("got %d /_all/_stats requests, want 1", statsRequests)
+			}
+			wantAliasRequests := 0
+			if tt.aliases {
+				wantAliasRequests = 1
+			}
+			if aliasRequests != wantAliasRequests {
+				t.Errorf("got %d /_alias requests, want %d", aliasRequests, wantAliasRequests)
 			}
 		})
 	}
