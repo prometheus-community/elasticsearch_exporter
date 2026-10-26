@@ -30,7 +30,7 @@ import (
 )
 
 func TestCCR(t *testing.T) {
-	// Testcases created using two single-node clusters (leader and follower) on 8.17.0
+	// Testcases created using two single-node clusters (leader and follower) on 8.17.0 and 7.17.25
 	// with xpack.license.self_generated.type=trial:
 	//  curl -XPUT http://follower:9200/_cluster/settings -H 'Content-Type: application/json' -d '{"persistent":{"cluster":{"remote":{"leader":{"seeds":["leader:9300"]}}}}}'
 	//  curl -XPUT http://follower:9200/orders-replica/_ccr/follow -H 'Content-Type: application/json' -d '{"remote_cluster":"leader","leader_index":"orders"}'
@@ -39,7 +39,7 @@ func TestCCR(t *testing.T) {
 	//  curl -XDELETE http://leader:9200/doomed (the follower task stops with a fatal exception)
 	//  curl -XPUT http://follower:9200/_ccr/auto_follow/metrics -H 'Content-Type: application/json' -d '{"remote_cluster":"leader","leader_index_patterns":["metrics_*"],"follow_index_pattern":"{{leader_index}}_copy"}'
 	//  (pre-creating metrics_clash_copy on the follower makes auto-following metrics_clash fail)
-	//  curl http://follower:9200/_ccr/stats (Numbers manually tweaked so that every value is distinct)
+	//  curl http://follower:9200/_ccr/stats (8.17.0: numbers manually tweaked so that every value is distinct)
 	//  curl http://follower:9200/_all/_ccr/info
 
 	tests := []struct {
@@ -202,6 +202,162 @@ func TestCCR(t *testing.T) {
 			elasticsearch_ccr_write_time_seconds_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0.005
 			elasticsearch_ccr_write_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 3.456
 			elasticsearch_ccr_write_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 4.321
+`,
+		},
+		{
+			name: "7.17.25",
+			file: "7.17.25.json",
+			want: `# HELP elasticsearch_ccr_auto_follow_failed_follow_indices_total Total number of indices the auto-follow coordinator failed to follow
+			# TYPE elasticsearch_ccr_auto_follow_failed_follow_indices_total counter
+			elasticsearch_ccr_auto_follow_failed_follow_indices_total 2
+			# HELP elasticsearch_ccr_auto_follow_failed_remote_cluster_state_requests_total Total number of times the auto-follow coordinator failed to fetch the remote cluster state
+			# TYPE elasticsearch_ccr_auto_follow_failed_remote_cluster_state_requests_total counter
+			elasticsearch_ccr_auto_follow_failed_remote_cluster_state_requests_total 0
+			# HELP elasticsearch_ccr_auto_follow_last_seen_metadata_version Last cluster metadata version of the remote cluster seen by the auto-follow coordinator
+			# TYPE elasticsearch_ccr_auto_follow_last_seen_metadata_version gauge
+			elasticsearch_ccr_auto_follow_last_seen_metadata_version{remote_cluster="leader"} 53
+			# HELP elasticsearch_ccr_auto_follow_recent_errors Number of recent auto-follow errors reported by the auto-follow coordinator
+			# TYPE elasticsearch_ccr_auto_follow_recent_errors gauge
+			elasticsearch_ccr_auto_follow_recent_errors 1
+			# HELP elasticsearch_ccr_auto_follow_successful_follow_indices_total Total number of indices the auto-follow coordinator successfully followed
+			# TYPE elasticsearch_ccr_auto_follow_successful_follow_indices_total counter
+			elasticsearch_ccr_auto_follow_successful_follow_indices_total 1
+			# HELP elasticsearch_ccr_auto_follow_time_since_last_check_seconds Time since the auto-follow coordinator last checked the remote cluster for new indices
+			# TYPE elasticsearch_ccr_auto_follow_time_since_last_check_seconds gauge
+			elasticsearch_ccr_auto_follow_time_since_last_check_seconds{remote_cluster="leader"} 21.292
+			# HELP elasticsearch_ccr_failed_read_requests_total Total number of failed reads from the leader
+			# TYPE elasticsearch_ccr_failed_read_requests_total counter
+			elasticsearch_ccr_failed_read_requests_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 2
+			elasticsearch_ccr_failed_read_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_failed_read_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_failed_write_requests_total Total number of failed bulk write requests executed on the follower
+			# TYPE elasticsearch_ccr_failed_write_requests_total counter
+			elasticsearch_ccr_failed_write_requests_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_failed_write_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_failed_write_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_fatal_exception Whether the follower task stopped because of a fatal exception
+			# TYPE elasticsearch_ccr_fatal_exception gauge
+			elasticsearch_ccr_fatal_exception{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_fatal_exception{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_fatal_exception{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_follower_aliases_version Index aliases version the follower is synced up to
+			# TYPE elasticsearch_ccr_follower_aliases_version gauge
+			elasticsearch_ccr_follower_aliases_version{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_follower_aliases_version{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_follower_aliases_version{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 1
+			# HELP elasticsearch_ccr_follower_global_checkpoint Current global checkpoint on the follower
+			# TYPE elasticsearch_ccr_follower_global_checkpoint gauge
+			elasticsearch_ccr_follower_global_checkpoint{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 9
+			elasticsearch_ccr_follower_global_checkpoint{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 63
+			elasticsearch_ccr_follower_global_checkpoint{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 85
+			# HELP elasticsearch_ccr_follower_index_status Status of the follower index (active or paused)
+			# TYPE elasticsearch_ccr_follower_index_status gauge
+			elasticsearch_ccr_follower_index_status{follower_index="audit-replica",leader_index="audit",remote_cluster="leader",status="active"} 0
+			elasticsearch_ccr_follower_index_status{follower_index="audit-replica",leader_index="audit",remote_cluster="leader",status="paused"} 1
+			elasticsearch_ccr_follower_index_status{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",status="active"} 1
+			elasticsearch_ccr_follower_index_status{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",status="paused"} 0
+			elasticsearch_ccr_follower_index_status{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",status="active"} 1
+			elasticsearch_ccr_follower_index_status{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",status="paused"} 0
+			# HELP elasticsearch_ccr_follower_mapping_version Index mapping version the follower is synced up to
+			# TYPE elasticsearch_ccr_follower_mapping_version gauge
+			elasticsearch_ccr_follower_mapping_version{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 2
+			elasticsearch_ccr_follower_mapping_version{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 2
+			elasticsearch_ccr_follower_mapping_version{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 2
+			# HELP elasticsearch_ccr_follower_max_seq_no Current maximum sequence number on the follower
+			# TYPE elasticsearch_ccr_follower_max_seq_no gauge
+			elasticsearch_ccr_follower_max_seq_no{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 9
+			elasticsearch_ccr_follower_max_seq_no{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 63
+			elasticsearch_ccr_follower_max_seq_no{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 85
+			# HELP elasticsearch_ccr_follower_settings_version Index settings version the follower is synced up to
+			# TYPE elasticsearch_ccr_follower_settings_version gauge
+			elasticsearch_ccr_follower_settings_version{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_follower_settings_version{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_follower_settings_version{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 1
+			# HELP elasticsearch_ccr_last_requested_seq_no Starting sequence number of the last batch of operations requested from the leader
+			# TYPE elasticsearch_ccr_last_requested_seq_no gauge
+			elasticsearch_ccr_last_requested_seq_no{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 9
+			elasticsearch_ccr_last_requested_seq_no{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 63
+			elasticsearch_ccr_last_requested_seq_no{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 85
+			# HELP elasticsearch_ccr_leader_global_checkpoint Current global checkpoint on the leader known to the follower task
+			# TYPE elasticsearch_ccr_leader_global_checkpoint gauge
+			elasticsearch_ccr_leader_global_checkpoint{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 9
+			elasticsearch_ccr_leader_global_checkpoint{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 63
+			elasticsearch_ccr_leader_global_checkpoint{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 85
+			# HELP elasticsearch_ccr_leader_max_seq_no Current maximum sequence number on the leader known to the follower task
+			# TYPE elasticsearch_ccr_leader_max_seq_no gauge
+			elasticsearch_ccr_leader_max_seq_no{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 9
+			elasticsearch_ccr_leader_max_seq_no{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 63
+			elasticsearch_ccr_leader_max_seq_no{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 85
+			# HELP elasticsearch_ccr_operations_read_total Total number of operations read from the leader
+			# TYPE elasticsearch_ccr_operations_read_total counter
+			elasticsearch_ccr_operations_read_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 10
+			elasticsearch_ccr_operations_read_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 64
+			elasticsearch_ccr_operations_read_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 86
+			# HELP elasticsearch_ccr_operations_written_total Total number of operations written on the follower
+			# TYPE elasticsearch_ccr_operations_written_total counter
+			elasticsearch_ccr_operations_written_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 10
+			elasticsearch_ccr_operations_written_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 64
+			elasticsearch_ccr_operations_written_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 86
+			# HELP elasticsearch_ccr_outstanding_read_requests Number of active read requests from the follower
+			# TYPE elasticsearch_ccr_outstanding_read_requests gauge
+			elasticsearch_ccr_outstanding_read_requests{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_outstanding_read_requests{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_outstanding_read_requests{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 1
+			# HELP elasticsearch_ccr_outstanding_write_requests Number of active bulk write requests on the follower
+			# TYPE elasticsearch_ccr_outstanding_write_requests gauge
+			elasticsearch_ccr_outstanding_write_requests{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_outstanding_write_requests{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_outstanding_write_requests{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_read_bytes_total Estimated total bytes read from the leader, not accounting for compression
+			# TYPE elasticsearch_ccr_read_bytes_total counter
+			elasticsearch_ccr_read_bytes_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 871
+			elasticsearch_ccr_read_bytes_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 5629
+			elasticsearch_ccr_read_bytes_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 7574
+			# HELP elasticsearch_ccr_read_exceptions Number of failed reads currently being retried by the follower task
+			# TYPE elasticsearch_ccr_read_exceptions gauge
+			elasticsearch_ccr_read_exceptions{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_read_exceptions{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_read_exceptions{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_read_remote_exec_time_seconds_total Total time reads spent executing on the remote cluster
+			# TYPE elasticsearch_ccr_read_remote_exec_time_seconds_total counter
+			elasticsearch_ccr_read_remote_exec_time_seconds_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0.001
+			elasticsearch_ccr_read_remote_exec_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 1.15
+			elasticsearch_ccr_read_remote_exec_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 1.148
+			# HELP elasticsearch_ccr_read_time_seconds_total Total time reads were outstanding, from sending the request to the leader until the reply was returned to the follower
+			# TYPE elasticsearch_ccr_read_time_seconds_total counter
+			elasticsearch_ccr_read_time_seconds_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0.634
+			elasticsearch_ccr_read_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 1.179
+			elasticsearch_ccr_read_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 1.164
+			# HELP elasticsearch_ccr_successful_read_requests_total Total number of successful fetches from the leader
+			# TYPE elasticsearch_ccr_successful_read_requests_total counter
+			elasticsearch_ccr_successful_read_requests_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_successful_read_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 2
+			elasticsearch_ccr_successful_read_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 2
+			# HELP elasticsearch_ccr_successful_write_requests_total Total number of bulk write requests executed on the follower
+			# TYPE elasticsearch_ccr_successful_write_requests_total counter
+			elasticsearch_ccr_successful_write_requests_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 1
+			elasticsearch_ccr_successful_write_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 2
+			elasticsearch_ccr_successful_write_requests_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 2
+			# HELP elasticsearch_ccr_time_since_last_read_seconds Time since a read request was last sent to the leader
+			# TYPE elasticsearch_ccr_time_since_last_read_seconds gauge
+			elasticsearch_ccr_time_since_last_read_seconds{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 21.359
+			elasticsearch_ccr_time_since_last_read_seconds{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 21.311
+			elasticsearch_ccr_time_since_last_read_seconds{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 21.303
+			# HELP elasticsearch_ccr_write_buffer_operations Number of write operations queued on the follower
+			# TYPE elasticsearch_ccr_write_buffer_operations gauge
+			elasticsearch_ccr_write_buffer_operations{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_write_buffer_operations{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_write_buffer_operations{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_write_buffer_size_bytes Total size of operations queued for writing on the follower
+			# TYPE elasticsearch_ccr_write_buffer_size_bytes gauge
+			elasticsearch_ccr_write_buffer_size_bytes{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_write_buffer_size_bytes{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0
+			elasticsearch_ccr_write_buffer_size_bytes{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0
+			# HELP elasticsearch_ccr_write_time_seconds_total Total time spent writing on the follower
+			# TYPE elasticsearch_ccr_write_time_seconds_total counter
+			elasticsearch_ccr_write_time_seconds_total{follower_index="doomed-replica",leader_index="doomed",remote_cluster="leader",shard="0"} 0.007
+			elasticsearch_ccr_write_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="0"} 0.058
+			elasticsearch_ccr_write_time_seconds_total{follower_index="orders-replica",leader_index="orders",remote_cluster="leader",shard="1"} 0.058
 `,
 		},
 		{
