@@ -179,7 +179,7 @@
 | elasticsearch_health_report_repository_integrity_status              | gauge      | 2           | Repository integrity status                                                                         |
 | elasticsearch_health_report_restarting_primaries                     | gauge      | 1           | The number of restarting primary shards                                                             |
 | elasticsearch_health_report_restarting_replicas                      | gauge      | 1           | The number of restarting replica shards                                                             |
-| elasticsearch_health_report_shards_availabilty_status                | gauge      | 2           | Shards availabilty status                                                                           |
+| elasticsearch_health_report_shards_availabilty_status                | gauge      | 2           | Shards availability status                                                                          |
 | elasticsearch_health_report_shards_capacity_status                   | gauge      | 2           | Shards capacity status                                                                              |
 | elasticsearch_health_report_slm_policies                             | gauge      | 1           | The number of SLM policies                                                                          |
 | elasticsearch_health_report_slm_status                               | gauge      | 2           | SLM status                                                                                          |
