@@ -135,7 +135,7 @@ var (
 	)
 	healthReportShardsAvailabiltystatus = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "health_report", "shards_availabilty_status"),
-		"Shards availabilty status",
+		"Shards availability status",
 		[]string{"cluster", "color"}, nil,
 	)
 	healthReportDataStreamLifecycleStatus = prometheus.NewDesc(
