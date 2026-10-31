@@ -16,6 +16,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"log"
 	"os"
 )
@@ -56,7 +57,12 @@ func loadCertificatesFrom(pemFile string) (*x509.CertPool, error) {
 		return nil, err
 	}
 	certificates := x509.NewCertPool()
-	certificates.AppendCertsFromPEM(caCert)
+	// AppendCertsFromPEM skips anything it can't parse. Without this check a file
+	// with no usable certificates gives an empty pool, and every TLS handshake
+	// then fails later with "certificate signed by unknown authority".
+	if !certificates.AppendCertsFromPEM(caCert) {
+		return nil, errors.New("file contains no PEM certificates")
+	}
 	return certificates, nil
 }
 
