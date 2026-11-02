@@ -35,7 +35,7 @@
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum    | gauge      | 1           | Total kilobytes written to disk                                                                     |
 | elasticsearch_ilm_status                                             | gauge      | 1           | Current status of ILM. Status can be `STOPPED`, `RUNNING`, `STOPPING`.                              |
 | elasticsearch_ilm_index_status                                       | gauge      | 4           | Status of ILM policy for index                                                                      |
-| elasticsearch_indices_active_queries                                 | gauge      | 1           | The number of currently active queries                                                              |
+| elasticsearch_search_active_queries                                  | gauge      | 1           | The number of currently active queries                                                              |
 | elasticsearch_indices_docs                                           | gauge      | 1           | Count of documents on this node                                                                     |
 | elasticsearch_indices_docs_deleted                                   | gauge      | 1           | Count of deleted documents on this node                                                             |
 | elasticsearch_indices_deleted_docs_primary                           | gauge      | 1           | Count of deleted documents with only primary shards                                                 |
@@ -55,7 +55,7 @@
 | elasticsearch_indices_get_total                                      | counter    | 1           | Total get                                                                                           |
 | elasticsearch_indices_indexing_delete_time_seconds_total             | counter    | 1           | Total time indexing delete in seconds                                                               |
 | elasticsearch_indices_indexing_delete_total                          | counter    | 1           | Total indexing deletes                                                                              |
-| elasticsearch_indices_index_current                                  | gauge      | 1           | The number of documents currently being indexed to an index                                         |
+| elasticsearch_index_stats_index_current                              | gauge      | 1           | The number of documents currently being indexed to an index                                         |
 | elasticsearch_indices_indexing_index_time_seconds_total              | counter    | 1           | Cumulative index time in seconds                                                                    |
 | elasticsearch_indices_indexing_index_total                           | counter    | 1           | Total index calls                                                                                   |
 | elasticsearch_indices_indexing_is_throttled                          | gauge      | 1           | Indexing throttling                                                                                 |
