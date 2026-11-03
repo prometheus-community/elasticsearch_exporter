@@ -34,11 +34,31 @@ func (w wrapCollector) Describe(_ chan<- *prometheus.Desc) {
 }
 
 func (w wrapCollector) Collect(ch chan<- prometheus.Metric) {
-	w.c.Update(context.Background(), &mockUpdateContext{}, ch)
+	wrapCollectorWithContext{w.c, &mockUpdateContext{}}.Collect(ch)
 }
 
-type mockUpdateContext struct{}
+// wrapCollectorWithContext is wrapCollector with a custom UpdateContext, for example:
+//
+//	testutil.CollectAndCompare(wrapCollectorWithContext{c, &mockUpdateContext{clusterName: "foo"}}, strings.NewReader(want))
+type wrapCollectorWithContext struct {
+	c  Collector
+	uc UpdateContext
+}
+
+func (w wrapCollectorWithContext) Describe(_ chan<- *prometheus.Desc) {
+}
+
+func (w wrapCollectorWithContext) Collect(ch chan<- prometheus.Metric) {
+	w.c.Update(context.Background(), w.uc, ch)
+}
+
+// mockUpdateContext returns clusterName and err from GetClusterInfo. The zero
+// value returns an empty cluster.Info and no error.
+type mockUpdateContext struct {
+	clusterName string
+	err         error
+}
 
 func (m *mockUpdateContext) GetClusterInfo(_ context.Context) (cluster.Info, error) {
-	return cluster.Info{}, nil
+	return cluster.Info{ClusterName: m.clusterName}, m.err
 }

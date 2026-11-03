@@ -3,6 +3,11 @@
 ### BREAKING CHANGES
 
 * The flag `--es.indices_settings` has been renamed to `--collector.indices-settings` #1181
+* `elasticsearch_node_shards_total` is now exported only when `--collector.shards` is set. Previously `--es.indices` or `--es.shards` enabled it. To keep the metric, add `--collector.shards` #1268
+
+### Changelog
+
+* [BUGFIX] `elasticsearch_node_shards_total` always reported `cluster="unknown_cluster"` in /probe mode #1268
 
 ## 1.11.0 / 2026-07-02
 
