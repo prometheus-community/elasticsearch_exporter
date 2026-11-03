@@ -1,5 +1,8 @@
 ## master / unreleased
 
+### BREAKING CHANGES
+
+* The flag `--es.indices_settings` has been renamed to `--collector.indices-settings` #1181
 
 ## 1.11.0 / 2026-07-02
 
