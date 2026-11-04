@@ -62,7 +62,7 @@ func NewAWSSigningTransport(transport http.RoundTripper, region string, roleArn 
 	// are valid before returning the transport.
 	_, err = cfg.Credentials.Retrieve(context.Background())
 	if err != nil {
-		log.Error("failed to retrive aws credentials", "err", err)
+		log.Error("failed to retrieve aws credentials", "err", err)
 		return nil, err
 	}
 

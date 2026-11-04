@@ -13,7 +13,7 @@ local panelUtil = g.util.panel;
       local numPanels = std.length(ps);
       local panelWidth = std.floor(gridWidth / numPanels);
 
-      // Sanitize the panels, this ensures tht the panels have the valid gridPos
+      // Sanitize the panels, this ensures that the panels have the valid gridPos
       std.map(
         function(p)
           local sanePanel = panelUtil.sanitizePanel(p, defaultHeight=panelHeight);
