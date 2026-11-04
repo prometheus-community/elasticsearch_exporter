@@ -1,0 +1,46 @@
+{
+  "count": 1,
+  "transforms": [
+    {
+      "id": "ecommerce_transform",
+      "state": "started",
+      "node": {
+        "id": "bVrN1HxvQLy795ZLNg2XNw",
+        "name": "node-0",
+        "ephemeral_id": "abc",
+        "transport_address": "127.0.0.1:9300",
+        "attributes": {}
+      },
+      "stats": {
+        "pages_processed": 10,
+        "documents_processed": 5000,
+        "documents_indexed": 1000,
+        "documents_deleted": 5,
+        "trigger_count": 12,
+        "index_time_in_ms": 2500,
+        "index_total": 100,
+        "index_failures": 1,
+        "search_time_in_ms": 3500,
+        "search_total": 120,
+        "search_failures": 2,
+        "processing_time_in_ms": 450,
+        "processing_total": 110,
+        "delete_time_in_ms": 50,
+        "exponential_avg_checkpoint_duration_ms": 2000,
+        "exponential_avg_documents_indexed": 100,
+        "exponential_avg_documents_processed": 500
+      },
+      "checkpointing": {
+        "last": {
+          "checkpoint": 7,
+          "timestamp_millis": 1591196204660
+        },
+        "operations_behind": 42,
+        "changes_last_detected_at": 1591196204660
+      },
+      "health": {
+        "status": "green"
+      }
+    }
+  ]
+}
