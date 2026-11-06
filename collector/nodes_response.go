@@ -247,17 +247,18 @@ type NodeStatsIndicesGetResponse struct {
 
 // NodeStatsIndicesSearchResponse defines node stats search information structure for indices
 type NodeStatsIndicesSearchResponse struct {
-	OpenContext  int64 `json:"open_contexts"`
-	QueryTotal   int64 `json:"query_total"`
-	QueryTime    int64 `json:"query_time_in_millis"`
-	QueryCurrent int64 `json:"query_current"`
-	FetchTotal   int64 `json:"fetch_total"`
-	FetchTime    int64 `json:"fetch_time_in_millis"`
-	FetchCurrent int64 `json:"fetch_current"`
-	SuggestTotal int64 `json:"suggest_total"`
-	SuggestTime  int64 `json:"suggest_time_in_millis"`
-	ScrollTotal  int64 `json:"scroll_total"`
-	ScrollTime   int64 `json:"scroll_time_in_millis"`
+	OpenContext   int64 `json:"open_contexts"`
+	QueryTotal    int64 `json:"query_total"`
+	QueryTime     int64 `json:"query_time_in_millis"`
+	QueryCurrent  int64 `json:"query_current"`
+	FetchTotal    int64 `json:"fetch_total"`
+	FetchTime     int64 `json:"fetch_time_in_millis"`
+	FetchCurrent  int64 `json:"fetch_current"`
+	SuggestTotal  int64 `json:"suggest_total"`
+	SuggestTime   int64 `json:"suggest_time_in_millis"`
+	ScrollTotal   int64 `json:"scroll_total"`
+	ScrollTime    int64 `json:"scroll_time_in_millis"`
+	ScrollCurrent int64 `json:"scroll_current"`
 }
 
 // NodeStatsIndicesFlushResponse defines node stats flush information structure for indices

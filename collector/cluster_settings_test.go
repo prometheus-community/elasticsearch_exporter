@@ -14,6 +14,7 @@
 package collector
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -140,6 +142,30 @@ elasticsearch_clustersettings_allocation_watermark_high_ratio 0.92
 elasticsearch_clustersettings_allocation_watermark_low_ratio 0.88
 `,
 		},
+		{
+			name: "persistent-watermark-uppercase-bytes",
+			file: "../fixtures/settings-persistent-watermark-uppercase-bytes.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_max_shards_per_node Current maximum number of shards per node setting.
+# TYPE elasticsearch_clustersettings_stats_max_shards_per_node gauge
+elasticsearch_clustersettings_stats_max_shards_per_node 1000
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+# HELP elasticsearch_clustersettings_allocation_threshold_enabled Is disk allocation decider enabled.
+# TYPE elasticsearch_clustersettings_allocation_threshold_enabled gauge
+elasticsearch_clustersettings_allocation_threshold_enabled 1
+# HELP elasticsearch_clustersettings_allocation_watermark_flood_stage_bytes Flood stage watermark as in bytes.
+# TYPE elasticsearch_clustersettings_allocation_watermark_flood_stage_bytes gauge
+elasticsearch_clustersettings_allocation_watermark_flood_stage_bytes 5.36870912e+09
+# HELP elasticsearch_clustersettings_allocation_watermark_high_bytes High watermark for disk usage in bytes.
+# TYPE elasticsearch_clustersettings_allocation_watermark_high_bytes gauge
+elasticsearch_clustersettings_allocation_watermark_high_bytes 1.073741824e+10
+# HELP elasticsearch_clustersettings_allocation_watermark_low_bytes Low watermark for disk usage in bytes.
+# TYPE elasticsearch_clustersettings_allocation_watermark_low_bytes gauge
+elasticsearch_clustersettings_allocation_watermark_low_bytes 2.147483648e+10
+`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -227,6 +253,71 @@ func Test_getValueAsRatio(t *testing.T) {
 
 			if got != tt.want {
 				t.Errorf("getValueAsRatio() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClusterSettingsHTTPStatus(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		body    string
+		want    string
+		wantErr string
+	}{
+		{
+			name:   "ok_guard",
+			status: http.StatusOK,
+			body:   `{}`,
+			want: `
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+# HELP elasticsearch_clustersettings_allocation_threshold_enabled Is disk allocation decider enabled.
+# TYPE elasticsearch_clustersettings_allocation_threshold_enabled gauge
+elasticsearch_clustersettings_allocation_threshold_enabled 0
+`,
+		},
+		{
+			name:    "forbidden",
+			status:  http.StatusForbidden,
+			body:    `{"error":{"type":"exception","reason":"missing privilege"},"status":403}`,
+			wantErr: "HTTP Request failed with code 403",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				if _, err := io.WriteString(w, tt.body); err != nil {
+					t.Error(err)
+				}
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c, err := NewClusterSettings(promslog.NewNopLogger(), u, ts.Client())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ch := make(chan prometheus.Metric, len(clusterSettingsDesc))
+			err = c.Update(context.Background(), &mockUpdateContext{}, ch)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("Update() error = %v, want nil", err)
+				}
+			} else if err == nil || err.Error() != tt.wantErr {
+				t.Errorf("Update() error = %v, want %q", err, tt.wantErr)
+			}
+
+			if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(tt.want)); err != nil {
+				t.Error(err)
 			}
 		})
 	}

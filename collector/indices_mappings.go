@@ -101,30 +101,29 @@ func (im *IndicesMappings) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (im *IndicesMappings) getAndParseURL(u *url.URL) (*IndicesMappingsResponse, error) {
+	var imr IndicesMappingsResponse
+
 	res, err := im.client.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get from %s://%s:%s%s: %s",
 			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
 	}
+	defer func() {
+		if cerr := res.Body.Close(); cerr != nil {
+			im.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
 	}
 
-	body, err := io.ReadAll(res.Body)
+	bts, err := io.ReadAll(res.Body)
 	if err != nil {
-		im.logger.Warn("failed to read response body", "err", err)
 		return nil, err
 	}
 
-	err = res.Body.Close()
-	if err != nil {
-		im.logger.Warn("failed to close response body", "err", err)
-		return nil, err
-	}
-
-	var imr IndicesMappingsResponse
-	if err := json.Unmarshal(body, &imr); err != nil {
+	if err := json.Unmarshal(bts, &imr); err != nil {
 		return nil, err
 	}
 

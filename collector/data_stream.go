@@ -15,8 +15,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -88,28 +86,23 @@ func (ds *DataStream) Update(ctx context.Context, uc UpdateContext, ch chan<- pr
 
 	u := ds.u.ResolveReference(&url.URL{Path: "/_data_stream/*/_stats"})
 
-	resp, err := getURL(ctx, ds.hc, ds.logger, u.String())
-	if err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(resp, &dsr); err != nil {
+	if err := getAndDecodeURL(ctx, ds.hc, ds.logger, u.String(), &dsr); err != nil {
 		return err
 	}
 
 	for _, dataStream := range dsr.DataStreamStats {
-		fmt.Printf("Metric: %+v", dataStream)
+		ds.logger.Debug("data stream stats", "data_stream", dataStream.DataStream, "backing_indices", dataStream.BackingIndices, "store_size_bytes", dataStream.StoreSizeBytes)
 
 		ch <- prometheus.MustNewConstMetric(
 			dataStreamBackingIndicesTotal,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			float64(dataStream.BackingIndices),
 			dataStream.DataStream,
 		)
 
 		ch <- prometheus.MustNewConstMetric(
 			dataStreamStoreSizeBytes,
-			prometheus.CounterValue,
+			prometheus.GaugeValue,
 			float64(dataStream.StoreSizeBytes),
 			dataStream.DataStream,
 		)

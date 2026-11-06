@@ -160,14 +160,23 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			c.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP Request failed with code %d", resp.StatusCode)
+	}
+
+	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
 	var data clusterSettingsResponse
-	err = json.Unmarshal(b, &data)
-	if err != nil {
+	if err := json.Unmarshal(bts, &data); err != nil {
 		return err
 	}
 
@@ -226,7 +235,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse flood stage watermark", "err", err)
 	} else {
-		if strings.HasSuffix(watermarkFlood, "b") {
+		if strings.HasSuffix(strings.ToLower(watermarkFlood), "b") {
 			floodStageBytes, err := getValueInBytes(watermarkFlood)
 			if err != nil {
 				c.logger.Error("failed to parse flood_stage bytes", "err", err)
@@ -255,7 +264,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse high watermark", "err", err)
 	} else {
-		if strings.HasSuffix(watermarkHigh, "b") {
+		if strings.HasSuffix(strings.ToLower(watermarkHigh), "b") {
 			highBytes, err := getValueInBytes(watermarkHigh)
 			if err != nil {
 				c.logger.Error("failed to parse high bytes", "err", err)
@@ -284,7 +293,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse low watermark", "err", err)
 	} else {
-		if strings.HasSuffix(watermarkLow, "b") {
+		if strings.HasSuffix(strings.ToLower(watermarkLow), "b") {
 			lowBytes, err := getValueInBytes(watermarkLow)
 			if err != nil {
 				c.logger.Error("failed to parse low bytes", "err", err)

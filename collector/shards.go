@@ -14,17 +14,27 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/prometheus-community/elasticsearch_exporter/pkg/clusterinfo"
 )
+
+var nodeShardsTotal = prometheus.NewDesc(
+	prometheus.BuildFQName(namespace, "node_shards", "total"),
+	"Total shards per node",
+	[]string{"node", "cluster"}, nil,
+)
+
+func init() {
+	registerCollector("shards", defaultDisabled, NewShards)
+}
 
 // ShardResponse has shard's node and index info
 type ShardResponse struct {
@@ -36,205 +46,103 @@ type ShardResponse struct {
 
 // Shards information struct
 type Shards struct {
-	logger          *slog.Logger
-	client          *http.Client
-	url             *url.URL
-	clusterInfoCh   chan *clusterinfo.Response
-	lastClusterInfo *clusterinfo.Response
+	logger *slog.Logger
+	client *http.Client
+	url    *url.URL
 
-	nodeShardMetrics  []*nodeShardMetric
 	jsonParseFailures prometheus.Counter
 }
 
-// ClusterLabelUpdates returns a pointer to a channel to receive cluster info updates. It implements the
-// (not exported) clusterinfo.consumer interface
-func (s *Shards) ClusterLabelUpdates() *chan *clusterinfo.Response {
-	return &s.clusterInfoCh
-}
-
-// String implements the stringer interface. It is part of the clusterinfo.consumer interface
-func (s *Shards) String() string {
-	return namespace + "shards"
-}
-
-type nodeShardMetric struct {
-	Type   prometheus.ValueType
-	Desc   *prometheus.Desc
-	Value  func(shards float64) float64
-	Labels labels
-}
-
-// fetchClusterNameOnce performs a single request to the root endpoint to obtain the cluster name.
-func fetchClusterNameOnce(s *Shards) string {
-	if s.lastClusterInfo != nil && s.lastClusterInfo.ClusterName != "unknown_cluster" {
-		return s.lastClusterInfo.ClusterName
-	}
-	u := *s.url
-	u.Path = path.Join(u.Path, "/")
-	resp, err := s.client.Get(u.String())
-	if err == nil {
-		defer resp.Body.Close()
-		if resp.StatusCode == http.StatusOK {
-			var root struct {
-				ClusterName string `json:"cluster_name"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&root); err == nil && root.ClusterName != "" {
-				s.lastClusterInfo = &clusterinfo.Response{ClusterName: root.ClusterName}
-				return root.ClusterName
-			}
-		}
-	}
-	return "unknown_cluster"
-}
-
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger *slog.Logger, client *http.Client, url *url.URL) *Shards {
-	var shardPtr *Shards
-	nodeLabels := labels{
-		keys: func(...string) []string {
-			return []string{"node", "cluster"}
-		},
-		values: func(lastClusterinfo *clusterinfo.Response, base ...string) []string {
-			if lastClusterinfo != nil {
-				return append(base, lastClusterinfo.ClusterName)
-			}
-			if shardPtr != nil {
-				return append(base, fetchClusterNameOnce(shardPtr))
-			}
-			return append(base, "unknown_cluster")
-		},
-	}
-
-	shards := &Shards{
-		// will assign later
-
+func NewShards(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+	return &Shards{
 		logger: logger,
-		client: client,
-		url:    url,
-
-		clusterInfoCh: make(chan *clusterinfo.Response),
-		lastClusterInfo: &clusterinfo.Response{
-			ClusterName: "unknown_cluster",
-		},
-
-		nodeShardMetrics: []*nodeShardMetric{
-			{
-				Type: prometheus.GaugeValue,
-				Desc: prometheus.NewDesc(
-					prometheus.BuildFQName(namespace, "node_shards", "total"),
-					"Total shards per node",
-					nodeLabels.keys(), nil,
-				),
-				Value: func(shards float64) float64 {
-					return shards
-				},
-				Labels: nodeLabels,
-			},
-		},
+		client: hc,
+		url:    u,
 
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_shards", "json_parse_failures"),
 			Help: "Number of errors while parsing JSON.",
 		}),
-	}
-
-	// start go routine to fetch clusterinfo updates and save them to lastClusterinfo
-	go func() {
-		logger.Debug("starting cluster info receive loop")
-		for ci := range shards.clusterInfoCh {
-			if ci != nil {
-				logger.Debug("received cluster info update", "cluster", ci.ClusterName)
-				shards.lastClusterInfo = ci
-			}
-		}
-		logger.Debug("exiting cluster info receive loop")
-	}()
-
-	shardPtr = shards
-	return shards
+	}, nil
 }
 
-// Describe Shards
-func (s *Shards) Describe(ch chan<- *prometheus.Desc) {
-	ch <- s.jsonParseFailures.Desc()
+// streamShards decodes a /_cat/shards JSON array one element at a time,
+// invoking emit for each, so the full shard list is never materialized.
+func streamShards(r io.Reader, emit func(ShardResponse)) error {
+	dec := json.NewDecoder(r)
 
-	for _, metric := range s.nodeShardMetrics {
-		ch <- metric.Desc
-	}
-}
-
-func (s *Shards) getAndParseURL(u *url.URL) ([]ShardResponse, error) {
-	res, err := s.client.Get(u.String())
+	tok, err := dec.Token()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get from %s://%s:%s%s: %s",
-			u.Scheme, u.Hostname(), u.Port(), u.Path, err)
+		return err
 	}
-
-	defer func() {
-		err = res.Body.Close()
-		if err != nil {
-			s.logger.Warn(
-				"failed to close http.Client",
-				"err", err,
-			)
+	if tok != json.Delim('[') {
+		return fmt.Errorf("expected '[' opening the shards array, got %v", tok)
+	}
+	for dec.More() {
+		var shard ShardResponse
+		if err := dec.Decode(&shard); err != nil {
+			return err
 		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP Request failed with code %d", res.StatusCode)
+		emit(shard)
 	}
-	var sfr []ShardResponse
-	if err := json.NewDecoder(res.Body).Decode(&sfr); err != nil {
-		s.jsonParseFailures.Inc()
-		return nil, err
+	// More also reports false at EOF or on a read error, so a body cut off
+	// right after a complete shard is only caught by consuming the closing ']'.
+	_, err = dec.Token()
+	if err == io.EOF {
+		return io.ErrUnexpectedEOF
 	}
-	return sfr, nil
+	return err
 }
 
-func (s *Shards) fetchAndDecodeShards() ([]ShardResponse, error) {
+// streamAndAggregateShards GETs /_cat/shards and counts STARTED shards per
+// node while decoding the response one shard at a time. This keeps peak
+// memory proportional to a single shard entry instead of materializing the
+// entire (potentially many-thousand-element) shard list.
+func (s *Shards) streamAndAggregateShards(ctx context.Context, nodeShards map[string]float64) error {
 	u := *s.url
 	u.Path = path.Join(u.Path, "/_cat/shards")
 	q := u.Query()
 	q.Set("format", "json")
 	u.RawQuery = q.Encode()
-	sfr, err := s.getAndParseURL(&u)
-	if err != nil {
-		return sfr, err
-	}
-	return sfr, err
+
+	return fetchURL(ctx, s.client, s.logger, u.String(), func(r io.Reader) error {
+		if err := streamShards(r, func(shard ShardResponse) {
+			if shard.State == "STARTED" {
+				nodeShards[shard.Node]++
+			}
+		}); err != nil {
+			s.jsonParseFailures.Inc()
+			return err
+		}
+		return nil
+	})
 }
 
-// Collect number of shards on each node
-func (s *Shards) Collect(ch chan<- prometheus.Metric) {
+// Update collects the number of shards on each node
+func (s *Shards) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	defer func() {
 		ch <- s.jsonParseFailures
 	}()
 
-	sr, err := s.fetchAndDecodeShards()
-	if err != nil {
-		s.logger.Warn(
-			"failed to fetch and decode node shards stats",
-			"err", err,
-		)
-		return
+	nodeShards := make(map[string]float64)
+	if err := s.streamAndAggregateShards(ctx, nodeShards); err != nil {
+		return fmt.Errorf("failed to fetch and decode node shards stats: %w", err)
 	}
 
-	nodeShards := make(map[string]float64)
-
-	for _, shard := range sr {
-		if shard.State == "STARTED" {
-			nodeShards[shard.Node]++
-		}
+	clusterName := "unknown_cluster"
+	if info, err := uc.GetClusterInfo(ctx); err == nil && info.ClusterName != "" {
+		clusterName = info.ClusterName
 	}
 
 	for node, shards := range nodeShards {
-		for _, metric := range s.nodeShardMetrics {
-			ch <- prometheus.MustNewConstMetric(
-				metric.Desc,
-				metric.Type,
-				metric.Value(shards),
-				metric.Labels.values(s.lastClusterInfo, node)...,
-			)
-		}
+		ch <- prometheus.MustNewConstMetric(
+			nodeShardsTotal,
+			prometheus.GaugeValue,
+			shards,
+			node, clusterName,
+		)
 	}
+
+	return nil
 }

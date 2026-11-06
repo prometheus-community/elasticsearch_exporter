@@ -15,43 +15,51 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 )
 
-func getURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string) ([]byte, error) {
+// fetchURL performs an HTTP GET against u and passes the response body to
+// consume, handling the request setup, status check, and body close. It lets
+// callers stream large responses instead of buffering them in full.
+func fetchURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string, consume func(io.Reader) error) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer func() {
-		err = resp.Body.Close()
-		if err != nil {
-			log.Warn(
-				"failed to close response body",
-				"err", err,
-			)
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.Warn("failed to close response body", "err", cerr)
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP Request failed with code %d", resp.StatusCode)
+		return fmt.Errorf("HTTP Request failed with code %d", resp.StatusCode)
 	}
 
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+	return consume(resp.Body)
+}
 
-	return b, nil
+// getAndDecodeURL performs an HTTP GET against u and unmarshals the JSON
+// response body into target. It consolidates the request/read/decode/body-close
+// boilerplate that the collectors previously duplicated.
+func getAndDecodeURL(ctx context.Context, hc *http.Client, log *slog.Logger, u string, target any) error {
+	return fetchURL(ctx, hc, log, u, func(r io.Reader) error {
+		b, err := io.ReadAll(r)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(b, target)
+	})
 }
 
 // bool2Float converts a bool to a float64. True is 1, false is 0.

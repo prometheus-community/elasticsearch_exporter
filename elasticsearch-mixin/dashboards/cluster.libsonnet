@@ -33,7 +33,7 @@ local util = import './util.libsonnet';
             panels.stat.nodes('Active', queries.activeShards),
             panels.stat.nodes('Active Primary', queries.activePrimaryShards),
             panels.stat.nodes('Initializing', queries.initializingShards),
-            panels.stat.nodes('Relocating', queries.reloactingShards),
+            panels.stat.nodes('Relocating', queries.relocatingShards),
             panels.stat.nodes('Unassigned', queries.unassignedShards),
             panels.stat.nodes('DelayedUnassigned', queries.delayedUnassignedShards),
           ]),

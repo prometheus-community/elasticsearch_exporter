@@ -75,9 +75,6 @@ func main() {
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Bool()
-		esExportIndicesSettings = kingpin.Flag("es.indices_settings",
-			"Export stats for settings of all indices of the cluster.").
-			Default("false").Bool()
 		esExportIndicesMappings = kingpin.Flag("es.indices_mappings",
 			"Export stats for mappings of all indices of the cluster.").
 			Default("false").Bool()
@@ -220,26 +217,15 @@ func main() {
 		// cluster info retriever
 		clusterInfoRetriever := clusterinfo.New(logger, httpClient, esURL, *esClusterInfoInterval)
 
-		prometheus.MustRegister(collector.NewClusterHealth(logger, httpClient, esURL))
 		prometheus.MustRegister(collector.NewNodes(logger, httpClient, esURL, *esAllNodes, *esNode))
 
 		if *esExportIndices || *esExportShards {
-			sC := collector.NewShards(logger, httpClient, esURL)
-			prometheus.MustRegister(sC)
 			iC := collector.NewIndices(logger, httpClient, esURL, *esExportShards, *esExportIndexAliases)
 			prometheus.MustRegister(iC)
 			if registerErr := clusterInfoRetriever.RegisterConsumer(iC); registerErr != nil {
 				logger.Error("failed to register indices collector in cluster info")
 				os.Exit(1)
 			}
-			if registerErr := clusterInfoRetriever.RegisterConsumer(sC); registerErr != nil {
-				logger.Error("failed to register shards collector in cluster info")
-				os.Exit(1)
-			}
-		}
-
-		if *esExportIndicesSettings {
-			prometheus.MustRegister(collector.NewIndicesSettings(logger, httpClient, esURL))
 		}
 
 		if *esExportIndicesMappings {
@@ -386,12 +372,18 @@ func main() {
 		// version metric
 		reg.MustRegister(versioncollector.NewCollector(name))
 
+		// Per-probe cluster info provider. NewInfoProvider is lazy (fetches on
+		// first GetInfo, then caches), so constructing one per request starts no
+		// background goroutine and is safe to discard when the handler returns.
+		infoProvider := cluster.NewInfoProvider(logger, probeClient, targetURL, *esClusterInfoInterval)
+
 		// Core exporter collector
 		exp, err := collector.NewElasticsearchCollector(
 			logger,
 			[]string{},
 			collector.WithElasticsearchURL(targetURL),
 			collector.WithHTTPClient(probeClient),
+			collector.WithClusterInfoProvider(infoProvider),
 		)
 		if err != nil {
 			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
@@ -399,16 +391,10 @@ func main() {
 		}
 		reg.MustRegister(exp)
 		// Basic additional collectors – reuse global CLI flags
-		reg.MustRegister(collector.NewClusterHealth(logger, probeClient, targetURL))
 		reg.MustRegister(collector.NewNodes(logger, probeClient, targetURL, *esAllNodes, *esNode))
 		if *esExportIndices || *esExportShards {
-			shardsC := collector.NewShards(logger, probeClient, targetURL)
 			indicesC := collector.NewIndices(logger, probeClient, targetURL, *esExportShards, *esExportIndexAliases)
-			reg.MustRegister(shardsC)
 			reg.MustRegister(indicesC)
-		}
-		if *esExportIndicesSettings {
-			reg.MustRegister(collector.NewIndicesSettings(logger, probeClient, targetURL))
 		}
 		if *esExportIndicesMappings {
 			reg.MustRegister(collector.NewIndicesMappings(logger, probeClient, targetURL))

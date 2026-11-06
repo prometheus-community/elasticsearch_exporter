@@ -16,6 +16,7 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -78,18 +79,28 @@ type VersionInfo struct {
 }
 
 func (c *ClusterInfoCollector) Update(_ context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
+	var info ClusterInfoResponse
+
 	resp, err := c.hc.Get(c.u.String())
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			c.logger.Warn("failed to close response body", "err", cerr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP Request failed with code %d", resp.StatusCode)
+	}
+
+	bts, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	var info ClusterInfoResponse
-	err = json.Unmarshal(b, &info)
-	if err != nil {
+
+	if err := json.Unmarshal(bts, &info); err != nil {
 		return err
 	}
 

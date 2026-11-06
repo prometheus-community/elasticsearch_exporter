@@ -21,6 +21,13 @@ docker pull quay.io/prometheuscommunity/elasticsearch-exporter:latest
 docker run --rm -p 9114:9114 quay.io/prometheuscommunity/elasticsearch-exporter:latest
 ```
 
+Images are also published to GHCR:
+
+```bash
+docker pull ghcr.io/prometheus-community/elasticsearch-exporter:latest
+docker run --rm -p 9114:9114 ghcr.io/prometheus-community/elasticsearch-exporter:latest
+```
+
 Example `docker-compose.yml`:
 
 ```yaml
@@ -55,15 +62,17 @@ elasticsearch_exporter --help
 | Argument                | Introduced in Version | Description                                                                                                                                                                                                                                                                                                                                                                           | Default     |
 | ----------------------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ----------- |
 | collector.clustersettings| 1.6.0                | If true, query stats for cluster settings (As of v1.6.0, this flag has replaced "es.cluster_settings").                                                                                                                                                                                                                                                                                | false |
+| collector.cluster-health| 1.12.0                | If true, query cluster health stats. Enabled by default.                                                                                                                                                                                                                                                                                                                              | true |
 | es.uri                  | 1.0.2                 | Address (host and port) of the Elasticsearch node we should connect to **when running in single-target mode**. Leave empty (the default) when you want to run the exporter only as a multi-target `/probe` endpoint. When basic auth is needed, specify as: `<proto>://<user>:<password>@<host>:<port>`. E.G., `http://admin:pass@localhost:9200`. Special characters in the user credentials need to be URL-encoded. | "" |
 | es.all                  | 1.0.2                 | If true, query stats for all nodes in the cluster, rather than just the node we connect to.                                                                                                                                                                                                                                                                                           | false |
 | es.indices              | 1.0.2                 | If true, query stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                                  | false |
-| es.indices_settings     | 1.0.4rc1              | If true, query settings stats for all indices in the cluster.                                                                                                                                                                                                                                                                                                                         | false |
+| collector.indices-settings | 1.12.0           | If true, query settings stats for all indices in the cluster. (This flag has replaced "es.indices_settings").                                                                                                                                                                                                                                                          | false |
 | es.indices_mappings     | 1.2.0                 | If true, query stats for mappings of all indices of the cluster.                                                                                                                                                                                                                                                                                                                      | false |
 | es.aliases              | 1.0.4rc1              | If true, include informational aliases metrics.                                                                                                                                                                                                                                                                                                                                       | true |
 | es.ilm                  | 1.6.0                 | If true, query index lifecycle policies for indices in the cluster.
 | es.shards               | 1.0.3rc1              | If true, query stats for all indices in the cluster, including shard-level stats (implies `es.indices=true`).                                                                                                                                                                                                                                                                         | false |
 | collector.snapshots     | 1.0.4rc1              | If true, query stats for the cluster snapshots. (As of v1.7.0, this flag has replaced "es.snapshots").                                                                                                                                                                                                                                                                                | false |
+| collector.shards        | 1.12.0                | If true, query per-node shard counts from `/_cat/shards` (`elasticsearch_node_shards_total`). (These were previously exported by "es.indices" and "es.shards").                                                                                                                                                                                                                       | false |
 | collector.health-report | 1.10.0                 | If true, query the health report (requires elasticsearch 8.7.0 or later)                                                                                                                                                                                                                                                                                                              | false |
 | collector.slm                  |                       | If true, query stats for SLM.                                                                                                                                                                                                                                                                                                                                                         | false |
 | es.data_stream          |                       | If true, query state for Data Steams.                                                                                                                                                                                                                                                                                                                                                 | false |
@@ -101,9 +110,9 @@ Setting | Privilege Required | Description
 collector.clustersettings| `cluster` `monitor` |
 exporter defaults | `cluster` `monitor` | All cluster read-only operations, like cluster health and state, hot threads, node info, node and cluster stats, and pending cluster tasks. |
 es.indices | `indices` `monitor` (per index or `*`) | All actions that are required for monitoring (recovery, segments info, index stats and status)
-es.indices_settings | `indices` `monitor` (per index or `*`) |
+collector.indices-settings | `indices` `monitor` (per index or `*`) |
 es.indices_mappings | `indices` `view_index_metadata` (per index or `*`) |
-es.shards | not sure if `indices` or `cluster` `monitor` or both |
+collector.shards | not sure if `indices` or `cluster` `monitor` or both |
 collector.snapshots | `cluster:admin/snapshot/status` and `cluster:admin/repository/get` | [ES Forum Post](https://discuss.elastic.co/t/permissions-for-backup-user-with-x-pack/88057)
 collector.slm | `manage_slm`
 es.data_stream | `monitor` or `manage` (per index or `*`) |
@@ -181,7 +190,7 @@ See the [metrics documentation](metrics.md)
 
 ### Alerts & Recording Rules
 
-We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as an [Grafana](http://www.grafana.org) [Dashboard](examples/grafana/dashboard.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
+We provide examples for [Prometheus](http://prometheus.io) [alerts and recording rules](examples/prometheus/elasticsearch.rules) as well as a [Grafana](http://www.grafana.org) [Dashboard](elasticsearch-mixin/compiled/dashboards/cluster.json) and a [Kubernetes](http://kubernetes.io) [Deployment](examples/kubernetes/deployment.yml).
 
 The example dashboard needs the [node_exporter](https://github.com/prometheus/node_exporter) installed. In order to select the nodes that belong to the Elasticsearch cluster, we rely on a label `cluster`.
 Depending on your setup, it can derived from the platform metadata:

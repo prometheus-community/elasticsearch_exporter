@@ -20,11 +20,38 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
+
+func TestIsDataNode(t *testing.T) {
+	tests := []struct {
+		name  string
+		roles []string
+		want  bool
+	}{
+		{"generic data role", []string{"data"}, true},
+		{"data_content tier", []string{"data_content"}, true},
+		{"data_hot tier", []string{"data_hot"}, true},
+		{"data_warm tier", []string{"data_warm"}, true},
+		{"data_cold tier", []string{"data_cold"}, true},
+		{"data_frozen tier", []string{"data_frozen"}, true},
+		{"master only", []string{"master"}, false},
+		{"ingest only", []string{"ingest"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := NodeStatsNodeResponse{Roles: tt.roles}
+			if got := isDataNode(getRoles(node)); got != tt.want {
+				t.Errorf("isDataNode(getRoles(%v)) = %v, want %v", tt.roles, got, tt.want)
+			}
+		})
+	}
+}
 
 func TestNodesStats(t *testing.T) {
 	tests := []struct {
@@ -235,6 +262,9 @@ func TestNodesStats(t *testing.T) {
             # HELP elasticsearch_indices_search_scroll_total Total number of scrolls
             # TYPE elasticsearch_indices_search_scroll_total counter
             elasticsearch_indices_search_scroll_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_indices_search_scroll_current Number of scroll operations currently running
+            # TYPE elasticsearch_indices_search_scroll_current gauge
+            elasticsearch_indices_search_scroll_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
             # HELP elasticsearch_indices_search_suggest_time_seconds Total suggest time in seconds
             # TYPE elasticsearch_indices_search_suggest_time_seconds counter
             elasticsearch_indices_search_suggest_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
@@ -694,6 +724,9 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_search_scroll_total Total number of scrolls
              # TYPE elasticsearch_indices_search_scroll_total counter
              elasticsearch_indices_search_scroll_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
+             # HELP elasticsearch_indices_search_scroll_current Number of scroll operations currently running
+             # TYPE elasticsearch_indices_search_scroll_current gauge
+             elasticsearch_indices_search_scroll_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
              # HELP elasticsearch_indices_search_suggest_time_seconds Total suggest time in seconds
              # TYPE elasticsearch_indices_search_suggest_time_seconds counter
              elasticsearch_indices_search_suggest_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
@@ -1217,6 +1250,9 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_search_scroll_total Total number of scrolls
              # TYPE elasticsearch_indices_search_scroll_total counter
              elasticsearch_indices_search_scroll_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_indices_search_scroll_current Number of scroll operations currently running
+             # TYPE elasticsearch_indices_search_scroll_current gauge
+             elasticsearch_indices_search_scroll_current{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              # HELP elasticsearch_indices_search_suggest_time_seconds Total suggest time in seconds
              # TYPE elasticsearch_indices_search_suggest_time_seconds counter
              elasticsearch_indices_search_suggest_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
@@ -1584,6 +1620,10 @@ func TestNodesStats(t *testing.T) {
 			defer f.Close()
 
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/_nodes/stats" {
+					http.NotFound(w, r)
+					return
+				}
 				io.Copy(w, f)
 			}))
 			defer ts.Close()
@@ -1593,14 +1633,68 @@ func TestNodesStats(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c := NewNodes(promslog.NewNopLogger(), http.DefaultClient, u, true, "_local")
-			if err != nil {
-				t.Fatal(err)
-			}
+			c := newTestNodes(t, u, true, "_local")
 
 			if err := testutil.CollectAndCompare(c, strings.NewReader(tt.want)); err != nil {
 				t.Fatal(err)
 			}
 		})
 	}
+}
+
+func TestNodesStatsRequestPath(t *testing.T) {
+	tests := []struct {
+		name string
+		all  bool
+		node string
+		want string
+	}{
+		{"all nodes", true, "_local", "/_nodes/stats"},
+		{"local node", false, "_local", "/_nodes/_local/stats"},
+		{"named node", false, "foo", "/_nodes/foo/stats"},
+	}
+
+	fixture, err := os.ReadFile("../fixtures/nodestats/7.13.1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				mu    sync.Mutex
+				paths []string
+			)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				paths = append(paths, r.URL.Path)
+				mu.Unlock()
+				w.Write(fixture)
+			}))
+			defer ts.Close()
+
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c := newTestNodes(t, u, tt.all, tt.node)
+
+			if n := testutil.CollectAndCount(c); n == 0 {
+				t.Fatal("expected metrics, got none")
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			if len(paths) != 1 || paths[0] != tt.want {
+				t.Fatalf("requested paths %v, want [%s]", paths, tt.want)
+			}
+		})
+	}
+}
+
+// newTestNodes builds the nodes collector for tests.
+func newTestNodes(t *testing.T, u *url.URL, all bool, node string) prometheus.Collector {
+	t.Helper()
+	return NewNodes(promslog.NewNopLogger(), http.DefaultClient, u, all, node)
 }
