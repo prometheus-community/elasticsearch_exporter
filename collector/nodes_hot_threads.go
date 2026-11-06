@@ -16,13 +16,17 @@ package collector
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -35,11 +39,31 @@ var (
 	)
 
 	nodeHeaderRe = regexp.MustCompile(`^::: \{([^}]+)\}`)
-	threadLineRe = regexp.MustCompile(`^\s+(\d+\.?\d*)%.*cpu usage by thread '([^']+)'`)
+	// The leading percentage is the CPU time before 8.x. From 8.x it is
+	// followed by [cpu=..%, other=..%] or [cpu=..%, idle=..%], and for
+	// non-transport threads it also counts time spent runnable but off CPU,
+	// so the cpu= value is used when present.
+	threadLineRe = regexp.MustCompile(`^\s*(\d+(?:\.\d+)?)%(?:\s+\[cpu=(\d+(?:\.\d+)?)%[^\]]*\])?.* cpu usage by thread '([^']+)'`)
 	threadNameRe = regexp.MustCompile(`\[([^\]]+)\]\[T#(\d+)\]$`)
 )
 
+// Globals because the collector interface does not take constructor args.
+var (
+	hotThreadsNodes    string
+	hotThreadsThreads  int
+	hotThreadsInterval time.Duration
+)
+
 func init() {
+	kingpin.Flag("collector.nodes_hot_threads.nodes",
+		"Nodes to sample hot threads on, as an Elasticsearch node specification (e.g. _local or _all).").
+		Default("_all").StringVar(&hotThreadsNodes)
+	kingpin.Flag("collector.nodes_hot_threads.threads",
+		"Number of hot threads to report per node.").
+		Default("3").IntVar(&hotThreadsThreads)
+	kingpin.Flag("collector.nodes_hot_threads.interval",
+		"Interval over which Elasticsearch samples thread CPU usage on each scrape.").
+		Default("500ms").DurationVar(&hotThreadsInterval)
 	registerCollector("nodes_hot_threads", defaultDisabled, NewNodesHotThreadsCollector)
 }
 
@@ -59,92 +83,98 @@ func (c *NodesHotThreadsCollector) Update(ctx context.Context, uc UpdateContext,
 		return fmt.Errorf("failed to get cluster info: %w", err)
 	}
 
-	threads, err := c.fetchHotThreads()
-	if err != nil {
+	u := c.u.ResolveReference(&url.URL{Path: "_nodes/" + hotThreadsNodes + "/hot_threads"})
+	q := u.Query()
+	q.Set("type", "cpu")
+	q.Set("threads", strconv.Itoa(hotThreadsThreads))
+	q.Set("interval", strconv.FormatInt(hotThreadsInterval.Milliseconds(), 10)+"ms")
+	u.RawQuery = q.Encode()
+
+	var threads map[hotThreadKey]float64
+	parse := func(r io.Reader) error {
+		var err error
+		threads, err = parseHotThreads(r)
+		return err
+	}
+	if err := fetchURL(ctx, c.hc, c.logger, u.String(), parse); err != nil {
 		return fmt.Errorf("failed to fetch hot threads: %w", err)
 	}
 
-	if len(threads) == 0 {
-		return ErrNoData
-	}
-
-	for _, t := range threads {
+	for k, cpuRatio := range threads {
 		ch <- prometheus.MustNewConstMetric(
 			hotThreadCPUDesc,
 			prometheus.GaugeValue,
-			t.cpuRatio,
+			cpuRatio,
 			clusterInfo.ClusterName,
-			t.nodeName,
-			t.threadLabel,
+			k.node,
+			k.thread,
 		)
 	}
 	return nil
 }
 
-type hotThread struct {
-	nodeName    string
-	threadLabel string
-	cpuRatio    float64
+type hotThreadKey struct {
+	node   string
+	thread string
 }
 
-func (c *NodesHotThreadsCollector) fetchHotThreads() ([]hotThread, error) {
-	u := c.u.ResolveReference(&url.URL{Path: "_nodes/hot_threads"})
-	q := u.Query()
-	q.Set("type", "cpu")
-	u.RawQuery = q.Encode()
-
-	res, err := c.hc.Get(u.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hot threads from %s: %w", u.String(), err)
-	}
-	defer func() {
-		if err := res.Body.Close(); err != nil {
-			c.logger.Warn("failed to close response body", "err", err)
-		}
-	}()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP request to %s failed with code %d", u.String(), res.StatusCode)
-	}
-
-	return parseHotThreads(res.Body)
-}
-
-func parseHotThreads(r io.Reader) ([]hotThread, error) {
-	var threads []hotThread
-	var currentNode string
+// parseHotThreads returns the CPU usage ratio of each hot thread by node and
+// thread label. Threads that share a name on the same node are summed, since
+// Elasticsearch can report several of them and a duplicate series would fail
+// the whole scrape.
+func parseHotThreads(r io.Reader) (map[hotThreadKey]float64, error) {
+	threads := map[hotThreadKey]float64{}
+	var node string
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		if m := nodeHeaderRe.FindStringSubmatch(line); m != nil {
-			currentNode = m[1]
+			node = m[1]
 			continue
 		}
 
-		if m := threadLineRe.FindStringSubmatch(line); m != nil {
-			pct, err := strconv.ParseFloat(m[1], 64)
-			if err != nil {
-				continue
-			}
-			threads = append(threads, hotThread{
-				nodeName:    currentNode,
-				threadLabel: threadLabel(m[2]),
-				cpuRatio:    pct / 100,
-			})
+		if !strings.Contains(line, " cpu usage by thread '") {
+			continue
 		}
+		if node == "" {
+			return nil, fmt.Errorf("hot thread line before any node header: %q", line)
+		}
+		m := threadLineRe.FindStringSubmatch(line)
+		if m == nil {
+			return nil, fmt.Errorf("unrecognized hot thread line: %q", line)
+		}
+
+		thread, ok := threadLabel(m[3])
+		if !ok {
+			continue
+		}
+		pct := m[2]
+		if pct == "" {
+			pct = m[1]
+		}
+		// The regex only captures decimal numbers.
+		v, _ := strconv.ParseFloat(pct, 64)
+		threads[hotThreadKey{node: node, thread: thread}] += v / 100
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
-	return threads, scanner.Err()
+	if node == "" {
+		return nil, errors.New("no node header in hot threads response")
+	}
+	return threads, nil
 }
 
-// threadLabel extracts a readable label from an ES thread name.
-// For names like "elasticsearch[node][search][T#3]" it returns "search[T#3]".
-// Falls back to the raw name if the pattern doesn't match.
-func threadLabel(rawName string) string {
-	if m := threadNameRe.FindStringSubmatch(rawName); m != nil {
-		return m[1] + "[T#" + m[2] + "]"
+// threadLabel turns "elasticsearch[node][search][T#3]" into "search[T#3]".
+// Other names embed index names, shard ids, file paths or counters, which
+// would make the label unbounded, so they are not reported.
+func threadLabel(name string) (string, bool) {
+	m := threadNameRe.FindStringSubmatch(name)
+	if m == nil {
+		return "", false
 	}
-	return rawName
+	return m[1] + "[T#" + m[2] + "]", true
 }
