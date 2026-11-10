@@ -1,0 +1,12 @@
+{
+  "auto_follow_stats": {
+    "number_of_failed_follow_indices": 0,
+    "number_of_failed_remote_cluster_state_requests": 0,
+    "number_of_successful_follow_indices": 0,
+    "recent_auto_follow_errors": [],
+    "auto_followed_clusters": []
+  },
+  "follow_stats": {
+    "indices": []
+  }
+}
