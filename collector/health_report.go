@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	statusColors              = []string{"green", "yellow", "red"}
+	statusColors              = []string{"green", "yellow", "red", "unknown"}
 	defaultHealthReportLabels = []string{"cluster"}
 )
 
