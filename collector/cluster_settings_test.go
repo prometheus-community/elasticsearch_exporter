@@ -166,6 +166,30 @@ elasticsearch_clustersettings_allocation_watermark_high_bytes 1.073741824e+10
 elasticsearch_clustersettings_allocation_watermark_low_bytes 2.147483648e+10
 `,
 		},
+		{
+			name: "persistent-watermark-short-byte-units",
+			file: "../fixtures/settings-persistent-watermark-short-units.json",
+			want: `
+# HELP elasticsearch_clustersettings_stats_max_shards_per_node Current maximum number of shards per node setting.
+# TYPE elasticsearch_clustersettings_stats_max_shards_per_node gauge
+elasticsearch_clustersettings_stats_max_shards_per_node 1000
+# HELP elasticsearch_clustersettings_stats_shard_allocation_enabled Current mode of cluster wide shard routing allocation settings.
+# TYPE elasticsearch_clustersettings_stats_shard_allocation_enabled gauge
+elasticsearch_clustersettings_stats_shard_allocation_enabled 0
+# HELP elasticsearch_clustersettings_allocation_threshold_enabled Is disk allocation decider enabled.
+# TYPE elasticsearch_clustersettings_allocation_threshold_enabled gauge
+elasticsearch_clustersettings_allocation_threshold_enabled 1
+# HELP elasticsearch_clustersettings_allocation_watermark_flood_stage_bytes Flood stage watermark as in bytes.
+# TYPE elasticsearch_clustersettings_allocation_watermark_flood_stage_bytes gauge
+elasticsearch_clustersettings_allocation_watermark_flood_stage_bytes 5.36870912e+08
+# HELP elasticsearch_clustersettings_allocation_watermark_high_bytes High watermark for disk usage in bytes.
+# TYPE elasticsearch_clustersettings_allocation_watermark_high_bytes gauge
+elasticsearch_clustersettings_allocation_watermark_high_bytes 5.36870912e+10
+# HELP elasticsearch_clustersettings_allocation_watermark_low_bytes Low watermark for disk usage in bytes.
+# TYPE elasticsearch_clustersettings_allocation_watermark_low_bytes gauge
+elasticsearch_clustersettings_allocation_watermark_low_bytes 1.073741824e+11
+`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,6 +242,11 @@ func Test_getValueInBytes(t *testing.T) {
 		{name: "Gibibytes uppercase", input: "400GB", want: 429496729600},
 		{name: "Tebibytes uppercase", input: "500TB", want: 549755813888000},
 		{name: "Pebibytes uppercase", input: "600PB", want: 675539944105574400},
+		{name: "Kibibytes single letter", input: "200k", want: 204800},
+		{name: "Mebibytes single letter", input: "300m", want: 314572800},
+		{name: "Gibibytes single letter", input: "400G", want: 429496729600},
+		{name: "Tebibytes single letter", input: "500t", want: 549755813888000},
+		{name: "Pebibytes single letter", input: "600p", want: 675539944105574400},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
