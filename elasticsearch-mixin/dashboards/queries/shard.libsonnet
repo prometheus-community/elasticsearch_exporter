@@ -8,7 +8,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_active_shards{cluster=~"$cluster"}
         )
       |||
@@ -18,7 +18,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_active_primary_shards{cluster=~"$cluster"}
         )
       |||
@@ -28,7 +28,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_initializing_shards{cluster=~"$cluster"}
         )
       |||
@@ -38,7 +38,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_relocating_shards{cluster=~"$cluster"}
         )
       |||
@@ -48,7 +48,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_unassigned_shards{cluster=~"$cluster"}
         )
       |||
@@ -58,7 +58,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_delayed_unassigned_shards{cluster=~"$cluster"}
         )
       |||
