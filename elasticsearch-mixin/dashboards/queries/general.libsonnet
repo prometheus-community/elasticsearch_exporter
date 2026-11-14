@@ -8,7 +8,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_number_of_nodes{cluster=~"$cluster"}
         )
       |||
@@ -17,7 +17,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_number_of_data_nodes{cluster=~"$cluster"}
         )
       |||
@@ -27,7 +27,7 @@ local variables = import '../variables.libsonnet';
     prometheusQuery.new(
       '$' + variables.datasource.name,
       |||
-        sum(
+        max(
           elasticsearch_cluster_health_number_of_pending_tasks{cluster=~"$cluster"}
         )
       |||
