@@ -22,13 +22,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-// filterByTask global required because collector interface doesn't expose any way to take
-// constructor args.
-var actionFilter string
 
 var taskActionDesc = prometheus.NewDesc(
 	prometheus.BuildFQName(namespace, "task_stats", "action"),
@@ -36,9 +31,6 @@ var taskActionDesc = prometheus.NewDesc(
 	[]string{"action"}, nil)
 
 func init() {
-	kingpin.Flag("tasks.actions",
-		"Filter on task actions. Used in same way as Task API actions param").
-		Default("indices:*").StringVar(&actionFilter)
 	registerCollector("tasks", defaultDisabled, NewTaskCollector)
 }
 
@@ -47,18 +39,21 @@ type TaskCollector struct {
 	logger *slog.Logger
 	hc     *http.Client
 	u      *url.URL
+
+	actions string
 }
 
 // NewTaskCollector defines Task Prometheus metrics
-func NewTaskCollector(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
-	logger.Info("task collector created",
-		"actionFilter", actionFilter,
+func NewTaskCollector(cfg collectorConfig) (Collector, error) {
+	cfg.logger.Info("task collector created",
+		"actionFilter", cfg.tasks.Actions,
 	)
 
 	return &TaskCollector{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger:  cfg.logger,
+		hc:      cfg.hc,
+		u:       cfg.u,
+		actions: cfg.tasks.Actions,
 	}, nil
 }
 
@@ -84,7 +79,7 @@ func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
 	u := t.u.ResolveReference(&url.URL{Path: "_tasks"})
 	q := u.Query()
 	q.Set("group_by", "none")
-	q.Set("actions", actionFilter)
+	q.Set("actions", t.actions)
 	u.RawQuery = q.Encode()
 
 	var tr tasksResponse

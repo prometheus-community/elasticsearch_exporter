@@ -221,7 +221,7 @@ func TestClusterHealth(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewClusterHealth(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewClusterHealth(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -244,7 +244,7 @@ func TestClusterHealthHTTPError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c, err := NewClusterHealth(promslog.NewNopLogger(), u, http.DefaultClient)
+	c, err := NewClusterHealth(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -165,11 +165,11 @@ type HealthReport struct {
 	url    *url.URL
 }
 
-func NewHealthReport(logger *slog.Logger, url *url.URL, client *http.Client) (Collector, error) {
+func NewHealthReport(cfg collectorConfig) (Collector, error) {
 	return &HealthReport{
-		logger: logger,
-		client: client,
-		url:    url,
+		logger: cfg.logger,
+		client: cfg.hc,
+		url:    cfg.u,
 	}, nil
 }
 

@@ -14,13 +14,16 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 )
@@ -65,7 +68,7 @@ elasticsearch_task_stats_action{action="indices:data/write/index"} 1
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			c, err := NewTaskCollector(promslog.NewNopLogger(), u, ts.Client())
+			c, err := NewTaskCollector(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: ts.Client()})
 			if err != nil {
 				t.Fatalf("Failed to create collector: %v", err)
 			}
@@ -74,5 +77,45 @@ elasticsearch_task_stats_action{action="indices:data/write/index"} 1
 				t.Fatalf("Metrics did not match: %v", err)
 			}
 		})
+	}
+}
+
+func TestTasksActionsQuery(t *testing.T) {
+	var (
+		mu      sync.Mutex
+		actions []string
+	)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		actions = append(actions, r.URL.Query().Get("actions"))
+		mu.Unlock()
+		fmt.Fprintln(w, `{"tasks":[]}`)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("Failed to parse URL: %s", err)
+	}
+
+	c, err := NewTaskCollector(collectorConfig{
+		logger: promslog.NewNopLogger(),
+		u:      u,
+		hc:     ts.Client(),
+		tasks:  TasksConfig{Actions: "cluster:*"},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create collector: %v", err)
+	}
+
+	ch := make(chan prometheus.Metric, 10)
+	if err := c.Update(context.Background(), &mockUpdateContext{}, ch); err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(actions) != 1 || actions[0] != "cluster:*" {
+		t.Fatalf("expected one request with actions=cluster:*, got %v", actions)
 	}
 }

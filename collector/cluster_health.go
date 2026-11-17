@@ -119,11 +119,11 @@ type clusterHealthResponse struct {
 }
 
 // NewClusterHealth returns a new Collector exposing ClusterHealth stats.
-func NewClusterHealth(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewClusterHealth(cfg collectorConfig) (Collector, error) {
 	return &ClusterHealth{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger: cfg.logger,
+		hc:     cfg.hc,
+		u:      cfg.u,
 	}, nil
 }
 

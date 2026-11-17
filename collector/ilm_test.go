@@ -81,7 +81,7 @@ func TestILM(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewILM(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewILM(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -38,7 +38,16 @@ const (
 	defaultDisabled = false
 )
 
-type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
+// collectorConfig is passed to every collector factory. Add a field here for a
+// new collector option instead of changing every factory signature.
+type collectorConfig struct {
+	logger *slog.Logger
+	u      *url.URL
+	hc     *http.Client
+	tasks  TasksConfig
+}
+
+type factoryFunc func(collectorConfig) (Collector, error)
 
 var (
 	factories        = make(map[string]factoryFunc)
@@ -93,13 +102,18 @@ type ElasticsearchCollector struct {
 	esURL      *url.URL
 	httpClient *http.Client
 	cluserInfo *cluster.InfoProvider
+
+	tasksConfig TasksConfig
 }
 
 type Option func(*ElasticsearchCollector) error
 
 // NewElasticsearchCollector creates a new ElasticsearchCollector
 func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ...Option) (*ElasticsearchCollector, error) {
-	e := &ElasticsearchCollector{logger: logger}
+	e := &ElasticsearchCollector{
+		logger:      logger,
+		tasksConfig: DefaultTasksConfig(),
+	}
 	// Apply options to customize the collector
 	for _, o := range options {
 		if err := o(e); err != nil {
@@ -127,7 +141,12 @@ func NewElasticsearchCollector(logger *slog.Logger, filters []string, options ..
 		if !*enabled || (len(f) > 0 && !f[key]) {
 			continue
 		}
-		collector, err := factories[key](logger.With("collector", key), e.esURL, e.httpClient)
+		collector, err := factories[key](collectorConfig{
+			logger: logger.With("collector", key),
+			u:      e.esURL,
+			hc:     e.httpClient,
+			tasks:  e.tasksConfig,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -156,6 +175,25 @@ func WithHTTPClient(hc *http.Client) Option {
 func WithClusterInfoProvider(cl *cluster.InfoProvider) Option {
 	return func(e *ElasticsearchCollector) error {
 		e.cluserInfo = cl
+		return nil
+	}
+}
+
+// TasksConfig holds the options for the tasks collector.
+type TasksConfig struct {
+	// Actions filters tasks by action, like the Task API actions parameter.
+	Actions string
+}
+
+// DefaultTasksConfig returns the tasks collector options used when
+// WithTasksConfig is not passed.
+func DefaultTasksConfig() TasksConfig {
+	return TasksConfig{Actions: "indices:*"}
+}
+
+func WithTasksConfig(c TasksConfig) Option {
+	return func(e *ElasticsearchCollector) error {
+		e.tasksConfig = c
 		return nil
 	}
 }

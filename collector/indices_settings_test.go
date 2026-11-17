@@ -121,7 +121,7 @@ func TestIndicesSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewIndicesSettings(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewIndicesSettings(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -144,7 +144,7 @@ func TestIndicesSettingsHTTPError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c, err := NewIndicesSettings(promslog.NewNopLogger(), u, http.DefaultClient)
+	c, err := NewIndicesSettings(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 	if err != nil {
 		t.Fatal(err)
 	}

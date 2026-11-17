@@ -106,11 +106,11 @@ type SLM struct {
 }
 
 // NewSLM defines SLM Prometheus metrics
-func NewSLM(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewSLM(cfg collectorConfig) (Collector, error) {
 	return &SLM{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger: cfg.logger,
+		hc:     cfg.hc,
+		u:      cfg.u,
 	}, nil
 }
 

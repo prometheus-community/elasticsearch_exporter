@@ -48,11 +48,11 @@ type ILM struct {
 	u      *url.URL
 }
 
-func NewILM(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewILM(cfg collectorConfig) (Collector, error) {
 	return &ILM{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger: cfg.logger,
+		hc:     cfg.hc,
+		u:      cfg.u,
 	}, nil
 }
 

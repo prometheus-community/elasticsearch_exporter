@@ -73,7 +73,7 @@ func TestShards(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s, err := NewShards(promslog.NewNopLogger(), u, http.DefaultClient)
+			s, err := NewShards(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -104,7 +104,7 @@ func TestShardsTruncatedResponse(t *testing.T) {
 		t.Fatalf("Failed to parse URL: %s", err)
 	}
 
-	s, err := NewShards(promslog.NewNopLogger(), u, http.DefaultClient)
+	s, err := NewShards(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestShardsClusterName(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s, err := NewShards(promslog.NewNopLogger(), u, http.DefaultClient)
+			s, err := NewShards(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,7 +198,7 @@ func TestShardsHTTPError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c, err := NewShards(promslog.NewNopLogger(), u, http.DefaultClient)
+	c, err := NewShards(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -156,7 +156,7 @@ func TestHealthReport(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewHealthReport(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewHealthReport(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
