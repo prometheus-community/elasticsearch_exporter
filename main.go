@@ -148,7 +148,13 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
 
-	if *esURI != "" {
+	if *esURI == "" {
+		// Without es.uri no Elasticsearch collectors are registered, so
+		// /metrics only serves exporter and process metrics. Say so, as a
+		// missing or empty es.uri (e.g. an unset environment variable) is
+		// otherwise indistinguishable from a working setup in the logs.
+		logger.Info("es.uri is not set, running in multi-target mode only: /metrics exposes no Elasticsearch metrics, scrape clusters through /probe?target=<uri>")
+	} else {
 		esURL, err := url.Parse(*esURI)
 		if err != nil {
 			logger.Error("failed to parse es.uri", "err", err)
