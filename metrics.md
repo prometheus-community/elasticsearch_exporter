@@ -5,6 +5,38 @@
 | elasticsearch_breakers_estimated_size_bytes                          | gauge      | 4           | Estimated size in bytes of breaker                                                                  |
 | elasticsearch_breakers_limit_size_bytes                              | gauge      | 4           | Limit size in bytes for breaker                                                                     |
 | elasticsearch_breakers_tripped                                       | counter    | 4           | tripped for breaker                                                                                 |
+| elasticsearch_ccr_auto_follow_failed_follow_indices_total            | counter    | 0           | Total number of indices the auto-follow coordinator failed to follow                                |
+| elasticsearch_ccr_auto_follow_failed_remote_cluster_state_requests_total | counter    | 0           | Total number of times the auto-follow coordinator failed to fetch the remote cluster state          |
+| elasticsearch_ccr_auto_follow_last_seen_metadata_version             | gauge      | 1           | Last cluster metadata version of the remote cluster seen by the auto-follow coordinator             |
+| elasticsearch_ccr_auto_follow_recent_errors                          | gauge      | 0           | Number of recent auto-follow errors reported by the auto-follow coordinator                         |
+| elasticsearch_ccr_auto_follow_successful_follow_indices_total        | counter    | 0           | Total number of indices the auto-follow coordinator successfully followed                           |
+| elasticsearch_ccr_auto_follow_time_since_last_check_seconds          | gauge      | 1           | Time since the auto-follow coordinator last checked the remote cluster for new indices              |
+| elasticsearch_ccr_failed_read_requests_total                         | counter    | 4           | Total number of failed reads from the leader                                                        |
+| elasticsearch_ccr_failed_write_requests_total                        | counter    | 4           | Total number of failed bulk write requests executed on the follower                                 |
+| elasticsearch_ccr_fatal_exception                                    | gauge      | 4           | Whether the follower task stopped because of a fatal exception                                      |
+| elasticsearch_ccr_follower_aliases_version                           | gauge      | 4           | Index aliases version the follower is synced up to                                                  |
+| elasticsearch_ccr_follower_global_checkpoint                         | gauge      | 4           | Current global checkpoint on the follower                                                           |
+| elasticsearch_ccr_follower_index_status                              | gauge      | 4           | Status of the follower index (active or paused)                                                     |
+| elasticsearch_ccr_follower_mapping_version                           | gauge      | 4           | Index mapping version the follower is synced up to                                                  |
+| elasticsearch_ccr_follower_max_seq_no                                | gauge      | 4           | Current maximum sequence number on the follower                                                     |
+| elasticsearch_ccr_follower_settings_version                          | gauge      | 4           | Index settings version the follower is synced up to                                                 |
+| elasticsearch_ccr_last_requested_seq_no                              | gauge      | 4           | Starting sequence number of the last batch of operations requested from the leader                  |
+| elasticsearch_ccr_leader_global_checkpoint                           | gauge      | 4           | Current global checkpoint on the leader known to the follower task                                  |
+| elasticsearch_ccr_leader_max_seq_no                                  | gauge      | 4           | Current maximum sequence number on the leader known to the follower task                            |
+| elasticsearch_ccr_operations_read_total                              | counter    | 4           | Total number of operations read from the leader                                                     |
+| elasticsearch_ccr_operations_written_total                           | counter    | 4           | Total number of operations written on the follower                                                  |
+| elasticsearch_ccr_outstanding_read_requests                          | gauge      | 4           | Number of active read requests from the follower                                                    |
+| elasticsearch_ccr_outstanding_write_requests                         | gauge      | 4           | Number of active bulk write requests on the follower                                                |
+| elasticsearch_ccr_read_bytes_total                                   | counter    | 4           | Estimated total bytes read from the leader, not accounting for compression                          |
+| elasticsearch_ccr_read_exceptions                                    | gauge      | 4           | Number of failed reads currently being retried by the follower task                                 |
+| elasticsearch_ccr_read_remote_exec_time_seconds_total                | counter    | 4           | Total time reads spent executing on the remote cluster                                              |
+| elasticsearch_ccr_read_time_seconds_total                            | counter    | 4           | Total time reads were outstanding, from sending the request to the leader until the reply was returned to the follower |
+| elasticsearch_ccr_successful_read_requests_total                     | counter    | 4           | Total number of successful fetches from the leader                                                  |
+| elasticsearch_ccr_successful_write_requests_total                    | counter    | 4           | Total number of bulk write requests executed on the follower                                        |
+| elasticsearch_ccr_time_since_last_read_seconds                       | gauge      | 4           | Time since a read request was last sent to the leader                                               |
+| elasticsearch_ccr_write_buffer_operations                            | gauge      | 4           | Number of write operations queued on the follower                                                   |
+| elasticsearch_ccr_write_buffer_size_bytes                            | gauge      | 4           | Total size of operations queued for writing on the follower                                         |
+| elasticsearch_ccr_write_time_seconds_total                           | counter    | 4           | Total time spent writing on the follower                                                            |
 | elasticsearch_cluster_health_active_primary_shards                   | gauge      | 1           | The number of primary shards in your cluster. This is an aggregate total across all indices.        |
 | elasticsearch_cluster_health_active_shards                           | gauge      | 1           | Aggregate total of all shards across all indices, which includes replica shards.                    |
 | elasticsearch_cluster_health_delayed_unassigned_shards               | gauge      | 1           | Shards delayed to reduce reallocation overhead                                                      |
