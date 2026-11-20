@@ -123,7 +123,7 @@ func TestSLM(t *testing.T) {
 				t.Fatalf("Failed to parse URL: %s", err)
 			}
 
-			s, err := NewSLM(promslog.NewNopLogger(), u, http.DefaultClient)
+			s, err := NewSLM(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -209,7 +209,7 @@ func TestSnapshots(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewSnapshots(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewSnapshots(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}

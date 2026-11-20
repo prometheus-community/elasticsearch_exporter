@@ -64,7 +64,7 @@ func TestDataStream(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewDataStream(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewDataStream(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -82,7 +82,7 @@ func TestClusterInfo(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			c, err := NewClusterInfo(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewClusterInfo(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -138,7 +138,7 @@ elasticsearch_version{build_date="2021-05-28T17:40:59.346932922Z",build_hash="9a
 			if err != nil {
 				t.Fatal(err)
 			}
-			c, err := NewClusterInfo(promslog.NewNopLogger(), u, ts.Client())
+			c, err := NewClusterInfo(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: ts.Client()})
 			if err != nil {
 				t.Fatal(err)
 			}

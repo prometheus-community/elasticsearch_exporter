@@ -54,11 +54,11 @@ type Shards struct {
 }
 
 // NewShards defines Shards Prometheus metrics
-func NewShards(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewShards(cfg collectorConfig) (Collector, error) {
 	return &Shards{
-		logger: logger,
-		client: hc,
-		url:    u,
+		logger: cfg.logger,
+		client: cfg.hc,
+		url:    cfg.u,
 
 		jsonParseFailures: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: prometheus.BuildFQName(namespace, "node_shards", "json_parse_failures"),

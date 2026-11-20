@@ -14,13 +14,16 @@
 package collector
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/promslog"
 
@@ -50,11 +53,22 @@ func clusterInfoResponse(clusterName, clusterUUID, version, buildHash, buildDate
 // The returned cleanup function restores the original value.
 func setupClusterInfoState(t *testing.T) func() {
 	t.Helper()
+	return setupCollectorState(t, "cluster-info")
+}
+
+// setupCollectorState enables the named collector in the global collectorState.
+// The returned cleanup function restores the original value.
+func setupCollectorState(t *testing.T, name string) func() {
+	t.Helper()
 	enabled := true
-	originalState := collectorState["cluster-info"]
-	collectorState["cluster-info"] = &enabled
+	originalState, existed := collectorState[name]
+	collectorState[name] = &enabled
 	return func() {
-		collectorState["cluster-info"] = originalState
+		if existed {
+			collectorState[name] = originalState
+		} else {
+			delete(collectorState, name)
+		}
 	}
 }
 
@@ -147,5 +161,120 @@ elasticsearch_version{build_date="2023-09-07T00:00:00.000Z",build_hash="def456",
 `
 	if err := testutil.CollectAndCompare(wrapCollector{c2}, strings.NewReader(want2)); err != nil {
 		t.Errorf("cluster-2 metrics mismatch: %v", err)
+	}
+}
+
+// tasksRecorder is a test server that records the actions query value and
+// request path of every request it receives.
+type tasksRecorder struct {
+	*httptest.Server
+	mu      sync.Mutex
+	actions []string
+	paths   []string
+}
+
+func newTasksRecorder() *tasksRecorder {
+	rec := &tasksRecorder{}
+	rec.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec.mu.Lock()
+		rec.actions = append(rec.actions, r.URL.Query().Get("actions"))
+		rec.paths = append(rec.paths, r.URL.Path)
+		rec.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tasks":[]}`))
+	}))
+	return rec
+}
+
+func (r *tasksRecorder) seenActions() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.actions...)
+}
+
+// newTasksExporter builds an exporter with only the tasks collector for the
+// given server, the way a /probe request does.
+func newTasksExporter(t *testing.T, ts *httptest.Server, opts ...Option) *ElasticsearchCollector {
+	t.Helper()
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logger := promslog.NewNopLogger()
+	info := cluster.NewInfoProvider(logger, http.DefaultClient, u, time.Minute)
+	opts = append([]Option{
+		WithElasticsearchURL(u),
+		WithHTTPClient(http.DefaultClient),
+		WithClusterInfoProvider(info),
+	}, opts...)
+	exp, err := NewElasticsearchCollector(logger, []string{"tasks"}, opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return exp
+}
+
+// TestNewElasticsearchCollectorConfigPerTarget verifies that collector options
+// passed to NewElasticsearchCollector reach only the collectors of that call,
+// so concurrent probes of different targets never share options or targets.
+func TestNewElasticsearchCollectorConfigPerTarget(t *testing.T) {
+	cleanup := setupCollectorState(t, "tasks")
+	defer cleanup()
+
+	rec1 := newTasksRecorder()
+	defer rec1.Close()
+	rec2 := newTasksRecorder()
+	defer rec2.Close()
+
+	exp1 := newTasksExporter(t, rec1.Server, WithTasksConfig(TasksConfig{Actions: "a1"}))
+	exp2 := newTasksExporter(t, rec2.Server, WithTasksConfig(TasksConfig{Actions: "a2"}))
+
+	c1, ok := exp1.Collectors["tasks"]
+	if !ok {
+		t.Fatal("tasks collector not found in exp1")
+	}
+	c2, ok := exp2.Collectors["tasks"]
+	if !ok {
+		t.Fatal("tasks collector not found in exp2")
+	}
+	if c1 == c2 {
+		t.Error("expected distinct tasks collector instances for different targets, but got the same instance")
+	}
+
+	// Update exp2 first so a shared option or target would show up in exp1.
+	ch := make(chan prometheus.Metric, 10)
+	if err := c2.Update(context.Background(), &mockUpdateContext{}, ch); err != nil {
+		t.Fatal(err)
+	}
+	if err := c1.Update(context.Background(), &mockUpdateContext{}, ch); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := rec1.seenActions(); len(got) != 1 || got[0] != "a1" {
+		t.Errorf("server 1: expected one request with actions=a1, got %v", got)
+	}
+	if got := rec2.seenActions(); len(got) != 1 || got[0] != "a2" {
+		t.Errorf("server 2: expected one request with actions=a2, got %v", got)
+	}
+}
+
+// TestNewElasticsearchCollectorDefaultTasksConfig verifies that the tasks
+// collector uses the default actions filter when WithTasksConfig is not passed.
+func TestNewElasticsearchCollectorDefaultTasksConfig(t *testing.T) {
+	cleanup := setupCollectorState(t, "tasks")
+	defer cleanup()
+
+	rec := newTasksRecorder()
+	defer rec.Close()
+
+	exp := newTasksExporter(t, rec.Server)
+
+	ch := make(chan prometheus.Metric, 10)
+	if err := exp.Collectors["tasks"].Update(context.Background(), &mockUpdateContext{}, ch); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := rec.seenActions(); len(got) != 1 || got[0] != "indices:*" {
+		t.Errorf("expected one request with actions=indices:*, got %v", got)
 	}
 }

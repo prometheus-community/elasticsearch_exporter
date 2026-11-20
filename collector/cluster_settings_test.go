@@ -210,7 +210,7 @@ elasticsearch_clustersettings_allocation_watermark_low_bytes 2.147483648e+10
 				t.Fatal(err)
 			}
 
-			c, err := NewClusterSettings(promslog.NewNopLogger(), u, http.DefaultClient)
+			c, err := NewClusterSettings(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: http.DefaultClient})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -325,7 +325,7 @@ elasticsearch_clustersettings_allocation_threshold_enabled 0
 			if err != nil {
 				t.Fatal(err)
 			}
-			c, err := NewClusterSettings(promslog.NewNopLogger(), u, ts.Client())
+			c, err := NewClusterSettings(collectorConfig{logger: promslog.NewNopLogger(), u: u, hc: ts.Client()})
 			if err != nil {
 				t.Fatal(err)
 			}

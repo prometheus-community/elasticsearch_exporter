@@ -49,11 +49,11 @@ type DataStream struct {
 }
 
 // NewDataStream defines DataStream Prometheus metrics
-func NewDataStream(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewDataStream(cfg collectorConfig) (Collector, error) {
 	return &DataStream{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger: cfg.logger,
+		hc:     cfg.hc,
+		u:      cfg.u,
 	}, nil
 }
 

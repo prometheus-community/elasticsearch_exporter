@@ -104,11 +104,11 @@ type TotalFields struct {
 }
 
 // NewIndicesSettings defines Indices Settings Prometheus metrics
-func NewIndicesSettings(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewIndicesSettings(cfg collectorConfig) (Collector, error) {
 	return &IndicesSettings{
-		logger: logger,
-		hc:     hc,
-		u:      u,
+		logger: cfg.logger,
+		hc:     cfg.hc,
+		u:      cfg.u,
 	}, nil
 }
 

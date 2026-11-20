@@ -101,11 +101,11 @@ type Snapshots struct {
 }
 
 // NewSnapshots defines Snapshots Prometheus metrics
-func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error) {
+func NewSnapshots(cfg collectorConfig) (Collector, error) {
 	return &Snapshots{
-		logger: logger,
-		u:      u,
-		hc:     hc,
+		logger: cfg.logger,
+		u:      cfg.u,
+		hc:     cfg.hc,
 	}, nil
 }
 

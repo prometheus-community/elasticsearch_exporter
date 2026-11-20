@@ -72,6 +72,9 @@ func main() {
 		esNode = kingpin.Flag("es.node",
 			"Node's name of which metrics should be exposed.").
 			Default("_local").String()
+		tasksActions = kingpin.Flag("tasks.actions",
+			"Filter on task actions. Used in same way as Task API actions param").
+			Default("indices:*").String()
 		esExportIndices = kingpin.Flag("es.indices",
 			"Export stats for indices in the cluster.").
 			Default("false").Bool()
@@ -212,6 +215,7 @@ func main() {
 			collector.WithElasticsearchURL(esURL),
 			collector.WithHTTPClient(httpClient),
 			collector.WithClusterInfoProvider(infoRetriever),
+			collector.WithTasksConfig(collector.TasksConfig{Actions: *tasksActions}),
 		)
 		if err != nil {
 			logger.Error("failed to create Elasticsearch collector", "err", err)
@@ -390,6 +394,7 @@ func main() {
 			collector.WithElasticsearchURL(targetURL),
 			collector.WithHTTPClient(probeClient),
 			collector.WithClusterInfoProvider(infoProvider),
+			collector.WithTasksConfig(collector.TasksConfig{Actions: *tasksActions}),
 		)
 		if err != nil {
 			http.Error(w, "failed to create exporter", http.StatusInternalServerError)
