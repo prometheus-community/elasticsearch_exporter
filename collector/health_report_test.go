@@ -96,7 +96,7 @@ func TestHealthReport(t *testing.T) {
 				# HELP elasticsearch_health_report_restarting_replicas The number of restarting replica shards
 				# TYPE elasticsearch_health_report_restarting_replicas gauge
 				elasticsearch_health_report_restarting_replicas{cluster="docker-cluster"} 0
-				# HELP elasticsearch_health_report_shards_availabilty_status Shards availabilty status
+				# HELP elasticsearch_health_report_shards_availabilty_status Shards availability status
 				# TYPE elasticsearch_health_report_shards_availabilty_status gauge
 				elasticsearch_health_report_shards_availabilty_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_shards_availabilty_status{cluster="docker-cluster",color="red"} 0
