@@ -110,6 +110,7 @@
 | elasticsearch_jvm_memory_pool_max_bytes                              | counter    | 3           | JVM memory max by pool                                                                              |
 | elasticsearch_jvm_memory_pool_peak_used_bytes                        | counter    | 3           | JVM memory peak used by pool                                                                        |
 | elasticsearch_jvm_memory_pool_peak_max_bytes                         | counter    | 3           | JVM memory peak max by pool                                                                         |
+| elasticsearch_node_hot_thread_cpu_usage_ratio                       | gauge      | 3 per node  | CPU usage ratio of a hot thread sampled over the interval. One series per reported thread, up to `--collector.nodes_hot_threads.threads` (default 3) per node. Threads whose name has no `[pool][T#n]` suffix are skipped, and threads sharing a name are summed. |
 | elasticsearch_os_cpu_percent                                         | gauge      | 1           | Percent CPU used by the OS                                                                          |
 | elasticsearch_os_load1                                               | gauge      | 1           | Shortterm load average                                                                              |
 | elasticsearch_os_load5                                               | gauge      | 1           | Midterm load average                                                                                |
