@@ -52,11 +52,13 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_data_stream_lifecycle_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_data_stream_lifecycle_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_data_stream_lifecycle_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_data_stream_lifecycle_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_disk_status Disk status
 				# TYPE elasticsearch_health_report_disk_status gauge
 				elasticsearch_health_report_disk_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_disk_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_disk_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_disk_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_ilm_policies The number of ILM Policies
 				# TYPE elasticsearch_health_report_ilm_policies gauge
 				elasticsearch_health_report_ilm_policies{cluster="docker-cluster"} 17
@@ -68,6 +70,7 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_ilm_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_ilm_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_ilm_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_ilm_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_initializing_primaries The number of initializing primary shards
 				# TYPE elasticsearch_health_report_initializing_primaries gauge
 				elasticsearch_health_report_initializing_primaries{cluster="docker-cluster"} 0
@@ -79,6 +82,7 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_max_shards_in_cluster_data The number of maximum shards in a cluster
 				# TYPE elasticsearch_health_report_max_shards_in_cluster_data gauge
 				elasticsearch_health_report_max_shards_in_cluster_data{cluster="docker-cluster"} 13500
@@ -90,6 +94,7 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_repository_integrity_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_repository_integrity_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_repository_integrity_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_repository_integrity_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_restarting_primaries The number of restarting primary shards
 				# TYPE elasticsearch_health_report_restarting_primaries gauge
 				elasticsearch_health_report_restarting_primaries{cluster="docker-cluster"} 0
@@ -101,11 +106,13 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_shards_availabilty_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_shards_availabilty_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_shards_availabilty_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_shards_availabilty_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_shards_capacity_status Shards capacity status
 				# TYPE elasticsearch_health_report_shards_capacity_status gauge
 				elasticsearch_health_report_shards_capacity_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_shards_capacity_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_shards_capacity_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_shards_capacity_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_slm_policies The number of SLM policies
 				# TYPE elasticsearch_health_report_slm_policies gauge
 				elasticsearch_health_report_slm_policies{cluster="docker-cluster"} 0
@@ -114,6 +121,7 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_slm_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_slm_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_slm_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_slm_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_started_primaries The number of started primary shards
 				# TYPE elasticsearch_health_report_started_primaries gauge
 				elasticsearch_health_report_started_primaries{cluster="docker-cluster"} 11703
@@ -125,6 +133,7 @@ func TestHealthReport(t *testing.T) {
 				elasticsearch_health_report_status{cluster="docker-cluster",color="green"} 1
 				elasticsearch_health_report_status{cluster="docker-cluster",color="red"} 0
 				elasticsearch_health_report_status{cluster="docker-cluster",color="yellow"} 0
+				elasticsearch_health_report_status{cluster="docker-cluster",color="unknown"} 0
 				# HELP elasticsearch_health_report_total_repositories The number of snapshot repositories
 				# TYPE elasticsearch_health_report_total_repositories gauge
 				elasticsearch_health_report_total_repositories{cluster="docker-cluster"} 1
@@ -165,5 +174,43 @@ func TestHealthReport(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestHealthReportUnknownStatus(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "../fixtures/healthreport/8.7.0-unknown.json")
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := NewHealthReport(promslog.NewNopLogger(), u, http.DefaultClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `
+		# HELP elasticsearch_health_report_master_is_stable_status Master is stable status
+		# TYPE elasticsearch_health_report_master_is_stable_status gauge
+		elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="green"} 0
+		elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="red"} 0
+		elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="unknown"} 1
+		elasticsearch_health_report_master_is_stable_status{cluster="docker-cluster",color="yellow"} 0
+		# HELP elasticsearch_health_report_status Overall cluster status
+		# TYPE elasticsearch_health_report_status gauge
+		elasticsearch_health_report_status{cluster="docker-cluster",color="green"} 0
+		elasticsearch_health_report_status{cluster="docker-cluster",color="red"} 0
+		elasticsearch_health_report_status{cluster="docker-cluster",color="unknown"} 1
+		elasticsearch_health_report_status{cluster="docker-cluster",color="yellow"} 0
+	`
+	if err := testutil.CollectAndCompare(wrapCollector{c}, strings.NewReader(want),
+		"elasticsearch_health_report_status",
+		"elasticsearch_health_report_master_is_stable_status",
+	); err != nil {
+		t.Fatal(err)
 	}
 }
