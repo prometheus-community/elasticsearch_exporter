@@ -38,6 +38,12 @@ const (
 	defaultDisabled = false
 )
 
+// QueryAllNodes mirrors the exporter-wide --es.all flag. main sets this right
+// after parsing CLI flags, for collectors that are registered generically via
+// registerCollector (factoryFunc only takes a logger, URL and HTTP client) and
+// so can't receive --es.all as a constructor argument the way Nodes does.
+var QueryAllNodes bool
+
 type factoryFunc func(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, error)
 
 var (
