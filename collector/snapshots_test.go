@@ -58,27 +58,30 @@ func TestSnapshots(t *testing.T) {
 						# HELP elasticsearch_snapshot_stats_oldest_snapshot_timestamp Timestamp of the oldest snapshot
 						# TYPE elasticsearch_snapshot_stats_oldest_snapshot_timestamp gauge
 						elasticsearch_snapshot_stats_oldest_snapshot_timestamp{repository="test1"} 1.536052142e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp Last snapshot end timestamp
+						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp End timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_end_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",state="SUCCESS",version="1.7.6"} 1.536052142e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Last snapshot failed shards
+						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",version="1.7.6"} 1.536052142e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Number of failed shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_failed_shards gauge
-						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",state="SUCCESS",version="1.7.6"} 0
-						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Last snapshot number of failures
+						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",version="1.7.6"} 0
+						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Number of failures reported for the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_failures gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",state="SUCCESS",version="1.7.6"} 0
+						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",version="1.7.6"} 0
 						# HELP elasticsearch_snapshot_stats_snapshot_number_of_indices Number of indices in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_indices gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",state="SUCCESS",version="1.7.6"} 2
-						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Last snapshot start timestamp
+						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",version="1.7.6"} 2
+						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Start timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_start_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",state="SUCCESS",version="1.7.6"} 1.536052142e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Last snapshot successful shards
+						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",version="1.7.6"} 1.536052142e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_state State of the last snapshot. Value is always 1.
+						# TYPE elasticsearch_snapshot_stats_snapshot_state gauge
+						elasticsearch_snapshot_stats_snapshot_state{repository="test1",state="SUCCESS",version="1.7.6"} 1
+						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Number of successful shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_successful_shards gauge
-						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",state="SUCCESS",version="1.7.6"} 10
-						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Last snapshot total shards
+						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",version="1.7.6"} 10
+						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Total number of shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_total_shards gauge
-						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",state="SUCCESS",version="1.7.6"} 10
+						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",version="1.7.6"} 10
 `,
 		},
 		{
@@ -93,27 +96,30 @@ func TestSnapshots(t *testing.T) {
 						# HELP elasticsearch_snapshot_stats_oldest_snapshot_timestamp Timestamp of the oldest snapshot
 						# TYPE elasticsearch_snapshot_stats_oldest_snapshot_timestamp gauge
 						elasticsearch_snapshot_stats_oldest_snapshot_timestamp{repository="test1"} 1.536053125e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp Last snapshot end timestamp
+						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp End timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_end_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",state="SUCCESS",version="2.4.5"} 1.536053126e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Last snapshot failed shards
+						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",version="2.4.5"} 1.536053126e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Number of failed shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_failed_shards gauge
-						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",state="SUCCESS",version="2.4.5"} 0
-						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Last snapshot number of failures
+						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",version="2.4.5"} 0
+						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Number of failures reported for the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_failures gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",state="SUCCESS",version="2.4.5"} 0
+						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",version="2.4.5"} 0
 						# HELP elasticsearch_snapshot_stats_snapshot_number_of_indices Number of indices in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_indices gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",state="SUCCESS",version="2.4.5"} 2
-						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Last snapshot start timestamp
+						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",version="2.4.5"} 2
+						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Start timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_start_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",state="SUCCESS",version="2.4.5"} 1.536053125e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Last snapshot successful shards
+						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",version="2.4.5"} 1.536053125e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_state State of the last snapshot. Value is always 1.
+						# TYPE elasticsearch_snapshot_stats_snapshot_state gauge
+						elasticsearch_snapshot_stats_snapshot_state{repository="test1",state="SUCCESS",version="2.4.5"} 1
+						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Number of successful shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_successful_shards gauge
-						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",state="SUCCESS",version="2.4.5"} 10
-						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Last snapshot total shards
+						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",version="2.4.5"} 10
+						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Total number of shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_total_shards gauge
-						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",state="SUCCESS",version="2.4.5"} 10
+						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",version="2.4.5"} 10
 						`,
 		},
 		{
@@ -128,27 +134,30 @@ func TestSnapshots(t *testing.T) {
 						# HELP elasticsearch_snapshot_stats_oldest_snapshot_timestamp Timestamp of the oldest snapshot
 						# TYPE elasticsearch_snapshot_stats_oldest_snapshot_timestamp gauge
 						elasticsearch_snapshot_stats_oldest_snapshot_timestamp{repository="test1"} 1.536053353e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp Last snapshot end timestamp
+						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp End timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_end_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",state="SUCCESS",version="5.4.2"} 1.536053354e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Last snapshot failed shards
+						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",version="5.4.2"} 1.536053354e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Number of failed shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_failed_shards gauge
-						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",state="SUCCESS",version="5.4.2"} 0
-						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Last snapshot number of failures
+						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",version="5.4.2"} 0
+						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Number of failures reported for the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_failures gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",state="SUCCESS",version="5.4.2"} 0
+						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",version="5.4.2"} 0
 						# HELP elasticsearch_snapshot_stats_snapshot_number_of_indices Number of indices in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_indices gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",state="SUCCESS",version="5.4.2"} 2
-						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Last snapshot start timestamp
+						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",version="5.4.2"} 2
+						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Start timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_start_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",state="SUCCESS",version="5.4.2"} 1.536053353e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Last snapshot successful shards
+						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",version="5.4.2"} 1.536053353e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_state State of the last snapshot. Value is always 1.
+						# TYPE elasticsearch_snapshot_stats_snapshot_state gauge
+						elasticsearch_snapshot_stats_snapshot_state{repository="test1",state="SUCCESS",version="5.4.2"} 1
+						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Number of successful shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_successful_shards gauge
-						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",state="SUCCESS",version="5.4.2"} 10
-						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Last snapshot total shards
+						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",version="5.4.2"} 10
+						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Total number of shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_total_shards gauge
-						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",state="SUCCESS",version="5.4.2"} 10
+						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",version="5.4.2"} 10
 						`,
 		},
 		{
@@ -163,27 +172,30 @@ func TestSnapshots(t *testing.T) {
 						# HELP elasticsearch_snapshot_stats_oldest_snapshot_timestamp Timestamp of the oldest snapshot
 						# TYPE elasticsearch_snapshot_stats_oldest_snapshot_timestamp gauge
 						elasticsearch_snapshot_stats_oldest_snapshot_timestamp{repository="test1"} 1.536053353e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp Last snapshot end timestamp
+						# HELP elasticsearch_snapshot_stats_snapshot_end_time_timestamp End timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_end_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",state="SUCCESS",version="5.4.2"} 1.536053354e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Last snapshot failed shards
+						elasticsearch_snapshot_stats_snapshot_end_time_timestamp{repository="test1",version="5.4.2"} 1.536053354e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_failed_shards Number of failed shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_failed_shards gauge
-						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",state="SUCCESS",version="5.4.2"} 1
-						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Last snapshot number of failures
+						elasticsearch_snapshot_stats_snapshot_failed_shards{repository="test1",version="5.4.2"} 1
+						# HELP elasticsearch_snapshot_stats_snapshot_number_of_failures Number of failures reported for the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_failures gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",state="SUCCESS",version="5.4.2"} 1
+						elasticsearch_snapshot_stats_snapshot_number_of_failures{repository="test1",version="5.4.2"} 1
 						# HELP elasticsearch_snapshot_stats_snapshot_number_of_indices Number of indices in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_number_of_indices gauge
-						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",state="SUCCESS",version="5.4.2"} 2
-						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Last snapshot start timestamp
+						elasticsearch_snapshot_stats_snapshot_number_of_indices{repository="test1",version="5.4.2"} 2
+						# HELP elasticsearch_snapshot_stats_snapshot_start_time_timestamp Start timestamp of the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_start_time_timestamp gauge
-						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",state="SUCCESS",version="5.4.2"} 1.536053353e+09
-						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Last snapshot successful shards
+						elasticsearch_snapshot_stats_snapshot_start_time_timestamp{repository="test1",version="5.4.2"} 1.536053353e+09
+						# HELP elasticsearch_snapshot_stats_snapshot_state State of the last snapshot. Value is always 1.
+						# TYPE elasticsearch_snapshot_stats_snapshot_state gauge
+						elasticsearch_snapshot_stats_snapshot_state{repository="test1",state="SUCCESS",version="5.4.2"} 1
+						# HELP elasticsearch_snapshot_stats_snapshot_successful_shards Number of successful shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_successful_shards gauge
-						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",state="SUCCESS",version="5.4.2"} 10
-						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Last snapshot total shards
+						elasticsearch_snapshot_stats_snapshot_successful_shards{repository="test1",version="5.4.2"} 10
+						# HELP elasticsearch_snapshot_stats_snapshot_total_shards Total number of shards in the last snapshot
 						# TYPE elasticsearch_snapshot_stats_snapshot_total_shards gauge
-						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",state="SUCCESS",version="5.4.2"} 10
+						elasticsearch_snapshot_stats_snapshot_total_shards{repository="test1",version="5.4.2"} 10
 						`,
 		},
 	}
