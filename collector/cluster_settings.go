@@ -235,7 +235,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse flood stage watermark", "err", err)
 	} else {
-		if strings.HasSuffix(strings.ToLower(watermarkFlood), "b") {
+		if isByteSizeValue(watermarkFlood) {
 			floodStageBytes, err := getValueInBytes(watermarkFlood)
 			if err != nil {
 				c.logger.Error("failed to parse flood_stage bytes", "err", err)
@@ -264,7 +264,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse high watermark", "err", err)
 	} else {
-		if strings.HasSuffix(strings.ToLower(watermarkHigh), "b") {
+		if isByteSizeValue(watermarkHigh) {
 			highBytes, err := getValueInBytes(watermarkHigh)
 			if err != nil {
 				c.logger.Error("failed to parse high bytes", "err", err)
@@ -293,7 +293,7 @@ func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext,
 	if err != nil {
 		c.logger.Error("failed to parse low watermark", "err", err)
 	} else {
-		if strings.HasSuffix(strings.ToLower(watermarkLow), "b") {
+		if isByteSizeValue(watermarkLow) {
 			lowBytes, err := getValueInBytes(watermarkLow)
 			if err != nil {
 				c.logger.Error("failed to parse low bytes", "err", err)
@@ -335,6 +335,16 @@ func parseWatermarkValue(value interface{}) (string, error) {
 	}
 }
 
+// isByteSizeValue reports whether a watermark is an absolute byte size such as
+// "500mb" or "100g". Elasticsearch accepts both the long and the single-letter
+// unit suffixes, while ratios are given as "85%" or "0.85".
+func isByteSizeValue(value string) bool {
+	if value == "" {
+		return false
+	}
+	return strings.ContainsRune("bkmgtp", rune(strings.ToLower(value)[len(value)-1]))
+}
+
 func getValueInBytes(value string) (float64, error) {
 	type UnitValue struct {
 		unit string
@@ -347,6 +357,11 @@ func getValueInBytes(value string) (float64, error) {
 		{"gb", 1024 * 1024 * 1024},
 		{"mb", 1024 * 1024},
 		{"kb", 1024},
+		{"p", 1024 * 1024 * 1024 * 1024 * 1024},
+		{"t", 1024 * 1024 * 1024 * 1024},
+		{"g", 1024 * 1024 * 1024},
+		{"m", 1024 * 1024},
+		{"k", 1024},
 		{"b", 1},
 	}
 
