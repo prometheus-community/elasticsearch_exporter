@@ -84,7 +84,7 @@ type DataStreamStatsDataStream struct {
 func (ds *DataStream) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	var dsr DataStreamStatsResponse
 
-	u := ds.u.ResolveReference(&url.URL{Path: "/_data_stream/*/_stats"})
+	u := joinURLPath(ds.u, "/_data_stream/*/_stats")
 
 	if err := getAndDecodeURL(ctx, ds.hc, ds.logger, u.String(), &dsr); err != nil {
 		return err
