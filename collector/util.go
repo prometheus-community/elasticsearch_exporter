@@ -20,7 +20,19 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path"
 )
+
+// joinURLPath returns a copy of base with the given path elements appended to
+// its path, so that an Elasticsearch URL served under a path prefix, such as
+// behind a reverse proxy, keeps that prefix.
+func joinURLPath(base *url.URL, elem ...string) *url.URL {
+	u := *base
+	u.Path = path.Join(append([]string{base.Path}, elem...)...)
+	u.RawPath = ""
+	return &u
+}
 
 // fetchURL performs an HTTP GET against u and passes the response body to
 // consume, handling the request setup, status check, and body close. It lets

@@ -76,7 +76,7 @@ type IlmStatusResponse struct {
 func (i *ILM) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	var ir IlmResponse
 
-	indexURL := i.u.ResolveReference(&url.URL{Path: "/_all/_ilm/explain"})
+	indexURL := joinURLPath(i.u, "/_all/_ilm/explain")
 
 	if err := getAndDecodeURL(ctx, i.hc, i.logger, indexURL.String(), &ir); err != nil {
 		return fmt.Errorf("failed to load ILM index explain: %w", err)
@@ -84,7 +84,7 @@ func (i *ILM) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus
 
 	var isr IlmStatusResponse
 
-	indexStatusURL := i.u.ResolveReference(&url.URL{Path: "/_ilm/status"})
+	indexStatusURL := joinURLPath(i.u, "/_ilm/status")
 
 	if err := getAndDecodeURL(ctx, i.hc, i.logger, indexStatusURL.String(), &isr); err != nil {
 		return fmt.Errorf("failed to load ILM status: %w", err)

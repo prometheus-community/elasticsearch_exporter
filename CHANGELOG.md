@@ -8,6 +8,7 @@
 ### Changelog
 
 * [BUGFIX] `elasticsearch_node_shards_total` always reported `cluster="unknown_cluster"` in /probe mode #1268
+* [BUGFIX] Keep the path of the Elasticsearch URL in requests made by the ilm, slm, snapshots, data-stream, tasks, health-report and cluster-settings collectors
 
 ## 1.11.0 / 2026-07-02
 

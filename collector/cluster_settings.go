@@ -146,7 +146,7 @@ type clusterSettingsWatermark struct {
 }
 
 func (c *ClusterSettingsCollector) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
-	u := c.u.ResolveReference(&url.URL{Path: "_cluster/settings"})
+	u := joinURLPath(c.u, "_cluster/settings")
 	q := u.Query()
 	q.Set("include_defaults", "true")
 	u.RawQuery = q.Encode()

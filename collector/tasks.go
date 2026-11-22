@@ -81,7 +81,7 @@ func (t *TaskCollector) Update(ctx context.Context, uc UpdateContext, ch chan<- 
 }
 
 func (t *TaskCollector) fetchTasks(_ context.Context) (tasksResponse, error) {
-	u := t.u.ResolveReference(&url.URL{Path: "_tasks"})
+	u := joinURLPath(t.u, "_tasks")
 	q := u.Query()
 	q.Set("group_by", "none")
 	q.Set("actions", actionFilter)

@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"path"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -112,7 +111,7 @@ func NewSnapshots(logger *slog.Logger, u *url.URL, hc *http.Client) (Collector, 
 func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
 	// indices
 	snapshotsStatsResp := make(map[string]SnapshotStatsResponse)
-	u := c.u.ResolveReference(&url.URL{Path: "/_snapshot"})
+	u := joinURLPath(c.u, "/_snapshot")
 
 	var srr SnapshotRepositoriesResponse
 	if err := getAndDecodeURL(ctx, c.hc, c.logger, u.String(), &srr); err != nil {
@@ -120,8 +119,7 @@ func (c *Snapshots) Update(ctx context.Context, uc UpdateContext, ch chan<- prom
 	}
 
 	for repository := range srr {
-		pathPart := path.Join("/_snapshot", repository, "/_all")
-		u := c.u.ResolveReference(&url.URL{Path: pathPart})
+		u := joinURLPath(c.u, "/_snapshot", repository, "/_all")
 		var ssr SnapshotStatsResponse
 		if err := getAndDecodeURL(ctx, c.hc, c.logger, u.String(), &ssr); err != nil {
 			c.logger.Warn("failed to get snapshot stats", "repository", repository, "err", err)

@@ -143,14 +143,14 @@ type SLMStatusResponse struct {
 }
 
 func (s *SLM) Update(ctx context.Context, uc UpdateContext, ch chan<- prometheus.Metric) error {
-	u := s.u.ResolveReference(&url.URL{Path: "/_slm/status"})
+	u := joinURLPath(s.u, "/_slm/status")
 	var slmStatusResp SLMStatusResponse
 
 	if err := getAndDecodeURL(ctx, s.hc, s.logger, u.String(), &slmStatusResp); err != nil {
 		return err
 	}
 
-	u = s.u.ResolveReference(&url.URL{Path: "/_slm/stats"})
+	u = joinURLPath(s.u, "/_slm/stats")
 	var slmStatsResp SLMStatsResponse
 
 	if err := getAndDecodeURL(ctx, s.hc, s.logger, u.String(), &slmStatsResp); err != nil {
