@@ -7,6 +7,7 @@
 
 ### Changelog
 
+* [BUGFIX] Shut down gracefully on SIGTERM. Previously only SIGINT was handled, so the process was killed without draining in-flight scrapes when stopped by a container runtime or Kubernetes. A graceful shutdown also no longer logs "http server quit" and exits with status 1
 * [BUGFIX] `elasticsearch_node_shards_total` always reported `cluster="unknown_cluster"` in /probe mode #1268
 
 ## 1.11.0 / 2026-07-02
