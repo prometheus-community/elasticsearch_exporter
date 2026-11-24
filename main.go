@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,6 +24,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -144,8 +146,10 @@ func main() {
 	// version metric
 	prometheus.MustRegister(versioncollector.NewCollector(name))
 
-	// Create a context that is cancelled on SIGKILL or SIGINT.
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	// Create a context that is cancelled on SIGINT or SIGTERM. SIGTERM is what
+	// container runtimes and Kubernetes send to stop the process; SIGKILL cannot
+	// be caught.
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	if *esURI == "" {
@@ -411,7 +415,9 @@ func main() {
 
 	server := &http.Server{}
 	go func() {
-		if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
+		// http.ErrServerClosed is returned once server.Shutdown is called below and
+		// is part of a graceful shutdown, not a failure.
+		if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("http server quit", "err", err)
 			os.Exit(1)
 		}
